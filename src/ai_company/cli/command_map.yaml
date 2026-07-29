@@ -1,0 +1,11 @@
+bootstrap:
+  prompt_file: prompts/opencode/01_bootstrap_generator.md
+  agent: architect
+  model: opencode/north-mini-code-free
+  description: Scaffold the initial repository structure
+
+registry:
+  prompt_file: prompts/opencode/02_registry_engine.md
+  agent: architect
+  model: opencode/north-mini-code-free
+  description: Load and validate company YAML into an in-memory graph

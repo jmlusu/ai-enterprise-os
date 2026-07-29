@@ -1,0 +1,4 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "ollama/deepseek-r1:7b-32k"
+}
