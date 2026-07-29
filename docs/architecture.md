@@ -13,6 +13,32 @@ Building scalable local AI agent workflows.
 5. **Agents Engine:** Defines OpenCode agent personas.
 6. **Dashboard Engine:** Renders state and health dashboards.
 
+## Registry Engine
+
+The Registry Engine is the system's single source of truth. It loads YAML
+files from `company/`, parses them, validates against Pydantic schemas,
+resolves cross-references, and returns an immutable `CompanyRegistry`.
+
+### Modules
+
+| Module | Responsibility |
+|---|---|
+| `models/company.py` | Pydantic models: `VisionData`, `Role`, `DepartmentData`, `BoardEntry`, `ExecutiveEntry`, `PolicyEntry`, `SpecialistEntry`, `WorkflowEntry`, `CompanyRegistry` |
+| `registry/loader.py` | Reads YAML files from `company/` directory |
+| `registry/parser.py` | Converts raw YAML dicts into structured intermediate dicts |
+| `registry/validator.py` | Validates parsed data against Pydantic schemas, collects all errors |
+| `registry/resolver.py` | Cross-references department names from `company.yaml` with definitions in `departments.yaml` |
+| `registry/registry.py` | Orchestrator (`RegistryEngine`) — calls loader → parser → validator → resolver, returns frozen `CompanyRegistry` |
+
+### Pipeline
+
+```
+YAML files → Loader → Parser → Validator → Resolver → CompanyRegistry (frozen)
+```
+
+The `RegistryEngine` is a singleton. Call `load()` with a path to the company
+directory. The returned `CompanyRegistry` has `frozen=True`, making it immutable.
+
 ## CLI Command Groups
 
 | Group | Commands | Purpose |

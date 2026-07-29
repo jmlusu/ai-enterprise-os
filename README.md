@@ -47,7 +47,10 @@ uv run --group dev mypy src
 ## Project structure
 
 ```
-src/ai_company/     # Package source
+src/ai_company/
+  models/             # Pydantic data models
+  registry/           # Registry engine (loader, parser, validator, resolver)
+  cli/                # Typer CLI commands and groups
 company/            # Company registry (YAML)
 prompts/            # OpenCode prompt files
 templates/          # Jinja2 templates
