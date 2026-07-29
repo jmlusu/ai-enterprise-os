@@ -56,7 +56,14 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: uv sync --group dev
       - name: pytest
-        run: uv run --group dev pytest --verbose
+        run: |
+          uv run --group dev pytest --verbose
+          rc=$?
+          if [ $rc -eq 5 ]; then
+            echo "No tests collected - this is fine, no test files exist yet"
+            exit 0
+          fi
+          exit $rc
 
   cli:
     runs-on: ubuntu-latest
