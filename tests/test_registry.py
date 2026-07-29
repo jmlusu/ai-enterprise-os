@@ -15,9 +15,11 @@ def temp_dir() -> Iterator[Path]:
 
 from ai_company.models.company import (
     BoardEntry,
+    CompanyManifest,
     CompanyRegistry,
     DepartmentData,
     ExecutiveEntry,
+    ManifestDepartment,
     PolicyEntry,
     Role,
     SpecialistEntry,
@@ -394,6 +396,186 @@ class TestRegistryIntegrationWithRealData:
         assert "sales" in reg.departments
         assert "research" in reg.departments
         assert "product" in reg.departments
+
+
+# ---------------------------------------------------------------------------
+# Manifest tests
+# ---------------------------------------------------------------------------
+
+
+class TestManifestDepartment:
+    def test_minimal(self) -> None:
+        d = ManifestDepartment(name="eng")
+        assert d.name == "eng"
+        assert d.display_name is None
+        assert d.description is None
+
+    def test_full(self) -> None:
+        d = ManifestDepartment(name="eng", display_name="Engineering", description="Eng team")
+        assert d.display_name == "Engineering"
+        assert d.description == "Eng team"
+
+
+class TestCompanyManifest:
+    def test_minimal(self) -> None:
+        m = CompanyManifest(name="Test Co", departments=[ManifestDepartment(name="eng")])
+        assert m.name == "Test Co"
+        assert m.description is None
+        assert m.version is None
+        assert len(m.departments) == 1
+
+    def test_full(self) -> None:
+        m = CompanyManifest(
+            name="Test Co",
+            description="Desc",
+            company_name="C",
+            version="1.0",
+            departments=[ManifestDepartment(name="eng", display_name="Engineering")],
+        )
+        assert m.company_name == "C"
+        assert m.version == "1.0"
+
+    def test_load_from_real_file(self) -> None:
+        m = CompanyManifest.load(Path("config/company/company.yaml"))
+        assert m.name == "AI Enterprise OS Vision"
+        assert m.company_name == "Lightspeed Holdings Limited"
+        assert m.version == "1.0.0"
+        assert len(m.departments) == 7
+
+    def test_load_file_not_found(self) -> None:
+        with pytest.raises(FileNotFoundError):
+            CompanyManifest.load(Path("nonexistent.yaml"))
+
+    def test_load_empty_file(self, temp_dir: Path) -> None:
+        f = temp_dir / "empty.yaml"
+        f.write_text("")
+        with pytest.raises(ValueError, match="empty"):
+            CompanyManifest.load(f)
+
+    def test_load_invalid_yaml(self, temp_dir: Path) -> None:
+        f = temp_dir / "bad.yaml"
+        f.write_text(": broken :\n  indentation:")
+        with pytest.raises(ValueError, match="YAML syntax error"):
+            CompanyManifest.load(f)
+
+    def test_load_invalid_schema(self, temp_dir: Path) -> None:
+        f = temp_dir / "bad.yaml"
+        f.write_text("name: 42")
+        with pytest.raises(ValueError, match="Manifest validation failed"):
+            CompanyManifest.load(f)
+
+    def test_validate_manifest_success(self) -> None:
+        m = CompanyManifest(
+            name="Test",
+            departments=[ManifestDepartment(name="eng"), ManifestDepartment(name="sales")],
+        )
+        assert m.validate_manifest() == []
+
+    def test_validate_manifest_missing_name(self) -> None:
+        m = CompanyManifest(name="", departments=[ManifestDepartment(name="eng")])
+        errors = m.validate_manifest()
+        assert any("name" in e for e in errors)
+
+    def test_validate_manifest_no_departments(self) -> None:
+        m = CompanyManifest(name="Test")
+        errors = m.validate_manifest()
+        assert any("department" in e for e in errors)
+
+    def test_validate_manifest_duplicate_departments(self) -> None:
+        m = CompanyManifest(
+            name="Test",
+            departments=[ManifestDepartment(name="eng"), ManifestDepartment(name="eng")],
+        )
+        errors = m.validate_manifest()
+        assert any("duplicate" in e for e in errors)
+
+    def test_normalize_trims_whitespace(self) -> None:
+        m = CompanyManifest(
+            name="  Test Co  ",
+            description="  Desc  ",
+            departments=[ManifestDepartment(name="  Eng  ")],
+        )
+        n = m.normalize()
+        assert n.name == "Test Co"
+        assert n.description == "Desc"
+        assert n.departments[0].name == "eng"
+
+    def test_normalize_lowercases_name(self) -> None:
+        m = CompanyManifest(
+            name="Test",
+            departments=[ManifestDepartment(name="Engineering Dept")],
+        )
+        n = m.normalize()
+        assert n.departments[0].name == "engineering_dept"
+
+    def test_normalize_fills_display_name(self) -> None:
+        m = CompanyManifest(
+            name="Test",
+            departments=[ManifestDepartment(name="eng")],
+        )
+        n = m.normalize()
+        assert n.departments[0].display_name == "Eng"
+
+    def test_real_manifest_normalize(self) -> None:
+        m = CompanyManifest.load(Path("config/company/company.yaml"))
+        n = m.normalize()
+        assert n.name == "AI Enterprise OS Vision"
+        assert n.version == "1.0.0"
+        assert len(n.departments) == 7
+        for d in n.departments:
+            assert d.name == d.name.lower()
+            assert "_" not in d.name
+            assert d.display_name is not None
+            assert d.description is not None
+
+
+class TestManifestWithRegistryEngine:
+    def setup_method(self) -> None:
+        registry_engine.reload()
+
+    def test_load_with_manifest(self) -> None:
+        manifest = CompanyManifest.load(Path("config/company/company.yaml"))
+        result = registry_engine.load(Path("company"), manifest=manifest)
+        assert result.success
+        assert result.manifest is not None
+        assert result.manifest.name == "AI Enterprise OS Vision"
+        assert result.registry is not None
+
+    def test_load_with_manifest_department_warning(self, temp_dir: Path) -> None:
+        manifest = CompanyManifest(
+            name="Test",
+            departments=[ManifestDepartment(name="ghost")],
+        )
+        result = registry_engine.load(Path("company"), manifest=manifest)
+        assert result.success
+        assert any("ghost" in w for w in result.warnings)
+
+    def test_load_with_manifest_extra_department_warning(self, temp_dir: Path) -> None:
+        manifest = CompanyManifest(
+            name="Test",
+            departments=[ManifestDepartment(name="executive")],
+        )
+        result = registry_engine.load(Path("company"), manifest=manifest)
+        assert result.success
+        assert any("technical" in w for w in result.warnings)
+
+    def test_load_with_invalid_manifest_fails(self, temp_dir: Path) -> None:
+        manifest = CompanyManifest(name="")
+        result = registry_engine.load(Path("company"), manifest=manifest)
+        assert not result.success
+        assert any("manifest" in e for e in result.errors)
+
+    def test_last_result_includes_manifest(self) -> None:
+        registry_engine.reload()
+        manifest = CompanyManifest.load(Path("config/company/company.yaml"))
+        result = registry_engine.load(Path("company"), manifest=manifest)
+        assert result.manifest is not None
+        assert result.manifest.name == "AI Enterprise OS Vision"
+
+    def test_load_without_manifest_still_works(self) -> None:
+        result = registry_engine.load(Path("company"))
+        assert result.success
+        assert result.manifest is None
 
 
 class TestFrozenImmutability:

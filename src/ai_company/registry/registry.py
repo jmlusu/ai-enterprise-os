@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from ai_company.models.company import (
     BoardEntry,
+    CompanyManifest,
     CompanyRegistry,
     DepartmentData,
     ExecutiveEntry,
@@ -26,10 +27,12 @@ class RegistryLoadResult:
         registry: Optional[CompanyRegistry],
         errors: list[str],
         warnings: list[str],
+        manifest: Optional[CompanyManifest] = None,
     ) -> None:
         self.registry = registry
         self.errors = errors
         self.warnings = warnings
+        self.manifest = manifest
 
     @property
     def success(self) -> bool:
@@ -46,23 +49,46 @@ class RegistryEngine:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def load(self, company_dir: Optional[Path] = None) -> RegistryLoadResult:
+    def load(
+        self,
+        company_dir: Optional[Path] = None,
+        manifest: Optional[CompanyManifest] = None,
+    ) -> RegistryLoadResult:
         if company_dir is None:
             company_dir = Path("company")
 
         errors: list[str] = []
         warnings: list[str] = []
 
+        if manifest is not None:
+            manifest_errors = manifest.validate_manifest()
+            if manifest_errors:
+                errors.extend(f"manifest: {e}" for e in manifest_errors)
+                self._last_result = RegistryLoadResult(None, errors, [], manifest=manifest)
+                return self._last_result
+
         load_result = load_registry_files(company_dir)
         if not load_result.success:
-            self._last_result = RegistryLoadResult(None, load_result.errors, [])
+            self._last_result = RegistryLoadResult(None, load_result.errors, [], manifest=manifest)
             return self._last_result
 
         parsed = parse_registry(load_result.data)
 
+        if manifest is not None:
+            manifest_dept_names = {d.name for d in manifest.normalize().departments}
+            yaml_dept_names = set(parsed.get("department_names", []))
+            for dept in sorted(manifest_dept_names - yaml_dept_names):
+                warnings.append(f"manifest department '{dept}' not found in company YAML files")
+            for dept in sorted(yaml_dept_names - manifest_dept_names):
+                warnings.append(
+                    f"company YAML references department '{dept}' not declared in manifest"
+                )
+
         validation = validate_parsed_data(parsed)
         if not validation.valid:
-            self._last_result = RegistryLoadResult(None, validation.errors, validation.warnings)
+            self._last_result = RegistryLoadResult(
+                None, validation.errors, validation.warnings, manifest=manifest
+            )
             return self._last_result
         warnings.extend(validation.warnings)
 
@@ -88,10 +114,10 @@ class RegistryEngine:
             )
         except ValidationError as e:
             errors.append(str(e))
-            self._last_result = RegistryLoadResult(None, errors, warnings)
+            self._last_result = RegistryLoadResult(None, errors, warnings, manifest=manifest)
             return self._last_result
 
-        self._last_result = RegistryLoadResult(self._registry, errors, warnings)
+        self._last_result = RegistryLoadResult(self._registry, errors, warnings, manifest=manifest)
         return self._last_result
 
     def reload(self) -> None:

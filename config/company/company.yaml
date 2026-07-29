@@ -1,0 +1,26 @@
+name: "AI Enterprise OS Vision"
+description: "Building scalable local AI agent workflows."
+company_name: "Lightspeed Holdings Limited"
+version: "1.0.0"
+departments:
+  - name: executive
+    display_name: "Executive"
+    description: "Executive leadership and strategic direction"
+  - name: strategic
+    display_name: "Strategic"
+    description: "Strategic planning and business operations"
+  - name: technical
+    display_name: "Technical"
+    description: "Technical architecture and software development"
+  - name: marketing
+    display_name: "Marketing"
+    description: "Brand, content, and growth marketing"
+  - name: sales
+    display_name: "Sales"
+    description: "Enterprise and channel sales"
+  - name: research
+    display_name: "Research"
+    description: "AI/ML research and data science"
+  - name: product
+    display_name: "Product"
+    description: "Product design, management, and marketing"

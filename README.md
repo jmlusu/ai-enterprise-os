@@ -51,7 +51,8 @@ src/ai_company/
   models/             # Pydantic data models
   registry/           # Registry engine (loader, parser, validator, resolver)
   cli/                # Typer CLI commands and groups
-company/            # Company registry (YAML)
+config/company/     # Company manifest (company.yaml)
+company/            # Company registry (YAML data files)
 prompts/            # OpenCode prompt files
 templates/          # Jinja2 templates
 tests/              # Unit tests
