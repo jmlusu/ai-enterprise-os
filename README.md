@@ -50,6 +50,7 @@ uv run --group dev mypy src
 src/ai_company/
   models/             # Pydantic data models
   registry/           # Registry engine (loader, parser, validator, resolver)
+  bootstrap/          # Bootstrap generator (loader, validator, placeholder generator)
   cli/                # Typer CLI commands and groups
 config/company/     # Company manifest (company.yaml)
 company/            # Company registry (YAML data files)

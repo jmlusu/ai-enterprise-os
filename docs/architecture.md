@@ -62,6 +62,40 @@ directory and an optional `manifest` parameter. The returned `RegistryLoadResult
 includes the manifest reference. The `CompanyRegistry` has `frozen=True`, making
 it immutable.
 
+## Bootstrap Generator
+
+The Bootstrap Generator (`bootstrap/bootstrap.py`) scaffolds the repository structure
+from the company manifest. It is invoked by the `ai-company bootstrap` CLI command.
+
+### Pipeline
+
+```
+config/company/company.yaml → CompanyManifest (load → validate → normalize)
+                                  ↓
+company/*.yaml → RegistryEngine (load → validate)
+                                  ↓
+                    BootstrapGenerator
+                      ├─ Create missing directories
+                      ├─ Render main README (templates/README.md.j2 → generated/README.md)
+                      ├─ Render per-department READMEs (templates/department_README.md.j2)
+                      ├─ Render documentation placeholders (templates/doc_placeholder.md.j2)
+                      ├─ Render prompt placeholders (templates/prompt_placeholder.md.j2)
+                      └─ Render test placeholders (templates/test_placeholder.py.j2)
+```
+
+### Modules
+
+| Module | Responsibility |
+|---|---|
+| `bootstrap/bootstrap.py` | `BootstrapGenerator` — orchestrates loading, validation, directory creation, and placeholder generation |
+| `templates/README.md.j2` | Main generated README template |
+| `templates/department_README.md.j2` | Per-department README placeholder |
+| `templates/doc_placeholder.md.j2` | Documentation page placeholder |
+| `templates/prompt_placeholder.md.j2` | Prompt library placeholder |
+| `templates/test_placeholder.py.j2` | Test file placeholder stub |
+
+The bootstrap is **idempotent** — running it multiple times produces identical output.
+
 ## CLI Command Groups
 
 | Group | Commands | Purpose |

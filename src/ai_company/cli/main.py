@@ -6,6 +6,7 @@ from pathlib import Path
 import typer
 from rich import print
 
+from ai_company.bootstrap.bootstrap import BootstrapGenerator
 from ai_company.cli.command_map import load_command_map, resolve_target
 from ai_company.cli.groups import graph as graph_group
 from ai_company.cli.groups import memory as memory_group
@@ -25,11 +26,20 @@ app.add_typer(report_group.app, name="report")
 def bootstrap() -> None:
     """Scaffold the initial repository structure from the company registry."""
     print("[cyan]Bootstrapping project structure...[/cyan]")
-    company_yaml = Path("company/company.yaml")
-    if not company_yaml.exists():
-        print("[red]company/company.yaml not found. Cannot bootstrap.[/red]")
+    generator = BootstrapGenerator()
+    result = generator.run()
+    if not result.success:
+        for err in result.errors:
+            print(f"  [red]✗[/red] {err}")
+        print("\n[red]Bootstrap failed.[/red]")
         raise typer.Exit(1)
-    print("[green]Project structure is ready.[/green]")
+    for w in result.warnings:
+        print(f"  [yellow]![/yellow] {w}")
+    if result.created_files:
+        print(f"\n  [green]✓[/green] Generated {len(result.created_files)} file(s):")
+        for f in result.created_files:
+            print(f"    [dim]{f}[/dim]")
+    print("\n[green]Project structure is ready.[/green]")
 
 
 @app.command()
