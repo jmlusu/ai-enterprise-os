@@ -30,42 +30,41 @@ class BootstrapGenerator:
         manifest_path: Path = Path("config/company/company.yaml"),
         templates_dir: Path = Path("templates"),
         output_dir: Path = Path("generated"),
-        tests_dir: Path = Path("tests"),
     ) -> None:
         self.company_dir = company_dir
         self.manifest_path = manifest_path
         self.templates_dir = templates_dir
         self.output_dir = output_dir
-        self.tests_dir = tests_dir
 
     def run(self) -> BootstrapResult:
         errors: list[str] = []
         warnings: list[str] = []
         created_files: list[str] = []
 
-        manifest = self._load_manifest(errors)
-        if errors or manifest is None:
-            return BootstrapResult(False, [], errors, warnings)
+        manifest, manifest_error = self._load_manifest()
+        if manifest_error:
+            return BootstrapResult(False, [], [manifest_error], warnings)
+        assert manifest is not None
 
-        registry_result = self._load_registry(errors, manifest)
-        if errors:
-            return BootstrapResult(False, [], errors, warnings, registry_result)
+        registry_result, registry_error = self._load_registry(manifest)
+        if registry_error:
+            return BootstrapResult(False, [], [registry_error], warnings, registry_result)
 
-        normalized = manifest.normalize()
-        self._create_directories(errors)
+        dir_errors = self._create_directories()
+        if dir_errors:
+            return BootstrapResult(False, [], dir_errors, warnings, registry_result)
 
         env = self._build_jinja_env()
         if env is None:
-            errors.append(f"Template directory not found: {self.templates_dir}")
-            return BootstrapResult(False, [], errors, warnings, registry_result)
+            return BootstrapResult(False, [], [f"Template directory not found: {self.templates_dir}"], warnings, registry_result)
 
+        normalized = manifest.normalize()
         context = self._build_context(normalized, registry_result)
 
         self._generate_main_readme(env, context, created_files, warnings)
         self._generate_department_readmes(env, context, normalized, created_files, warnings)
         self._generate_documentation_placeholders(env, context, normalized, created_files, warnings)
         self._generate_prompt_placeholders(env, context, normalized, created_files, warnings)
-        self._generate_test_placeholders(env, context, normalized, created_files, warnings)
 
         return BootstrapResult(
             success=len(errors) == 0,
@@ -75,24 +74,21 @@ class BootstrapGenerator:
             registry_result=registry_result,
         )
 
-    def _load_manifest(self, errors: list[str]) -> CompanyManifest | None:
+    def _load_manifest(self) -> tuple[CompanyManifest | None, str | None]:
         try:
-            return CompanyManifest.load(self.manifest_path)
+            return CompanyManifest.load(self.manifest_path), None
         except (FileNotFoundError, ValueError) as e:
-            errors.append(str(e))
-            return None
+            return None, str(e)
 
-    def _load_registry(
-        self, errors: list[str], manifest: CompanyManifest
-    ) -> RegistryLoadResult | None:
+    def _load_registry(self, manifest: CompanyManifest) -> tuple[RegistryLoadResult | None, str | None]:
         engine = RegistryEngine()
         result = engine.load(self.company_dir, manifest=manifest)
         if not result.success:
-            for e in result.errors:
-                errors.append(str(e))
-        return result
+            return result, "; ".join(result.errors)
+        return result, None
 
-    def _create_directories(self, errors: list[str]) -> None:
+    def _create_directories(self) -> list[str]:
+        dir_errors: list[str] = []
         dirs = [
             self.output_dir / "docs",
             self.output_dir / "prompts",
@@ -102,7 +98,8 @@ class BootstrapGenerator:
             try:
                 d.mkdir(parents=True, exist_ok=True)
             except OSError as e:
-                errors.append(f"Failed to create directory {d}: {e}")
+                dir_errors.append(f"Failed to create directory {d}: {e}")
+        return dir_errors
 
     def _build_jinja_env(self) -> Environment | None:
         if not self.templates_dir.is_dir():
@@ -204,17 +201,3 @@ class BootstrapGenerator:
             dept_context = {**context, "department": {"name": dept.name, "display_name": dept.display_name or dept.name.title(), "description": dept.description or ""}}
             output = self.output_dir / "prompts" / dept.name / "README.md"
             self._render_template(env, "prompt_placeholder.md.j2", dept_context, output, created_files, warnings)
-
-    def _generate_test_placeholders(
-        self,
-        env: Environment,
-        context: dict[str, Any],
-        manifest: CompanyManifest,
-        created_files: list[str],
-        warnings: list[str],
-    ) -> None:
-        for dept in manifest.departments:
-            dept_context = {**context, "department": {"name": dept.name, "display_name": dept.display_name or dept.name.title(), "description": dept.description or ""}}
-            test_filename = f"test_{dept.name}.py"
-            output = self.tests_dir / test_filename
-            self._render_template(env, "test_placeholder.py.j2", dept_context, output, created_files, warnings)

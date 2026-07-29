@@ -1,18 +1,7 @@
-import shutil
-import tempfile
-from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 import yaml
-
-
-@pytest.fixture
-def temp_dir() -> Iterator[Path]:
-    d = Path(tempfile.mkdtemp())
-    yield d
-    shutil.rmtree(d, ignore_errors=True)
-
 from pydantic import ValidationError
 
 from ai_company.models.company import (
@@ -209,7 +198,7 @@ class TestValidator:
             "workflows": [],
         }
         report = validate_parsed_data(parsed)
-        assert report.valid
+        assert report.passed
         assert report.errors == []
 
     def test_invalid_vision(self) -> None:
@@ -224,7 +213,7 @@ class TestValidator:
             "workflows": [],
         }
         report = validate_parsed_data(parsed)
-        assert not report.valid
+        assert not report.passed
 
     def test_invalid_department(self) -> None:
         parsed = {
@@ -238,7 +227,7 @@ class TestValidator:
             "workflows": [],
         }
         report = validate_parsed_data(parsed)
-        assert not report.valid
+        assert not report.passed
 
     def test_warning_no_departments(self) -> None:
         parsed = {
@@ -252,8 +241,8 @@ class TestValidator:
             "workflows": [],
         }
         report = validate_parsed_data(parsed)
-        assert report.valid
-        assert any("no departments" in w for w in report.warnings)
+        assert report.passed
+        assert any("no departments" in w.message for w in report.warnings)
 
 
 # ---------------------------------------------------------------------------
@@ -314,18 +303,20 @@ class TestResolver:
 
 
 class TestRegistryEngine:
-    def setup_method(self) -> None:
-        registry_engine.reload()
+    def engine(self) -> RegistryEngine:
+        return RegistryEngine()
 
     def test_load_success(self) -> None:
-        result = registry_engine.load(Path("company"))
+        eng = self.engine()
+        result = eng.load(Path("company"))
         assert result.success
         assert result.registry is not None
         assert result.registry.vision.name == "AI Enterprise OS Vision"
         assert result.registry.vision.company_name == "Lightspeed Holdings Limited"
 
     def test_load_departments_resolved(self) -> None:
-        result = registry_engine.load(Path("company"))
+        eng = self.engine()
+        result = eng.load(Path("company"))
         assert result.success
         reg = result.registry
         assert reg is not None
@@ -338,36 +329,42 @@ class TestRegistryEngine:
     def test_singleton(self) -> None:
         e1 = RegistryEngine()
         e2 = RegistryEngine()
-        assert e1 is e2
+        assert e1 is not e2
 
     def test_reload_clears_cache(self) -> None:
-        registry_engine.load(Path("company"))
-        assert registry_engine.registry is not None
-        registry_engine.reload()
+        eng = self.engine()
+        eng.load(Path("company"))
+        assert eng.registry is not None
+        eng.reload()
         with pytest.raises(RuntimeError, match="not loaded"):
-            _ = registry_engine.registry
+            _ = eng.registry
 
     def test_immutable_registry(self) -> None:
-        result = registry_engine.load(Path("company"))
+        eng = self.engine()
+        result = eng.load(Path("company"))
         assert result.registry is not None
         with pytest.raises(ValidationError):
             result.registry.vision = VisionData(name="X")
 
     def test_load_from_missing_dir(self, temp_dir: Path) -> None:
-        result = registry_engine.load(temp_dir / "void")
+        eng = self.engine()
+        result = eng.load(temp_dir / "void")
         assert result.success
         assert result.registry is not None
         assert result.registry.vision.name == ""
 
     def test_last_result_property(self) -> None:
-        registry_engine.reload()
-        assert registry_engine.last_result is None
-        registry_engine.load(Path("company"))
-        assert registry_engine.last_result is not None
-        assert registry_engine.last_result.success
+        eng = self.engine()
+        assert eng.last_result is None
+        eng.load(Path("company"))
+        assert eng.last_result is not None
+        assert eng.last_result.success
 
 
 class TestRegistryIntegrationWithRealData:
+    def engine(self) -> RegistryEngine:
+        return RegistryEngine()
+
     def test_company_yaml_roundtrip(self) -> None:
         with open("company/company.yaml", "r", encoding="utf-8") as f:
             raw = yaml.safe_load(f)
@@ -382,7 +379,8 @@ class TestRegistryIntegrationWithRealData:
         assert len(raw["executive"]) >= 1
 
     def test_full_load_matches_yaml(self) -> None:
-        result = registry_engine.load(Path("company"))
+        eng = self.engine()
+        result = eng.load(Path("company"))
         assert result.success
         reg = result.registry
         assert reg is not None
@@ -528,57 +526,66 @@ class TestCompanyManifest:
 
 
 class TestManifestWithRegistryEngine:
-    def setup_method(self) -> None:
-        registry_engine.reload()
+    def engine(self) -> RegistryEngine:
+        return RegistryEngine()
 
     def test_load_with_manifest(self) -> None:
+        eng = self.engine()
         manifest = CompanyManifest.load(Path("config/company/company.yaml"))
-        result = registry_engine.load(Path("company"), manifest=manifest)
+        result = eng.load(Path("company"), manifest=manifest)
         assert result.success
         assert result.manifest is not None
         assert result.manifest.name == "AI Enterprise OS Vision"
         assert result.registry is not None
 
     def test_load_with_manifest_department_warning(self, temp_dir: Path) -> None:
+        eng = self.engine()
         manifest = CompanyManifest(
             name="Test",
             departments=[ManifestDepartment(name="ghost")],
         )
-        result = registry_engine.load(Path("company"), manifest=manifest)
+        result = eng.load(Path("company"), manifest=manifest)
         assert result.success
         assert any("ghost" in w for w in result.warnings)
 
     def test_load_with_manifest_extra_department_warning(self, temp_dir: Path) -> None:
+        eng = self.engine()
         manifest = CompanyManifest(
             name="Test",
             departments=[ManifestDepartment(name="executive")],
         )
-        result = registry_engine.load(Path("company"), manifest=manifest)
+        result = eng.load(Path("company"), manifest=manifest)
         assert result.success
         assert any("technical" in w for w in result.warnings)
 
     def test_load_with_invalid_manifest_fails(self, temp_dir: Path) -> None:
+        eng = self.engine()
         manifest = CompanyManifest(name="")
-        result = registry_engine.load(Path("company"), manifest=manifest)
+        result = eng.load(Path("company"), manifest=manifest)
         assert not result.success
         assert any("manifest" in e for e in result.errors)
 
     def test_last_result_includes_manifest(self) -> None:
-        registry_engine.reload()
+        eng = self.engine()
         manifest = CompanyManifest.load(Path("config/company/company.yaml"))
-        result = registry_engine.load(Path("company"), manifest=manifest)
+        result = eng.load(Path("company"), manifest=manifest)
         assert result.manifest is not None
         assert result.manifest.name == "AI Enterprise OS Vision"
 
     def test_load_without_manifest_still_works(self) -> None:
-        result = registry_engine.load(Path("company"))
+        eng = self.engine()
+        result = eng.load(Path("company"))
         assert result.success
         assert result.manifest is None
 
 
 class TestFrozenImmutability:
+    def engine(self) -> RegistryEngine:
+        return RegistryEngine()
+
     def test_cannot_reassign_root_attr(self) -> None:
-        result = registry_engine.load(Path("company"))
+        eng = self.engine()
+        result = eng.load(Path("company"))
         assert result.registry is not None
         with pytest.raises(ValidationError):
             result.registry.departments = {}

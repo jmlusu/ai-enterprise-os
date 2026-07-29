@@ -6,11 +6,6 @@ from ai_company.registry.resolver import resolve
 from ai_company.registry.validator import validate_parsed_data
 from ai_company.validator.reports import ValidationReport
 
-DEPARTMENT_NAMES = [
-    "executive", "strategic", "technical", "marketing",
-    "sales", "research", "product",
-]
-
 
 def validate_registry_integrity(company_dir: Path) -> ValidationReport:
     report = ValidationReport(target="registry", passed=True)
@@ -20,19 +15,19 @@ def validate_registry_integrity(company_dir: Path) -> ValidationReport:
         return report
 
     load_result = load_registry_files(company_dir)
-    for err in load_result.errors:
-        report.add_error(err, path=str(company_dir / "*.yaml"))
+    for load_err in load_result.errors:
+        report.add_error(load_err, path=str(company_dir / "*.yaml"))
     if not load_result.success:
         return report
 
     parsed = parse_registry(load_result.data)
 
     validation = validate_parsed_data(parsed)
-    for err in validation.errors:
-        report.add_error(err)
-    for w in validation.warnings:
-        report.add_warning(w)
-    if not validation.valid:
+    for val_err in validation.errors:
+        report.add_error(val_err.message)
+    for val_warn in validation.warnings:
+        report.add_warning(val_warn.message)
+    if not validation.passed:
         report.passed = False
 
     resolution = resolve(parsed)
@@ -42,8 +37,8 @@ def validate_registry_integrity(company_dir: Path) -> ValidationReport:
                 f"Department '{ref}' not defined in departments.yaml (will use stub)",
                 field="department_names",
             )
-    for w in resolution.warnings:
-        report.add_warning(w)
+    for res_warn in resolution.warnings:
+        report.add_warning(res_warn)
 
     vision = parsed.get("vision", {})
     if not vision.get("name"):

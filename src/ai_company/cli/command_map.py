@@ -1,10 +1,12 @@
+from importlib.resources import files as resource_files
 from pathlib import Path
 
 import yaml
 from pydantic import BaseModel, ValidationError
 from rich import print
 
-COMMAND_MAP_PATH = Path("src/ai_company/cli/command_map.yaml")
+_COMMAND_MAP_RESOURCE = resource_files("ai_company.cli") / "command_map.yaml"
+_command_map_cache: dict[str, dict[str, "CommandEntry"]] = {}
 
 
 class CommandEntry(BaseModel):
@@ -15,11 +17,17 @@ class CommandEntry(BaseModel):
 
 
 def load_command_map() -> dict[str, CommandEntry]:
-    if not COMMAND_MAP_PATH.exists():
-        print(f"[red]Missing command map at {COMMAND_MAP_PATH}[/red]")
+    cache_key = str(_COMMAND_MAP_RESOURCE)
+    if cache_key in _command_map_cache:
+        return dict(_command_map_cache[cache_key])
+
+    try:
+        raw_text = _COMMAND_MAP_RESOURCE.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        print("[red]Missing command map resource[/red]")
         raise SystemExit(1)
 
-    raw = yaml.safe_load(COMMAND_MAP_PATH.read_text()) or {}
+    raw = yaml.safe_load(raw_text) or {}
 
     validated: dict[str, CommandEntry] = {}
     errors: list[str] = []
@@ -36,6 +44,7 @@ def load_command_map() -> dict[str, CommandEntry]:
             print(f"  - {err}")
         raise SystemExit(1)
 
+    _command_map_cache[cache_key] = dict(validated)
     return validated
 
 

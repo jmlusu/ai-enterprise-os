@@ -20,7 +20,7 @@ def validate_generated_file(filepath: Path, context_keys: set[str] | None = None
 
     try:
         content = filepath.read_text(encoding="utf-8")
-    except Exception as e:
+    except OSError as e:
         report.add_error(f"Cannot read generated file: {e}", path=str(filepath))
         return report
 

@@ -1,7 +1,4 @@
-from __future__ import annotations
-
 from pathlib import Path
-from typing import Self, cast
 
 from pydantic import ValidationError
 
@@ -41,14 +38,9 @@ class RegistryLoadResult:
 
 
 class RegistryEngine:
-    _instance: RegistryEngine | None = None
-    _registry: CompanyRegistry | None = None
-    _last_result: RegistryLoadResult | None = None
-
-    def __new__(cls) -> Self:
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cast(Self, cls._instance)
+    def __init__(self) -> None:
+        self._registry: CompanyRegistry | None = None
+        self._last_result: RegistryLoadResult | None = None
 
     def load(
         self,
@@ -86,12 +78,12 @@ class RegistryEngine:
                 )
 
         validation = validate_parsed_data(parsed)
-        if not validation.valid:
+        if not validation.passed:
             self._last_result = RegistryLoadResult(
-                None, validation.errors, validation.warnings, manifest=manifest
+                None, [e.message for e in validation.errors], [w.message for w in validation.warnings], manifest=manifest
             )
             return self._last_result
-        warnings.extend(validation.warnings)
+        warnings.extend(w.message for w in validation.warnings)
 
         resolution = resolve(parsed)
         warnings.extend(resolution.warnings)

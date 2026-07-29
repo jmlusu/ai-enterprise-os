@@ -11,7 +11,6 @@ REQUIRED_TEMPLATES = [
     "department_README.md.j2",
     "doc_placeholder.md.j2",
     "prompt_placeholder.md.j2",
-    "test_placeholder.py.j2",
 ]
 
 
@@ -28,13 +27,13 @@ def validate_jinja_template(filepath: Path) -> ValidationReport:
 
     try:
         source = filepath.read_text(encoding="utf-8")
-    except Exception as e:
+    except OSError as e:
         report.add_error(f"Cannot read template file: {e}", path=str(filepath))
         return report
 
     try:
         env = Environment()
-        ast = env.parse(source)
+        env.parse(source)
     except TemplateSyntaxError as e:
         report.add_error(
             f"Jinja2 syntax error at line {e.lineno}: {e.message}",
@@ -61,7 +60,7 @@ def validate_template_variables(filepath: Path, known_context_keys: set[str]) ->
 
     try:
         source = filepath.read_text(encoding="utf-8")
-    except Exception:
+    except OSError:
         return report
 
     try:
@@ -123,7 +122,7 @@ def find_unresolved_placeholders(filepath: Path, context_keys: set[str]) -> Vali
 
     try:
         source = filepath.read_text(encoding="utf-8")
-    except Exception:
+    except OSError:
         return report
 
     env = Environment()

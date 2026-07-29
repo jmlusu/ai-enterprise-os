@@ -1,5 +1,4 @@
 import shutil
-import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -8,18 +7,6 @@ import pytest
 from ai_company.bootstrap.bootstrap import BootstrapGenerator, BootstrapResult
 from ai_company.models.company import CompanyManifest
 from ai_company.registry.registry import RegistryEngine
-
-
-@pytest.fixture(autouse=True)
-def reload_registry() -> None:
-    RegistryEngine().reload()
-
-
-@pytest.fixture
-def temp_dir() -> Iterator[Path]:
-    d = Path(tempfile.mkdtemp())
-    yield d
-    shutil.rmtree(d, ignore_errors=True)
 
 
 @pytest.fixture
@@ -84,15 +71,6 @@ class TestBootstrapGenerator:
             expected = Path("generated") / "prompts" / dept.name / "README.md"
             assert expected.exists(), f"Missing prompt placeholder: {expected}"
 
-    def test_creates_test_placeholders(self) -> None:
-        generator = BootstrapGenerator()
-        result = generator.run()
-        assert result.success
-        manifest = CompanyManifest.load(Path("config/company/company.yaml"))
-        for dept in manifest.departments:
-            expected = Path("tests") / f"test_{dept.name}.py"
-            assert expected.exists(), f"Missing test placeholder: {expected}"
-
     def test_rendered_content_contains_department_name(self) -> None:
         generator = BootstrapGenerator()
         result = generator.run()
@@ -129,7 +107,6 @@ class TestBootstrapGenerator:
             manifest_path=temp_dir / "nonexistent.yaml",
             templates_dir=temp_dir,
             output_dir=temp_dir / "out",
-            tests_dir=temp_dir / "tests",
         )
         result = generator.run()
         assert not result.success
@@ -140,14 +117,12 @@ class TestBootstrapGenerator:
         manifest_path = isolated_project / "config" / "company" / "company.yaml"
         templates_dir = isolated_project / "templates"
         output_dir = isolated_project / "generated"
-        tests_dir = isolated_project / "tests"
 
         generator = BootstrapGenerator(
             company_dir=company_dir,
             manifest_path=manifest_path,
             templates_dir=templates_dir,
             output_dir=output_dir,
-            tests_dir=tests_dir,
         )
         result = generator.run()
         assert result.success

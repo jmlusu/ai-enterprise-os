@@ -1,6 +1,6 @@
-import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import typer
@@ -13,6 +13,7 @@ from ai_company.cli.groups import memory as memory_group
 from ai_company.cli.groups import registry as registry_group
 from ai_company.cli.groups import report as report_group
 from ai_company.cli.render import render_prompt
+from ai_company.validator.engine import ValidatorEngine
 
 app = typer.Typer()
 
@@ -46,7 +47,25 @@ def bootstrap() -> None:
 def build() -> None:
     """Build all generated artifacts from templates and registry data."""
     print("[cyan]Building artifacts...[/cyan]")
-    print("[yellow]Build pipeline not yet fully implemented.[/yellow]")
+
+    generator = BootstrapGenerator()
+    result = generator.run()
+    if not result.success:
+        for err in result.errors:
+            print(f"  [red]✗[/red] {err}")
+        print("\n[red]Build failed during bootstrap.[/red]")
+        raise typer.Exit(1)
+
+    for w in result.warnings:
+        print(f"  [yellow]![/yellow] {w}")
+    if result.created_files:
+        print(f"  [green]✓[/green] Generated {len(result.created_files)} file(s)")
+
+    engine = ValidatorEngine()
+    validation = engine.validate_all()
+    print(f"  [green]✓[/green] {validation.summary()}")
+
+    print("\n[green]Build complete.[/green]")
 
 
 @app.command()
@@ -92,7 +111,7 @@ def generate(
         "[dim]Streaming opencode output below - this may take a while on a local model...[/dim]\n"
     )
 
-    result = subprocess.run(cmd, check=False, shell=(os.name == "nt"))
+    result = subprocess.run(cmd, check=False, shell=False)
     if result.returncode != 0:
         print(f"\n[red]opencode exited with error code {result.returncode}[/red]")
         raise typer.Exit(result.returncode)
@@ -104,20 +123,19 @@ def generate(
 def validate() -> None:
     """Validate company registry data and configuration files."""
     print("[cyan]Validating company registry...[/cyan]")
-    registry_dir = Path("company")
-    if not registry_dir.is_dir():
-        print("[red]company/ directory not found.[/red]")
+    engine = ValidatorEngine()
+    result = engine.validate_all()
+    print(f"\n[dim]{result.summary()}[/dim]")
+    for report in result.reports:
+        status = "[green]PASS[/green]" if report.passed else "[red]FAIL[/red]"
+        print(f"  {status} {report.target}")
+        for err in report.errors:
+            print(f"       [red]✗[/red] {err.message}")
+        for w in report.warnings:
+            print(f"       [yellow]![/yellow] {w.message}")
+    if not result.passed:
         raise typer.Exit(1)
-
-    yaml_files = list(registry_dir.glob("*.yaml"))
-    if not yaml_files:
-        print("[red]No YAML files found in company/ directory.[/red]")
-        raise typer.Exit(1)
-
-    for f in yaml_files:
-        print(f"  [green]✓[/green] {f.name}")
-
-    print(f"\n[green]All {len(yaml_files)} registry file(s) valid.[/green]")
+    print("\n[green]Validation complete.[/green]")
 
 
 @app.command()
@@ -141,8 +159,8 @@ def doctor() -> None:
         issues.append("opencode not found on PATH")
         print("  [red]✗[/red] opencode not found on PATH")
 
-    python_version = os.popen("python --version").read().strip()
-    print(f"  [green]✓[/green] {python_version}")
+    python_version = sys.version
+    print(f"  [green]✓[/green] Python {python_version}")
 
     if issues:
         print(f"\n[yellow]Found {len(issues)} issue(s):[/yellow]")

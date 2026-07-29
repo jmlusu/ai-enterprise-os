@@ -49,7 +49,7 @@ def test_generate_unknown_target() -> None:
 def test_validate() -> None:
     result = runner.invoke(app, ["validate"])
     assert result.exit_code == 0
-    assert "Validating" in result.stdout or "valid" in result.stdout.lower()
+    assert "Validating" in result.stdout
 
 
 def test_doctor() -> None:
@@ -73,13 +73,13 @@ def test_status() -> None:
 def test_registry_list() -> None:
     result = runner.invoke(app, ["registry", "list"])
     assert result.exit_code == 0
-    assert "company.yaml" in result.stdout
+    assert "Vision" in result.stdout
 
 
 def test_registry_show() -> None:
-    result = runner.invoke(app, ["registry", "show", "test-entry"])
+    result = runner.invoke(app, ["registry", "show", "vision"])
     assert result.exit_code == 0
-    assert "test-entry" in result.stdout
+    assert "AI Enterprise OS Vision" in result.stdout
 
 
 def test_registry_verify() -> None:

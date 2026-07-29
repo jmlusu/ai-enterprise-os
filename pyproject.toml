@@ -28,12 +28,12 @@ dev = [
 
 [tool.ruff]
 target-version = "py312"
-exclude = ["_quarantine_pre_cleanup", ".venv", ".opencode", "generated", "test_output"]
+exclude = [".venv", ".opencode", "generated", "test_output"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
-exclude = ["_quarantine_pre_cleanup", ".venv", "generated"]
+exclude = [".venv", "generated"]
 ignore_missing_imports = true
 
 [build-system]

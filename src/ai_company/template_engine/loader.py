@@ -1,8 +1,9 @@
 from pathlib import Path
+from typing import ClassVar
 
 
 class TemplateLoader:
-    FORMAT_MAP: dict[str, str] = {
+    FORMAT_MAP: ClassVar[dict[str, str]] = {
         ".j2": "jinja",
         ".jinja": "jinja",
         ".jinja2": "jinja",
@@ -35,7 +36,7 @@ class TemplateLoader:
             fmt = self.FORMAT_MAP.get(path.suffix, "jinja")
             return content, fmt
 
-        return source, "jinja"
+        return str(source), "jinja"
 
     def load_template(self, source: str | Path) -> str:
         content, _ = self.load(source)

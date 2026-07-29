@@ -1,3 +1,5 @@
+from typing import Any
+
 from ai_company.template_engine.handlers import DEFAULT_HANDLERS, BaseHandler
 
 
@@ -8,7 +10,7 @@ class Renderer:
         for fmt, cls in handler_classes.items():
             self._handlers[fmt] = cls()
 
-    def render(self, template: str, context: dict, fmt: str = "jinja") -> str:
+    def render(self, template: str, context: dict[str, Any], fmt: str = "jinja") -> str:
         handler = self._handlers.get(fmt)
         if handler is None:
             available = ", ".join(sorted(self._handlers))

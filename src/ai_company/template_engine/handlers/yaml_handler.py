@@ -1,3 +1,5 @@
+from typing import Any
+
 import yaml
 
 from ai_company.template_engine.handlers._substitution import (
@@ -8,7 +10,7 @@ from ai_company.template_engine.handlers.base import BaseHandler
 
 
 class YamlHandler(BaseHandler):
-    def render(self, template: str, context: dict) -> str:
+    def render(self, template: str, context: dict[str, Any]) -> str:
         protected, keys = protect_yaml_vars(template)
         try:
             data = yaml.safe_load(protected)

@@ -5,7 +5,7 @@ _VAR_PATTERN = re.compile(r"\{(\w+(?:\.\w+)*)\}")
 
 
 def substitute(template: str, context: dict[str, Any]) -> str:
-    def _replace(m: re.Match) -> str:
+    def _replace(m: re.Match[str]) -> str:
         key = m.group(1)
         parts = key.split(".")
         val: Any = context
@@ -36,7 +36,7 @@ _YAML_PLACEHOLDER = "__YTPL_{}__"
 
 def protect_yaml_vars(template: str) -> tuple[str, list[str]]:
     keys: list[str] = []
-    def _replace(m: re.Match) -> str:
+    def _replace(m: re.Match[str]) -> str:
         keys.append(m.group(1))
         return _YAML_PLACEHOLDER.format(len(keys) - 1)
     protected = _VAR_PATTERN.sub(_replace, template)

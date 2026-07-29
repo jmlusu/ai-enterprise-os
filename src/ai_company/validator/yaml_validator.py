@@ -24,7 +24,7 @@ def validate_yaml_file(filepath: Path) -> ValidationReport:
     except ValueError as e:
         report.add_error(str(e), path=str(filepath))
         return report
-    except Exception as e:
+    except OSError as e:
         report.add_error(f"Unexpected error parsing {filepath.name}: {e}", path=str(filepath))
         return report
 

@@ -1,4 +1,5 @@
 import json
+from collections.abc import ItemsView
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +24,7 @@ class TemplateContext:
         else:
             raise ValueError(f"Unsupported context file format: {path.suffix}")
         if not isinstance(data, dict):
-            raise ValueError(f"Context file must contain a mapping, got {type(data).__name__}")
+            raise TypeError(f"Context file must contain a mapping, got {type(data).__name__}")
         return cls(data)
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -60,5 +61,5 @@ class TemplateContext:
     def keys(self) -> set[str]:
         return set(self._variables.keys())
 
-    def items(self):
+    def items(self) -> ItemsView[str, Any]:
         return self._variables.items()

@@ -14,29 +14,20 @@ from ai_company.models.company import (
 )
 
 
-class ValidationReport:
-    def __init__(self, valid: bool, errors: list[str], warnings: list[str]) -> None:
-        self.valid = valid
-        self.errors = errors
-        self.warnings = warnings
+def validate_parsed_data(parsed: dict[str, Any]) -> Any:
+    from ai_company.validator.reports import ValidationReport
 
-    def __bool__(self) -> bool:
-        return self.valid
-
-
-def validate_parsed_data(parsed: dict[str, Any]) -> ValidationReport:
-    errors: list[str] = []
-    warnings: list[str] = []
+    report: ValidationReport = ValidationReport(target="parsed_data", passed=True)
 
     vision_raw = parsed.get("vision", {})
     try:
         VisionData(**vision_raw)
     except ValidationError as e:
-        errors.append(f"vision: {e}")
+        report.add_error(f"vision: {e}")
 
     departments_raw = parsed.get("departments", {})
     if not isinstance(departments_raw, dict):
-        errors.append("departments: must be a mapping of department names to definitions")
+        report.add_error("departments: must be a mapping of department names to definitions")
     else:
         for dept_name, dept_raw in departments_raw.items():
             if isinstance(dept_raw, dict):
@@ -46,13 +37,13 @@ def validate_parsed_data(parsed: dict[str, Any]) -> ValidationReport:
                     try:
                         roles.append(Role(**r))
                     except ValidationError as e:
-                        errors.append(f"departments.{dept_name}.role: {e}")
+                        report.add_error(f"departments.{dept_name}.role: {e}")
                 try:
                     DepartmentData(name=dept_name, roles=roles)
                 except ValidationError as e:
-                    errors.append(f"departments.{dept_name}: {e}")
+                    report.add_error(f"departments.{dept_name}: {e}")
             else:
-                errors.append(f"departments.{dept_name}: expected a mapping")
+                report.add_error(f"departments.{dept_name}: expected a mapping")
 
     list_fields = {
         "board": (BoardEntry, parsed.get("board", [])),
@@ -64,19 +55,19 @@ def validate_parsed_data(parsed: dict[str, Any]) -> ValidationReport:
 
     for field_name, (model_cls, items) in list_fields.items():
         if not isinstance(items, list):
-            errors.append(f"{field_name}: expected a list")
+            report.add_error(f"{field_name}: expected a list")
             continue
         for idx, item in enumerate(items):
             if isinstance(item, dict):
                 try:
                     model_cls(**item)
                 except ValidationError as e:
-                    errors.append(f"{field_name}[{idx}]: {e}")
+                    report.add_error(f"{field_name}[{idx}]: {e}")
 
     dept_names = parsed.get("department_names", [])
     if not isinstance(dept_names, list):
-        warnings.append("department_names: expected a list")
+        report.add_warning("department_names: expected a list")
     elif len(dept_names) < 1:
-        warnings.append("company: no departments defined")
+        report.add_warning("company: no departments defined")
 
-    return ValidationReport(valid=len(errors) == 0, errors=errors, warnings=warnings)
+    return report
