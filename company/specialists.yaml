@@ -1,0 +1,13 @@
+list:
+  - name: "Dr. Nina Voss"
+    expertise: "Natural Language Processing"
+  - name: "Kenji Tanaka"
+    expertise: "Reinforcement Learning"
+  - name: "Olivia Foster"
+    expertise: "Cybersecurity Architecture"
+  - name: "Samuel Abebe"
+    expertise: "Distributed Systems"
+  - name: "Lena Karlsson"
+    expertise: "UX Research & Human Factors"
+  - name: "Wei Zhang"
+    expertise: "Computer Vision"

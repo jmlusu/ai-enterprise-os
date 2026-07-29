@@ -1,0 +1,13 @@
+name: "Platform First Strategy"
+description: "Build the core platform infrastructure before expanding to vertical solutions."
+objectives:
+  - "Complete the foundational generation engine"
+  - "Achieve manifest-to-company generation fidelity"
+  - "Establish plugin ecosystem for extensibility"
+initiatives:
+  - "Core engine stabilization"
+  - "Developer experience improvement"
+  - "Documentation and onboarding automation"
+timeframe: "annual"
+owner: "CTO"
+status: "active"

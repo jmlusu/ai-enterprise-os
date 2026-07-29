@@ -1,4 +1,49 @@
-.venv/
+# Python
 __pycache__/
-*.pyc
-.ai-company/.tmp_rendered_prompt.md
+*.py[cod]
+*$py.class
+*.so
+.venv/
+.venv*/
+venv/
+ENV/
+env/
+
+# Build
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+.tox/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+.ai-company/
+.benchmarks/
+generated/
+test_output/
+dist/
+*.log
+.env
+.env.*
+!.env.example
+
+# Opencode
+.opencode/
+
+# UV
+uv.lock

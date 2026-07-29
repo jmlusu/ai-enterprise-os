@@ -36,14 +36,18 @@ _YAML_PLACEHOLDER = "__YTPL_{}__"
 
 def protect_yaml_vars(template: str) -> tuple[str, list[str]]:
     keys: list[str] = []
+
     def _replace(m: re.Match[str]) -> str:
         keys.append(m.group(1))
         return _YAML_PLACEHOLDER.format(len(keys) - 1)
+
     protected = _VAR_PATTERN.sub(_replace, template)
     return protected, keys
 
 
-def resolve_yaml_placeholders(obj: Any, keys: list[str], context: dict[str, Any]) -> Any:
+def resolve_yaml_placeholders(
+    obj: Any, keys: list[str], context: dict[str, Any]
+) -> Any:
     if isinstance(obj, str):
         result = obj
         for i, key in enumerate(keys):
@@ -52,7 +56,9 @@ def resolve_yaml_placeholders(obj: Any, keys: list[str], context: dict[str, Any]
                 val = _resolve_key(key, context)
                 if result == placeholder:
                     return val if val is not None else result
-                result = result.replace(placeholder, str(val) if val is not None else "")
+                result = result.replace(
+                    placeholder, str(val) if val is not None else ""
+                )
         return result
     if isinstance(obj, dict):
         return {k: resolve_yaml_placeholders(v, keys, context) for k, v in obj.items()}

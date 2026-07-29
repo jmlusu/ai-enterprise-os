@@ -1,0 +1,19 @@
+items:
+  - name: "Test Coverage"
+    target: 90.0
+    current: 85.0
+    unit: "%"
+    owner: "CTO"
+    frequency: "weekly"
+  - name: "System Uptime"
+    target: 99.9
+    current: 99.95
+    unit: "%"
+    owner: "DevOps"
+    frequency: "monthly"
+  - name: "Deployment Frequency"
+    target: 10.0
+    current: 8.0
+    unit: "deployments/week"
+    owner: "Engineering"
+    frequency: "weekly"

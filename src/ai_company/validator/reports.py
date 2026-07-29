@@ -20,16 +20,24 @@ class ValidationReport(BaseModel):
     infos: list[ValidationIssue] = Field(default_factory=list)
 
     def add_error(self, message: str, field: str = "", path: str | None = None) -> None:
-        self.errors.append(ValidationIssue(message=message, severity="error", field=field, path=path))
+        self.errors.append(
+            ValidationIssue(message=message, severity="error", field=field, path=path)
+        )
         self.passed = False
         self.total_checks += 1
 
-    def add_warning(self, message: str, field: str = "", path: str | None = None) -> None:
-        self.warnings.append(ValidationIssue(message=message, severity="warning", field=field, path=path))
+    def add_warning(
+        self, message: str, field: str = "", path: str | None = None
+    ) -> None:
+        self.warnings.append(
+            ValidationIssue(message=message, severity="warning", field=field, path=path)
+        )
         self.total_checks += 1
 
     def add_info(self, message: str, field: str = "", path: str | None = None) -> None:
-        self.infos.append(ValidationIssue(message=message, severity="info", field=field, path=path))
+        self.infos.append(
+            ValidationIssue(message=message, severity="info", field=field, path=path)
+        )
         self.total_checks += 1
 
 

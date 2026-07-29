@@ -13,6 +13,16 @@ REGISTRY_FILES: list[str] = [
     "workflows.yaml",
 ]
 
+CONFIG_REGISTRY_FILES: list[str] = [
+    "vision.yaml",
+    "strategy.yaml",
+    "culture.yaml",
+    "governance.yaml",
+    "policies.yaml",
+    "kpis.yaml",
+    "budget.yaml",
+]
+
 
 class LoadResult:
     def __init__(self, data: dict[str, dict[str, Any]], errors: list[str]) -> None:
@@ -43,6 +53,27 @@ def load_registry_files(company_dir: Path) -> LoadResult:
 
     for filename in REGISTRY_FILES:
         filepath = company_dir / filename
+        try:
+            content = load_yaml(filepath)
+            if content is not None:
+                key = filename.replace(".yaml", "")
+                data[key] = content
+        except ValueError as e:
+            errors.append(str(e))
+
+    return LoadResult(data, errors)
+
+
+def load_config_registry(config_dir: Path) -> LoadResult:
+    """Load extended configuration files from config/company/ directory.
+
+    Returns a LoadResult with keys matching the config filenames.
+    """
+    data: dict[str, dict[str, Any]] = {}
+    errors: list[str] = []
+
+    for filename in CONFIG_REGISTRY_FILES:
+        filepath = config_dir / filename
         try:
             content = load_yaml(filepath)
             if content is not None:

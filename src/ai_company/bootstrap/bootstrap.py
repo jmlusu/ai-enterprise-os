@@ -3,6 +3,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, TemplateError, TemplateNotFound
 
+from ai_company.generator.context import GeneratorContext
 from ai_company.models.company import CompanyManifest
 from ai_company.registry.registry import RegistryEngine, RegistryLoadResult
 
@@ -48,7 +49,9 @@ class BootstrapGenerator:
 
         registry_result, registry_error = self._load_registry(manifest)
         if registry_error:
-            return BootstrapResult(False, [], [registry_error], warnings, registry_result)
+            return BootstrapResult(
+                False, [], [registry_error], warnings, registry_result
+            )
 
         dir_errors = self._create_directories()
         if dir_errors:
@@ -56,15 +59,34 @@ class BootstrapGenerator:
 
         env = self._build_jinja_env()
         if env is None:
-            return BootstrapResult(False, [], [f"Template directory not found: {self.templates_dir}"], warnings, registry_result)
+            return BootstrapResult(
+                False,
+                [],
+                [f"Template directory not found: {self.templates_dir}"],
+                warnings,
+                registry_result,
+            )
 
-        normalized = manifest.normalize()
-        context = self._build_context(normalized, registry_result)
+        assert registry_result is not None and registry_result.registry is not None
+        ctx = GeneratorContext(
+            manifest=manifest.normalize(),
+            registry=registry_result.registry,
+            company_dir=self.company_dir,
+            templates_dir=self.templates_dir,
+            output_dir=self.output_dir,
+        )
+        context = ctx.to_dict()
 
         self._generate_main_readme(env, context, created_files, warnings)
-        self._generate_department_readmes(env, context, normalized, created_files, warnings)
-        self._generate_documentation_placeholders(env, context, normalized, created_files, warnings)
-        self._generate_prompt_placeholders(env, context, normalized, created_files, warnings)
+        self._generate_department_readmes(
+            env, context, manifest, created_files, warnings
+        )
+        self._generate_documentation_placeholders(
+            env, context, manifest, created_files, warnings
+        )
+        self._generate_prompt_placeholders(
+            env, context, manifest, created_files, warnings
+        )
 
         return BootstrapResult(
             success=len(errors) == 0,
@@ -74,13 +96,17 @@ class BootstrapGenerator:
             registry_result=registry_result,
         )
 
-    def _load_manifest(self) -> tuple[CompanyManifest | None, str | None]:
+    def _load_manifest(
+        self,
+    ) -> tuple[CompanyManifest | None, str | None]:
         try:
             return CompanyManifest.load(self.manifest_path), None
         except (FileNotFoundError, ValueError) as e:
             return None, str(e)
 
-    def _load_registry(self, manifest: CompanyManifest) -> tuple[RegistryLoadResult | None, str | None]:
+    def _load_registry(
+        self, manifest: CompanyManifest
+    ) -> tuple[RegistryLoadResult | None, str | None]:
         engine = RegistryEngine()
         result = engine.load(self.company_dir, manifest=manifest)
         if not result.success:
@@ -106,32 +132,8 @@ class BootstrapGenerator:
             return None
         return Environment(loader=FileSystemLoader(str(self.templates_dir)))
 
-    def _build_context(self, manifest: CompanyManifest, registry_result: RegistryLoadResult | None) -> dict[str, Any]:
-        return {
-            "company": {
-                "name": manifest.name,
-                "company_name": manifest.company_name or "",
-                "description": manifest.description or "",
-                "version": manifest.version or "",
-                "departments": [
-                    {
-                        "name": d.name,
-                        "display_name": d.display_name or d.name.title(),
-                        "description": d.description or "",
-                    }
-                    for d in manifest.departments
-                ],
-                "department_count": len(manifest.departments),
-                "vision": {
-                    "name": manifest.name,
-                    "company_name": manifest.company_name or "",
-                    "description": manifest.description or "",
-                },
-            }
-        }
-
+    @staticmethod
     def _render_template(
-        self,
         env: Environment,
         template_name: str,
         context: dict[str, Any],
@@ -152,19 +154,24 @@ class BootstrapGenerator:
         except (TemplateError, OSError) as e:
             warnings.append(f"Failed to render {template_name} to {output_path}: {e}")
 
+    @staticmethod
     def _generate_main_readme(
-        self,
         env: Environment,
         context: dict[str, Any],
         created_files: list[str],
         warnings: list[str],
     ) -> None:
-        self._render_template(
-            env, "README.md.j2", context, self.output_dir / "README.md", created_files, warnings
+        BootstrapGenerator._render_template(
+            env,
+            "README.md.j2",
+            context,
+            Path("generated") / "README.md",
+            created_files,
+            warnings,
         )
 
+    @staticmethod
     def _generate_department_readmes(
-        self,
         env: Environment,
         context: dict[str, Any],
         manifest: CompanyManifest,
@@ -172,12 +179,26 @@ class BootstrapGenerator:
         warnings: list[str],
     ) -> None:
         for dept in manifest.departments:
-            dept_context = {**context, "department": {"name": dept.name, "display_name": dept.display_name or dept.name.title(), "description": dept.description or ""}}
-            output = self.output_dir / "README" / dept.name / "README.md"
-            self._render_template(env, "department_README.md.j2", dept_context, output, created_files, warnings)
+            dept_context = {
+                **context,
+                "department": {
+                    "name": dept.name,
+                    "display_name": dept.display_name or dept.name.title(),
+                    "description": dept.description or "",
+                },
+            }
+            output = Path("generated") / "README" / dept.name / "README.md"
+            BootstrapGenerator._render_template(
+                env,
+                "department_README.md.j2",
+                dept_context,
+                output,
+                created_files,
+                warnings,
+            )
 
+    @staticmethod
     def _generate_documentation_placeholders(
-        self,
         env: Environment,
         context: dict[str, Any],
         manifest: CompanyManifest,
@@ -185,12 +206,26 @@ class BootstrapGenerator:
         warnings: list[str],
     ) -> None:
         for dept in manifest.departments:
-            dept_context = {**context, "department": {"name": dept.name, "display_name": dept.display_name or dept.name.title(), "description": dept.description or ""}}
-            output = self.output_dir / "docs" / dept.name / "README.md"
-            self._render_template(env, "doc_placeholder.md.j2", dept_context, output, created_files, warnings)
+            dept_context = {
+                **context,
+                "department": {
+                    "name": dept.name,
+                    "display_name": dept.display_name or dept.name.title(),
+                    "description": dept.description or "",
+                },
+            }
+            output = Path("generated") / "docs" / dept.name / "README.md"
+            BootstrapGenerator._render_template(
+                env,
+                "doc_placeholder.md.j2",
+                dept_context,
+                output,
+                created_files,
+                warnings,
+            )
 
+    @staticmethod
     def _generate_prompt_placeholders(
-        self,
         env: Environment,
         context: dict[str, Any],
         manifest: CompanyManifest,
@@ -198,6 +233,20 @@ class BootstrapGenerator:
         warnings: list[str],
     ) -> None:
         for dept in manifest.departments:
-            dept_context = {**context, "department": {"name": dept.name, "display_name": dept.display_name or dept.name.title(), "description": dept.description or ""}}
-            output = self.output_dir / "prompts" / dept.name / "README.md"
-            self._render_template(env, "prompt_placeholder.md.j2", dept_context, output, created_files, warnings)
+            dept_context = {
+                **context,
+                "department": {
+                    "name": dept.name,
+                    "display_name": dept.display_name or dept.name.title(),
+                    "description": dept.description or "",
+                },
+            }
+            output = Path("generated") / "prompts" / dept.name / "README.md"
+            BootstrapGenerator._render_template(
+                env,
+                "prompt_placeholder.md.j2",
+                dept_context,
+                output,
+                created_files,
+                warnings,
+            )

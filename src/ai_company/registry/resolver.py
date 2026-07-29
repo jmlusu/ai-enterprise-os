@@ -39,7 +39,9 @@ def resolve(
     referenced = set(department_names)
     extra = defined_in_yaml - referenced
     for name in sorted(extra):
-        warnings.append(f"department '{name}' is defined but not listed in company.yaml")
+        warnings.append(
+            f"department '{name}' is defined but not listed in company.yaml"
+        )
 
     resolved = dict(parsed)
     resolved["departments"] = departments

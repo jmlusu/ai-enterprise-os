@@ -2,11 +2,11 @@ from typing import Any
 
 import yaml
 
-from ai_company.template_engine.handlers._substitution import (
+from ._substitution import (
     protect_yaml_vars,
     resolve_yaml_placeholders,
 )
-from ai_company.template_engine.handlers.base import BaseHandler
+from .base import BaseHandler
 
 
 class YamlHandler(BaseHandler):
@@ -19,4 +19,6 @@ class YamlHandler(BaseHandler):
         if data is None:
             return ""
         result = resolve_yaml_placeholders(data, keys, context)
-        return yaml.safe_dump(result, default_flow_style=False, allow_unicode=True).strip()
+        return yaml.safe_dump(
+            result, default_flow_style=False, allow_unicode=True
+        ).strip()

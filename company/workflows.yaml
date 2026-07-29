@@ -1,0 +1,26 @@
+items:
+  - name: "Feature Development"
+    description: "End-to-end feature delivery from specification to deployment."
+    steps:
+      - "Requirements gathering and user story mapping"
+      - "Architecture design review"
+      - "Implementation with TDD"
+      - "Code review and QA validation"
+      - "Staging deployment and integration testing"
+      - "Production rollout with monitoring"
+  - name: "Incident Response"
+    description: "Process for handling production incidents and outages."
+    steps:
+      - "Alert triage and severity classification"
+      - "Incident commander assignment"
+      - "Root cause analysis"
+      - "Mitigation and hotfix deployment"
+      - "Post-mortem and action item tracking"
+  - name: "Strategy Planning"
+    description: "Quarterly planning cycle for company-wide objectives."
+    steps:
+      - "Market analysis and competitive research"
+      - "OKR drafting and cross-team alignment"
+      - "Resource allocation and budget review"
+      - "Executive approval and communication"
+      - "Sprint planning and execution tracking"

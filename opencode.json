@@ -1,4 +1,36 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "ollama/deepseek-r1:7b-32k"
+  "model": "ollama/llama3.1:8b",
+  "small_model": "ollama/qwen2.5-coder:14b",
+  "enabled_providers": ["ollama"],
+  "provider": {
+    "ollama": {
+      "options": {
+        "baseURL": "http://localhost:11434"
+      }
+    }
+  },
+  "agent": {
+    "build": {
+      "model": "ollama/llama3.1:8b",
+      "mode": "primary",
+      "description": "General-purpose builder agent using Llama 3.1 8B"
+    },
+    "plan": {
+      "model": "ollama/qwen2.5-coder:14b",
+      "mode": "primary",
+      "description": "Planning agent using Qwen 2.5 Coder 14B for complex reasoning"
+    },
+    "explore": {
+      "model": "ollama/mistral:7b",
+      "mode": "primary",
+      "description": "Code exploration agent using Mistral 7B"
+    },
+    "general": {
+      "model": "ollama/llama3.1:8b",
+      "mode": "primary",
+      "description": "General-purpose agent using Llama 3.1 8B"
+    }
+  },
+  "default_agent": "build"
 }

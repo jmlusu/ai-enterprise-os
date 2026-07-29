@@ -24,7 +24,9 @@ class TemplateContext:
         else:
             raise ValueError(f"Unsupported context file format: {path.suffix}")
         if not isinstance(data, dict):
-            raise TypeError(f"Context file must contain a mapping, got {type(data).__name__}")
+            raise TypeError(
+                f"Context file must contain a mapping, got {type(data).__name__}"
+            )
         return cls(data)
 
     def get(self, key: str, default: Any = None) -> Any:

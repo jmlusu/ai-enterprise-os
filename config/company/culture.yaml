@@ -1,0 +1,14 @@
+values:
+  - "Radical transparency"
+  - "Bias for action"
+  - "Continuous learning"
+  - "Customer obsession"
+behaviors:
+  - "Write things down"
+  - "Disagree and commit"
+  - "Ship early and iterate"
+  - "Own outcomes, not outputs"
+communication_style: "open"
+decision_making: "consensus"
+remote_policy: "hybrid"
+learning_budget: 5000.0

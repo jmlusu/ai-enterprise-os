@@ -29,6 +29,8 @@ jobs:
         run: uv run --group dev ruff check
       - name: Ruff format
         run: uv run --group dev ruff format --check
+      - name: Lockfile check
+        run: uv lock --check
 
   type-check:
     runs-on: ubuntu-latest
@@ -57,7 +59,7 @@ jobs:
       - run: uv sync --group dev
       - name: pytest
         run: |
-          uv run --group dev pytest --verbose
+          uv run --group dev pytest --verbose --tb=short -q
           rc=$?
           if [ $rc -eq 5 ]; then
             echo "No tests collected - this is fine, no test files exist yet"
@@ -65,7 +67,7 @@ jobs:
           fi
           exit $rc
 
-  cli:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -76,7 +78,27 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: uv sync
-      - name: CLI help
-        run: uv run python -m ai_company.cli.main --help
-      - name: CLI list targets
-        run: uv run python -m ai_company.cli.main targets
+      - name: Validate registry
+        run: uv run ai-company validate
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint, type-check, test, validate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: uv sync
+      - name: Build package
+        run: uv build
+      - name: Store build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error

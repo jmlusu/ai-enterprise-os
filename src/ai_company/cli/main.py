@@ -4,19 +4,24 @@ import sys
 from pathlib import Path
 
 import typer
-from rich import print
 
 from ai_company.bootstrap.bootstrap import BootstrapGenerator
 from ai_company.cli.command_map import load_command_map, resolve_target
+from ai_company.cli.groups import executive as executive_group
 from ai_company.cli.groups import graph as graph_group
 from ai_company.cli.groups import memory as memory_group
 from ai_company.cli.groups import registry as registry_group
 from ai_company.cli.groups import report as report_group
 from ai_company.cli.render import render_prompt
+from ai_company.utils.console import configure_console, console_print
 from ai_company.validator.engine import ValidatorEngine
 
 app = typer.Typer()
 
+# Configure cross-platform console at startup
+configure_console()
+
+app.add_typer(executive_group.app, name="exec")
 app.add_typer(registry_group.app, name="registry")
 app.add_typer(memory_group.app, name="memory")
 app.add_typer(graph_group.app, name="graph")
@@ -26,46 +31,50 @@ app.add_typer(report_group.app, name="report")
 @app.command()
 def bootstrap() -> None:
     """Scaffold the initial repository structure from the company registry."""
-    print("[cyan]Bootstrapping project structure...[/cyan]")
+    console_print("[cyan]Bootstrapping project structure...[/cyan]")
     generator = BootstrapGenerator()
     result = generator.run()
     if not result.success:
         for err in result.errors:
-            print(f"  [red]✗[/red] {err}")
-        print("\n[red]Bootstrap failed.[/red]")
+            console_print(f"  [red]✗[/red] {err}")
+        console_print("\n[red]Bootstrap failed.[/red]")
         raise typer.Exit(1)
     for w in result.warnings:
-        print(f"  [yellow]![/yellow] {w}")
+        console_print(f"  [yellow]![/yellow] {w}")
     if result.created_files:
-        print(f"\n  [green]✓[/green] Generated {len(result.created_files)} file(s):")
+        console_print(
+            f"\n  [green]✓[/green] Generated {len(result.created_files)} file(s):"
+        )
         for f in result.created_files:
-            print(f"    [dim]{f}[/dim]")
-    print("\n[green]Project structure is ready.[/green]")
+            console_print(f"    [dim]{f}[/dim]")
+    console_print("\n[green]Project structure is ready.[/green]")
 
 
 @app.command()
 def build() -> None:
     """Build all generated artifacts from templates and registry data."""
-    print("[cyan]Building artifacts...[/cyan]")
+    console_print("[cyan]Building artifacts...[/cyan]")
 
     generator = BootstrapGenerator()
     result = generator.run()
     if not result.success:
         for err in result.errors:
-            print(f"  [red]✗[/red] {err}")
-        print("\n[red]Build failed during bootstrap.[/red]")
+            console_print(f"  [red]✗[/red] {err}")
+        console_print("\n[red]Build failed during bootstrap.[/red]")
         raise typer.Exit(1)
 
     for w in result.warnings:
-        print(f"  [yellow]![/yellow] {w}")
+        console_print(f"  [yellow]![/yellow] {w}")
     if result.created_files:
-        print(f"  [green]✓[/green] Generated {len(result.created_files)} file(s)")
+        console_print(
+            f"  [green]✓[/green] Generated {len(result.created_files)} file(s)"
+        )
 
     engine = ValidatorEngine()
     validation = engine.validate_all()
-    print(f"  [green]✓[/green] {validation.summary()}")
+    console_print(f"  [green]✓[/green] {validation.summary()}")
 
-    print("\n[green]Build complete.[/green]")
+    console_print("\n[green]Build complete.[/green]")
 
 
 @app.command()
@@ -79,16 +88,16 @@ def generate(
     entry = resolve_target(target)
     rendered_path = render_prompt(entry.prompt_file)
 
-    print(f"[cyan]Target:[/cyan] {target}  [dim]({entry.description})[/dim]")
-    print(f"[cyan]Rendered prompt written to:[/cyan] {rendered_path}")
+    console_print(f"[cyan]Target:[/cyan] {target}  [dim]({entry.description})[/dim]")
+    console_print(f"[cyan]Rendered prompt written to:[/cyan] {rendered_path}")
 
     if dry_run:
-        print("[yellow]Dry run - command not executed.[/yellow]")
+        console_print("[yellow]Dry run - command not executed.[/yellow]")
         return
 
     opencode_path = shutil.which("opencode")
     if opencode_path is None:
-        print(
+        console_print(
             "[red]Could not find 'opencode' on PATH.[/red] Is it installed and available in this shell?"
         )
         raise typer.Exit(1)
@@ -105,69 +114,89 @@ def generate(
         "Execute the attached prompt against the current company registry.",
     ]
 
-    print(f"[cyan]Command:[/cyan] {' '.join(cmd)}")
+    console_print(f"[cyan]Command:[/cyan] {' '.join(cmd)}")
 
-    print(
+    console_print(
         "[dim]Streaming opencode output below - this may take a while on a local model...[/dim]\n"
     )
 
     result = subprocess.run(cmd, check=False, shell=False)
     if result.returncode != 0:
-        print(f"\n[red]opencode exited with error code {result.returncode}[/red]")
+        console_print(
+            f"\n[red]opencode exited with error code {result.returncode}[/red]"
+        )
         raise typer.Exit(result.returncode)
 
-    print("\n[green]opencode finished successfully.[/green]")
+    console_print("\n[green]opencode finished successfully.[/green]")
 
 
 @app.command()
 def validate() -> None:
     """Validate company registry data and configuration files."""
-    print("[cyan]Validating company registry...[/cyan]")
+    console_print("[cyan]Validating company registry...[/cyan]")
     engine = ValidatorEngine()
     result = engine.validate_all()
-    print(f"\n[dim]{result.summary()}[/dim]")
+    console_print(f"\n[dim]{result.summary()}[/dim]")
     for report in result.reports:
         status = "[green]PASS[/green]" if report.passed else "[red]FAIL[/red]"
-        print(f"  {status} {report.target}")
+        console_print(f"  {status} {report.target}")
         for err in report.errors:
-            print(f"       [red]✗[/red] {err.message}")
+            console_print(f"       [red]✗[/red] {err.message}")
         for w in report.warnings:
-            print(f"       [yellow]![/yellow] {w.message}")
+            console_print(f"       [yellow]![/yellow] {w.message}")
     if not result.passed:
         raise typer.Exit(1)
-    print("\n[green]Validation complete.[/green]")
+    console_print("\n[green]Validation complete.[/green]")
 
 
 @app.command()
-def doctor() -> None:
+def doctor(
+    force_ascii: bool = typer.Option(
+        False, "--force-ascii", help="Use ASCII-only output (safe for all terminals)"
+    ),
+) -> None:
     """Diagnose environment and configuration issues."""
-    print("[cyan]Running diagnostics...[/cyan]\n")
+    if force_ascii:
+        configure_console(force_ascii=True)
+
+    try:
+        _doctor_run()
+    except (UnicodeEncodeError, UnicodeDecodeError) as e:
+        configure_console(force_ascii=True)
+        console_print(
+            f"[yellow]Terminal encoding issue ({e.reason}), retrying with ASCII fallback...[/yellow]"
+        )
+        _doctor_run()
+
+
+def _doctor_run() -> None:
+    console_print("[cyan]Running diagnostics...[/cyan]\n")
 
     issues: list[str] = []
 
     company_yaml = Path("company/company.yaml")
     if company_yaml.exists():
-        print("  [green]✓[/green] company/company.yaml found")
+        console_print("  [green]OK[/green] company/company.yaml found")
     else:
         issues.append("Missing company/company.yaml")
-        print("  [red]✗[/red] company/company.yaml missing")
+        console_print("  [red]X[/red] company/company.yaml missing")
 
     opencode_path = shutil.which("opencode")
     if opencode_path:
-        print(f"  [green]✓[/green] opencode found at {opencode_path}")
+        console_print(f"  [green]OK[/green] opencode found at {opencode_path}")
     else:
         issues.append("opencode not found on PATH")
-        print("  [red]✗[/red] opencode not found on PATH")
+        console_print("  [red]X[/red] opencode not found on PATH")
 
     python_version = sys.version
-    print(f"  [green]✓[/green] Python {python_version}")
+    console_print(f"  [green]OK[/green] Python {python_version}")
 
     if issues:
-        print(f"\n[yellow]Found {len(issues)} issue(s):[/yellow]")
+        console_print(f"\n[yellow]Found {len(issues)} issue(s):[/yellow]")
         for issue in issues:
-            print(f"  - {issue}")
+            console_print(f"  - {issue}")
     else:
-        print("\n[green]All checks passed. Environment is healthy.[/green]")
+        console_print("\n[green]All checks passed. Environment is healthy.[/green]")
 
 
 @app.command()
@@ -175,28 +204,28 @@ def targets() -> None:
     """List available generate targets."""
     command_map = load_command_map()
     for key, entry in command_map.items():
-        print(f"[cyan]{key}[/cyan] - {entry.description}")
+        console_print(f"[cyan]{key}[/cyan] - {entry.description}")
 
 
 @app.command()
 def status() -> None:
     """Show current system status overview."""
-    print("[cyan]AI Enterprise OS — System Status[/cyan]\n")
+    console_print("[cyan]AI Enterprise OS — System Status[/cyan]\n")
 
     registry_dir = Path("company")
     yaml_count = len(list(registry_dir.glob("*.yaml"))) if registry_dir.is_dir() else 0
-    print(f"  Registry files: {yaml_count}")
+    console_print(f"  Registry files: {yaml_count}")
 
     generated_dir = Path("generated")
     generated_count = (
         len(list(generated_dir.iterdir())) if generated_dir.is_dir() else 0
     )
-    print(f"  Generated artifacts: {generated_count}")
+    console_print(f"  Generated artifacts: {generated_count}")
 
     opencode_path = shutil.which("opencode")
-    print(f"  OpenCode available: {'yes' if opencode_path else 'no'}")
+    console_print(f"  OpenCode available: {'yes' if opencode_path else 'no'}")
 
-    print("\n[green]System is operational.[/green]")
+    console_print("\n[green]System is operational.[/green]")
 
 
 if __name__ == "__main__":

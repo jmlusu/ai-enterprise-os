@@ -1,8 +1,8 @@
 import json
 from typing import Any
 
-from ai_company.template_engine.handlers._substitution import walk_and_substitute
-from ai_company.template_engine.handlers.base import BaseHandler
+from ._substitution import walk_and_substitute
+from .base import BaseHandler
 
 
 class JsonHandler(BaseHandler):

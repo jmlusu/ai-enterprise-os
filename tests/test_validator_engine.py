@@ -77,19 +77,23 @@ class TestValidationReport:
 
 class TestValidatorResult:
     def test_all_passed(self) -> None:
-        r = ValidatorResult(reports=[
-            ValidationReport(target="a", passed=True),
-            ValidationReport(target="b", passed=True),
-        ])
+        r = ValidatorResult(
+            reports=[
+                ValidationReport(target="a", passed=True),
+                ValidationReport(target="b", passed=True),
+            ]
+        )
         assert r.passed
         assert r.total_errors == 0
         assert r.summary().startswith("Validator Engine [PASSED]")
 
     def test_any_failed(self) -> None:
-        r = ValidatorResult(reports=[
-            ValidationReport(target="a", passed=True),
-            ValidationReport(target="b", passed=False),
-        ])
+        r = ValidatorResult(
+            reports=[
+                ValidationReport(target="a", passed=True),
+                ValidationReport(target="b", passed=False),
+            ]
+        )
         assert not r.passed
 
     def test_totals(self) -> None:
@@ -299,11 +303,7 @@ class TestManifestValidator:
     def test_manifest_with_duplicate_departments(self, temp_dir: Path) -> None:
         f = temp_dir / "manifest.yaml"
         f.write_text(
-            "name: Test\n"
-            "version: 1.0.0\n"
-            "departments:\n"
-            "  - name: eng\n"
-            "  - name: eng\n",
+            "name: Test\nversion: 1.0.0\ndepartments:\n  - name: eng\n  - name: eng\n",
             encoding="utf-8",
         )
         report = validate_manifest_file(f)
@@ -319,10 +319,7 @@ class TestManifestValidator:
     def test_manifest_non_semver_version(self, temp_dir: Path) -> None:
         f = temp_dir / "manifest.yaml"
         f.write_text(
-            "name: Test\n"
-            "version: abc\n"
-            "departments:\n"
-            "  - name: eng\n",
+            "name: Test\nversion: abc\ndepartments:\n  - name: eng\n",
             encoding="utf-8",
         )
         report = validate_manifest_file(f)
@@ -380,7 +377,10 @@ class TestOutputValidator:
         if report.passed:
             assert report.target == "generated_output"
         else:
-            assert any("not found" in e.message or "No markdown" in e.message for e in report.errors)
+            assert any(
+                "not found" in e.message or "No markdown" in e.message
+                for e in report.errors
+            )
 
     def test_generated_directory_nonexistent(self, temp_dir: Path) -> None:
         report = validate_generated_directory(temp_dir / "nope")
@@ -399,8 +399,17 @@ class TestValidatorEngine:
         result = engine.validate_all()
         assert isinstance(result, ValidatorResult)
         assert len(result.reports) == 5
-        assert all(r.target in ["yaml:registry", "registry", "templates", "manifest", "generated_output"]
-                   for r in result.reports)
+        assert all(
+            r.target
+            in [
+                "yaml:registry",
+                "registry",
+                "templates",
+                "manifest",
+                "generated_output",
+            ]
+            for r in result.reports
+        )
 
     def test_validate_all_passed(self) -> None:
         engine = ValidatorEngine()
@@ -460,9 +469,13 @@ class TestRealDataIntegration:
         assert report.passed
 
     def test_all_templates_valid(self) -> None:
-        for t in ["README.md.j2", "department_README.md.j2",
-                   "doc_placeholder.md.j2", "prompt_placeholder.md.j2",
-                   "test_placeholder.py.j2"]:
+        for t in [
+            "README.md.j2",
+            "department_README.md.j2",
+            "doc_placeholder.md.j2",
+            "prompt_placeholder.md.j2",
+            "test_placeholder.py.j2",
+        ]:
             report = validate_jinja_template(Path("templates") / t)
             assert report.passed, f"Template {t} failed: {report.errors}"
 

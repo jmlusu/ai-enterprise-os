@@ -162,9 +162,10 @@ class TestHandlers:
 
     def test_python_handler_dotted(self) -> None:
         h = PythonHandler()
-        result = h.render("{company.name} v{company.version}", {
-            "company": {"name": "Acme", "version": "2.0"}
-        })
+        result = h.render(
+            "{company.name} v{company.version}",
+            {"company": {"name": "Acme", "version": "2.0"}},
+        )
         assert result == "Acme v2.0"
 
     def test_python_handler_missing_key(self) -> None:
@@ -321,13 +322,19 @@ class TestIntegration:
         ctx = TemplateContext({"project": "Acme", "version": "1.0"})
         renderer = Renderer()
 
-        jinja_out = renderer.render("Project: {{ project }} v{{ version }}", ctx.to_dict(), fmt="jinja")
+        jinja_out = renderer.render(
+            "Project: {{ project }} v{{ version }}", ctx.to_dict(), fmt="jinja"
+        )
         assert jinja_out == "Project: Acme v1.0"
 
-        python_out = renderer.render("Project: {project} v{version}", ctx.to_dict(), fmt="python")
+        python_out = renderer.render(
+            "Project: {project} v{version}", ctx.to_dict(), fmt="python"
+        )
         assert python_out == "Project: Acme v1.0"
 
-        md_out = renderer.render("# {project} v{version}", ctx.to_dict(), fmt="markdown")
+        md_out = renderer.render(
+            "# {project} v{version}", ctx.to_dict(), fmt="markdown"
+        )
         assert md_out == "# Acme v1.0"
 
         json_out = renderer.render(

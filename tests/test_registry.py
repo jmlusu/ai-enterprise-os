@@ -17,7 +17,7 @@ from ai_company.registry.loader import load_registry_files, load_yaml
 from ai_company.registry.parser import parse_registry
 from ai_company.registry.registry import RegistryEngine, registry_engine
 from ai_company.registry.resolver import resolve
-from ai_company.registry.validator import validate_parsed_data
+from ai_company.registry.validate import validate_parsed_data
 
 # ---------------------------------------------------------------------------
 # Model tests
@@ -139,14 +139,16 @@ class TestLoader:
 
 class TestParser:
     def test_parse_company_full(self) -> None:
-        parsed = parse_registry({
-            "company": {
-                "name": "V",
-                "description": "D",
-                "company_name": "C",
-                "departments": ["eng", "sales"],
+        parsed = parse_registry(
+            {
+                "company": {
+                    "name": "V",
+                    "description": "D",
+                    "company_name": "C",
+                    "departments": ["eng", "sales"],
+                }
             }
-        })
+        )
         assert parsed["vision"]["name"] == "V"
         assert parsed["vision"]["description"] == "D"
         assert parsed["vision"]["company_name"] == "C"
@@ -158,12 +160,14 @@ class TestParser:
         assert parsed["department_names"] == []
 
     def test_parse_departments(self) -> None:
-        parsed = parse_registry({
-            "departments": {
-                "eng": [{"Dev": "Developer"}, {"QA": "Tester"}],
-                "sales": [{"Rep": "Sales Rep"}],
+        parsed = parse_registry(
+            {
+                "departments": {
+                    "eng": [{"Dev": "Developer"}, {"QA": "Tester"}],
+                    "sales": [{"Rep": "Sales Rep"}],
+                }
             }
-        })
+        )
         depts = parsed["departments"]
         assert "eng" in depts
         assert len(depts["eng"]["roles"]) == 2
@@ -189,7 +193,10 @@ class TestValidator:
             "vision": {"name": "V", "description": "D", "company_name": "C"},
             "department_names": ["eng"],
             "departments": {
-                "eng": {"name": "eng", "roles": [{"title": "Dev", "description": "Dev work"}]}
+                "eng": {
+                    "name": "eng",
+                    "roles": [{"title": "Dev", "description": "Dev work"}],
+                }
             },
             "board": [],
             "executives": [],
@@ -407,14 +414,18 @@ class TestManifestDepartment:
         assert d.description is None
 
     def test_full(self) -> None:
-        d = ManifestDepartment(name="eng", display_name="Engineering", description="Eng team")
+        d = ManifestDepartment(
+            name="eng", display_name="Engineering", description="Eng team"
+        )
         assert d.display_name == "Engineering"
         assert d.description == "Eng team"
 
 
 class TestCompanyManifest:
     def test_minimal(self) -> None:
-        m = CompanyManifest(name="Test Co", departments=[ManifestDepartment(name="eng")])
+        m = CompanyManifest(
+            name="Test Co", departments=[ManifestDepartment(name="eng")]
+        )
         assert m.name == "Test Co"
         assert m.description is None
         assert m.version is None
@@ -463,7 +474,10 @@ class TestCompanyManifest:
     def test_validate_manifest_success(self) -> None:
         m = CompanyManifest(
             name="Test",
-            departments=[ManifestDepartment(name="eng"), ManifestDepartment(name="sales")],
+            departments=[
+                ManifestDepartment(name="eng"),
+                ManifestDepartment(name="sales"),
+            ],
         )
         assert m.validate_manifest() == []
 
@@ -480,7 +494,10 @@ class TestCompanyManifest:
     def test_validate_manifest_duplicate_departments(self) -> None:
         m = CompanyManifest(
             name="Test",
-            departments=[ManifestDepartment(name="eng"), ManifestDepartment(name="eng")],
+            departments=[
+                ManifestDepartment(name="eng"),
+                ManifestDepartment(name="eng"),
+            ],
         )
         errors = m.validate_manifest()
         assert any("duplicate" in e for e in errors)

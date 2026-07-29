@@ -3,7 +3,7 @@ from typing import Any, cast
 from jinja2 import Template as Jinja2Template
 from jinja2 import TemplateError
 
-from ai_company.template_engine.handlers.base import BaseHandler
+from .base import BaseHandler
 
 
 class JinjaHandler(BaseHandler):

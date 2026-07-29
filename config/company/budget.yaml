@@ -1,0 +1,13 @@
+departments:
+  engineering:
+    total: 500000
+    spent: 320000
+    currency: "USD"
+  operations:
+    total: 150000
+    spent: 90000
+    currency: "USD"
+  marketing:
+    total: 200000
+    spent: 110000
+    currency: "USD"

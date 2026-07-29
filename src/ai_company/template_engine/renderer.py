@@ -15,7 +15,8 @@ class Renderer:
         if handler is None:
             available = ", ".join(sorted(self._handlers))
             raise ValueError(f"Unknown format '{fmt}'. Available formats: {available}")
-        return handler.render(template, context)
+        result = handler.render(template, context)
+        return str(result)
 
     def register_handler(self, fmt: str, handler: BaseHandler) -> None:
         self._handlers[fmt] = handler

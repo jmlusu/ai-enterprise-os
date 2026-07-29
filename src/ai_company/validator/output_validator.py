@@ -7,15 +7,21 @@ UNRESOLVED_JINJA = re.compile(r"\{\{.*?\}\}")
 UNRESOLVED_KEY = re.compile(r"\{[a-zA-Z_][a-zA-Z0-9_\.]*\}")
 
 
-def validate_generated_file(filepath: Path, context_keys: set[str] | None = None) -> ValidationReport:
+def validate_generated_file(
+    filepath: Path, context_keys: set[str] | None = None
+) -> ValidationReport:
     report = ValidationReport(target=f"output:{filepath.name}", passed=True)
 
     if not filepath.exists():
-        report.add_error(f"Generated file not found: {filepath.name}", path=str(filepath))
+        report.add_error(
+            f"Generated file not found: {filepath.name}", path=str(filepath)
+        )
         return report
 
     if filepath.stat().st_size == 0:
-        report.add_error(f"Generated file is empty: {filepath.name}", path=str(filepath))
+        report.add_error(
+            f"Generated file is empty: {filepath.name}", path=str(filepath)
+        )
         return report
 
     try:
@@ -26,7 +32,9 @@ def validate_generated_file(filepath: Path, context_keys: set[str] | None = None
 
     content_length = len(content)
     if content_length < 10:
-        report.add_warning(f"Generated file is very short ({content_length} chars)", path=str(filepath))
+        report.add_warning(
+            f"Generated file is very short ({content_length} chars)", path=str(filepath)
+        )
 
     unresolved_jinja = UNRESOLVED_JINJA.findall(content)
     if unresolved_jinja:
@@ -45,7 +53,9 @@ def validate_generated_file(filepath: Path, context_keys: set[str] | None = None
             )
 
     if content_length > 0 and not content.strip():
-        report.add_warning(f"File contains only whitespace: {filepath.name}", path=str(filepath))
+        report.add_warning(
+            f"File contains only whitespace: {filepath.name}", path=str(filepath)
+        )
 
     return report
 
@@ -54,18 +64,24 @@ def validate_generated_directory(output_dir: Path) -> ValidationReport:
     report = ValidationReport(target="generated_output", passed=True)
 
     if not output_dir.is_dir():
-        report.add_error(f"Generated output directory not found: {output_dir}", path=str(output_dir))
+        report.add_error(
+            f"Generated output directory not found: {output_dir}", path=str(output_dir)
+        )
         return report
 
     expected_files = ["README.md", "README", "docs", "prompts"]
     for name in expected_files:
         path = output_dir / name
         if not path.exists():
-            report.add_warning(f"Expected output path not found: {name}", path=str(path))
+            report.add_warning(
+                f"Expected output path not found: {name}", path=str(path)
+            )
 
     md_files = list(output_dir.rglob("*.md"))
     if not md_files:
-        report.add_error(f"No markdown files found in {output_dir}", path=str(output_dir))
+        report.add_error(
+            f"No markdown files found in {output_dir}", path=str(output_dir)
+        )
     else:
         report.add_info(f"Found {len(md_files)} generated markdown file(s)")
 
@@ -75,7 +91,9 @@ def validate_generated_directory(output_dir: Path) -> ValidationReport:
 
     for f in md_files:
         if f.stat().st_size == 0:
-            report.add_warning(f"Empty generated file: {f.relative_to(output_dir)}", path=str(f))
+            report.add_warning(
+                f"Empty generated file: {f.relative_to(output_dir)}", path=str(f)
+            )
 
     readme_dir = output_dir / "README"
     if readme_dir.is_dir():

@@ -3,7 +3,8 @@ from pathlib import Path
 
 import yaml
 from pydantic import BaseModel, ValidationError
-from rich import print
+
+from ai_company.utils.console import console_print
 
 _COMMAND_MAP_RESOURCE = resource_files("ai_company.cli") / "command_map.yaml"
 _command_map_cache: dict[str, dict[str, "CommandEntry"]] = {}
@@ -24,7 +25,7 @@ def load_command_map() -> dict[str, CommandEntry]:
     try:
         raw_text = _COMMAND_MAP_RESOURCE.read_text(encoding="utf-8")
     except FileNotFoundError:
-        print("[red]Missing command map resource[/red]")
+        console_print("[red]Missing command map resource[/red]")
         raise SystemExit(1)
 
     raw = yaml.safe_load(raw_text) or {}
@@ -39,9 +40,9 @@ def load_command_map() -> dict[str, CommandEntry]:
             errors.append(f"'{key}': {e}")
 
     if errors:
-        print("[red]command_map.yaml has invalid entries:[/red]")
+        console_print("[red]command_map.yaml has invalid entries:[/red]")
         for err in errors:
-            print(f"  - {err}")
+            console_print(f"  - {err}")
         raise SystemExit(1)
 
     _command_map_cache[cache_key] = dict(validated)
@@ -53,15 +54,17 @@ def resolve_target(target: str) -> CommandEntry:
 
     if target not in command_map:
         available = ", ".join(sorted(command_map.keys()))
-        print(f"[red]Unknown target:[/red] '{target}'")
-        print(f"[yellow]Available targets:[/yellow] {available}")
+        console_print(f"[red]Unknown target:[/red] '{target}'")
+        console_print(f"[yellow]Available targets:[/yellow] {available}")
         raise SystemExit(1)
 
     entry = command_map[target]
 
     prompt_path = Path(entry.prompt_file)
     if not prompt_path.exists():
-        print(f"[red]Prompt file for '{target}' not found:[/red] {entry.prompt_file}")
+        console_print(
+            f"[red]Prompt file for '{target}' not found:[/red] {entry.prompt_file}"
+        )
         raise SystemExit(1)
 
     return entry

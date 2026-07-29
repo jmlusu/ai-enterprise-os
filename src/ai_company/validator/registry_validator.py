@@ -3,7 +3,7 @@ from pathlib import Path
 from ai_company.registry.loader import load_registry_files
 from ai_company.registry.parser import parse_registry
 from ai_company.registry.resolver import resolve
-from ai_company.registry.validator import validate_parsed_data
+from ai_company.registry.validate import validate_parsed_data
 from ai_company.validator.reports import ValidationReport
 
 
@@ -11,7 +11,9 @@ def validate_registry_integrity(company_dir: Path) -> ValidationReport:
     report = ValidationReport(target="registry", passed=True)
 
     if not company_dir.is_dir():
-        report.add_error(f"Company directory not found: {company_dir}", path=str(company_dir))
+        report.add_error(
+            f"Company directory not found: {company_dir}", path=str(company_dir)
+        )
         return report
 
     load_result = load_registry_files(company_dir)
@@ -47,14 +49,20 @@ def validate_registry_integrity(company_dir: Path) -> ValidationReport:
     company_yaml = load_result.data.get("company", {})
     dept_list = company_yaml.get("departments", [])
     if not isinstance(dept_list, list):
-        report.add_error("company.yaml 'departments' must be a list", field="company.departments")
+        report.add_error(
+            "company.yaml 'departments' must be a list", field="company.departments"
+        )
     elif len(dept_list) < 1:
-        report.add_warning("No departments defined in company.yaml", field="company.departments")
+        report.add_warning(
+            "No departments defined in company.yaml", field="company.departments"
+        )
 
     depts_from_yaml = load_result.data.get("departments", {})
     if isinstance(dept_list, list):
         for dept_name in dept_list:
-            name_lower = dept_name.lower() if isinstance(dept_name, str) else str(dept_name)
+            name_lower = (
+                dept_name.lower() if isinstance(dept_name, str) else str(dept_name)
+            )
             if name_lower not in depts_from_yaml:
                 report.add_warning(
                     f"Department '{dept_name}' has no roles defined in departments.yaml",

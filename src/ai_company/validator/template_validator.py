@@ -18,7 +18,9 @@ def validate_jinja_template(filepath: Path) -> ValidationReport:
     report = ValidationReport(target=f"template:{filepath.name}", passed=True)
 
     if not filepath.exists():
-        report.add_error(f"Template file not found: {filepath.name}", path=str(filepath))
+        report.add_error(
+            f"Template file not found: {filepath.name}", path=str(filepath)
+        )
         return report
 
     if filepath.stat().st_size == 0:
@@ -51,11 +53,15 @@ def validate_jinja_template(filepath: Path) -> ValidationReport:
     return report
 
 
-def validate_template_variables(filepath: Path, known_context_keys: set[str]) -> ValidationReport:
+def validate_template_variables(
+    filepath: Path, known_context_keys: set[str]
+) -> ValidationReport:
     report = ValidationReport(target=f"template_vars:{filepath.name}", passed=True)
 
     if not filepath.exists():
-        report.add_error(f"Template file not found: {filepath.name}", path=str(filepath))
+        report.add_error(
+            f"Template file not found: {filepath.name}", path=str(filepath)
+        )
         return report
 
     try:
@@ -87,13 +93,17 @@ def validate_templates_directory(templates_dir: Path) -> ValidationReport:
     report = ValidationReport(target="templates", passed=True)
 
     if not templates_dir.is_dir():
-        report.add_error(f"Templates directory not found: {templates_dir}", path=str(templates_dir))
+        report.add_error(
+            f"Templates directory not found: {templates_dir}", path=str(templates_dir)
+        )
         return report
 
     for template_name in REQUIRED_TEMPLATES:
         filepath = templates_dir / template_name
         if not filepath.exists():
-            report.add_warning(f"Expected template not found: {template_name}", path=str(filepath))
+            report.add_warning(
+                f"Expected template not found: {template_name}", path=str(filepath)
+            )
             continue
         file_report = validate_jinja_template(filepath)
         report.errors.extend(file_report.errors)
@@ -105,7 +115,9 @@ def validate_templates_directory(templates_dir: Path) -> ValidationReport:
 
     for filepath in sorted(templates_dir.glob("*.j2")):
         if filepath.name not in REQUIRED_TEMPLATES:
-            report.add_info(f"Additional template found: {filepath.name}", path=str(filepath))
+            report.add_info(
+                f"Additional template found: {filepath.name}", path=str(filepath)
+            )
 
     for filepath in sorted(templates_dir.glob("*.j2")):
         if filepath.stat().st_size == 0:
@@ -114,7 +126,9 @@ def validate_templates_directory(templates_dir: Path) -> ValidationReport:
     return report
 
 
-def find_unresolved_placeholders(filepath: Path, context_keys: set[str]) -> ValidationReport:
+def find_unresolved_placeholders(
+    filepath: Path, context_keys: set[str]
+) -> ValidationReport:
     report = ValidationReport(target=f"placeholders:{filepath.name}", passed=True)
 
     if not filepath.exists() or filepath.stat().st_size == 0:

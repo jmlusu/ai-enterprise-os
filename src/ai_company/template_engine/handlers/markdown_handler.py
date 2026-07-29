@@ -1,7 +1,7 @@
 from typing import Any
 
-from ai_company.template_engine.handlers._substitution import substitute
-from ai_company.template_engine.handlers.base import BaseHandler
+from ._substitution import substitute
+from .base import BaseHandler
 
 
 class MarkdownHandler(BaseHandler):

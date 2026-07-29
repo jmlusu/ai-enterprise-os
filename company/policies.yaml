@@ -1,0 +1,11 @@
+items:
+  - name: "AI Safety Policy"
+    description: "Guidelines for safe deployment of AI agents in production environments."
+  - name: "Data Privacy Policy"
+    description: "Standards for handling user data, encryption, and compliance with regulations."
+  - name: "Code Quality Standards"
+    description: "Mandatory code review, testing coverage, and linting requirements."
+  - name: "Remote Work Policy"
+    description: "Flexible work arrangements, communication protocols, and async-first collaboration."
+  - name: "Security Incident Response"
+    description: "Procedures for detecting, reporting, and responding to security breaches."

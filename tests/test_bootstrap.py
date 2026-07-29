@@ -42,7 +42,10 @@ class TestBootstrapGenerator:
         result = generator.run()
         assert result.success
         readme_path = Path("generated/README.md")
-        assert any(readme_path.name in f for f in result.created_files) or readme_path.exists()
+        assert (
+            any(readme_path.name in f for f in result.created_files)
+            or readme_path.exists()
+        )
 
     def test_creates_department_readmes(self) -> None:
         generator = BootstrapGenerator()
@@ -89,7 +92,9 @@ class TestBootstrapGenerator:
         files_after_first = set()
         for f in result1.created_files:
             p = Path(f)
-            files_after_first.add((str(p), p.read_text(encoding="utf-8") if p.exists() else ""))
+            files_after_first.add(
+                (str(p), p.read_text(encoding="utf-8") if p.exists() else "")
+            )
 
         RegistryEngine().reload()
         result2 = generator.run()
@@ -97,7 +102,9 @@ class TestBootstrapGenerator:
         files_after_second = set()
         for f in result2.created_files:
             p = Path(f)
-            files_after_second.add((str(p), p.read_text(encoding="utf-8") if p.exists() else ""))
+            files_after_second.add(
+                (str(p), p.read_text(encoding="utf-8") if p.exists() else "")
+            )
 
         assert files_after_first == files_after_second
 
@@ -139,6 +146,8 @@ class TestBootstrapResult:
         assert result.registry_result is None
 
     def test_failure_has_no_created_files(self) -> None:
-        result = BootstrapResult(success=False, created_files=[], errors=["oops"], warnings=[])
+        result = BootstrapResult(
+            success=False, created_files=[], errors=["oops"], warnings=[]
+        )
         assert not result.success
         assert result.errors == ["oops"]
