@@ -45,6 +45,26 @@ uv run --group dev mypy src
 | `ai-company graph stats` | Show graph statistics |
 | `ai-company report generate <type>` | Generate a report |
 
+## Template Engine
+
+Multi-format template rendering system with format-specific handlers.
+
+| Component | Description |
+|---|---|
+| `TemplateLoader` | Loads templates from files or strings, auto-detects format by extension |
+| `TemplateContext` | Key/value context with dot-path support for nested access |
+| `Renderer` | Dispatches to format-specific handlers (Jinja2, Python `{key}`, Markdown, JSON, YAML) |
+| `Writer` | Writes rendered output to file or stdout |
+
+```python
+from ai_company.template_engine import TemplateLoader, TemplateContext, Renderer
+
+loader = TemplateLoader()
+content, fmt = loader.load("template.j2")        # fmt = "jinja"
+ctx = TemplateContext.from_dict({"name": "World"})
+output = Renderer().render(content, ctx.to_dict(), fmt=fmt)
+```
+
 ## Validator Engine
 
 The Pydantic-based Validator Engine validates 5 targets across the pipeline:

@@ -1,0 +1,17 @@
+import json
+
+from ai_company.template_engine.handlers.base import BaseHandler
+from ai_company.template_engine.handlers._substitution import walk_and_substitute
+
+
+class JsonHandler(BaseHandler):
+    def __init__(self, indent: int = 2) -> None:
+        self.indent = indent
+
+    def render(self, template: str, context: dict) -> str:
+        try:
+            data = json.loads(template)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON template: {e}") from e
+        result = walk_and_substitute(data, context)
+        return json.dumps(result, indent=self.indent)
