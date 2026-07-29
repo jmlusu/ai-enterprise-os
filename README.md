@@ -31,7 +31,8 @@ uv run --group dev mypy src
 | `ai-company bootstrap` | Scaffold initial repository structure |
 | `ai-company build` | Build generated artifacts |
 | `ai-company generate <target>` | Dispatch a phase to OpenCode |
-| `ai-company validate` | Validate registry data and configuration |
+| `ai-company validate` | Validate registry data, configuration, and generated output |
+| `ai-company validator engine` | Run full Validator Engine (YAML, registry, templates, manifest, output) |
 | `ai-company doctor` | Diagnose environment and configuration |
 | `ai-company targets` | List available generate targets |
 | `ai-company status` | Show system status overview |
@@ -44,13 +45,36 @@ uv run --group dev mypy src
 | `ai-company graph stats` | Show graph statistics |
 | `ai-company report generate <type>` | Generate a report |
 
+## Validator Engine
+
+The Pydantic-based Validator Engine validates 5 targets across the pipeline:
+
+| Target | Checks |
+|---|---|
+| **YAML** | Syntax, file existence, empty files for all registry YAML files |
+| **Registry** | Cross-file consistency, department resolution, vision/board integrity |
+| **Templates** | Jinja2 syntax parsing, required template presence, empty templates |
+| **Manifest** | Schema compliance, business rules (name, departments, semver) |
+| **Generated Output** | File existence, non-empty content, unresolved placeholders |
+
+```python
+from ai_company.validator import ValidatorEngine
+
+result = ValidatorEngine().validate_all()
+print(result.summary())   # e.g. "Validator Engine [PASSED]  42 checks, 0 errors, 2 warnings across 5 target(s)"
+result.passed             # True if all reports passed
+result.total_errors       # total error count
+```
+
 ## Project structure
 
 ```
 src/ai_company/
   models/             # Pydantic data models
   registry/           # Registry engine (loader, parser, validator, resolver)
+  validator/          # Validator Engine (reports, YAML, registry, templates, manifest, output)
   bootstrap/          # Bootstrap generator (loader, validator, placeholder generator)
+  template_engine/    # Template rendering (loader, context, renderer, writer, handlers)
   cli/                # Typer CLI commands and groups
 config/company/     # Company manifest (company.yaml)
 company/            # Company registry (YAML data files)
