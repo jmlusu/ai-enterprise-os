@@ -6,7 +6,44 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: uv sync --group dev
+      - name: Ruff check
+        run: uv run --group dev ruff check
+      - name: Ruff format
+        run: uv run --group dev ruff format --check
+
+  type-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: uv sync --group dev
+      - name: mypy
+        run: uv run --group dev mypy src
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -16,8 +53,23 @@ jobs:
           enable-cache: true
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
       - run: uv sync --group dev
-      - run: uv run --group dev pytest
-      - run: uv run --group dev ruff check
-      - run: uv run --group dev mypy src
+      - name: pytest
+        run: uv run --group dev pytest --verbose
+
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: uv sync
+      - name: CLI help
+        run: uv run python -m ai_company.cli.main --help
+      - name: CLI list targets
+        run: uv run python -m ai_company.cli.main targets
