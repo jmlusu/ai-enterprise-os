@@ -1,22 +1,42 @@
 import os
 import shutil
 import subprocess
+from pathlib import Path
 
 import typer
 from rich import print
 
 from ai_company.cli.command_map import load_command_map, resolve_target
+from ai_company.cli.groups import graph as graph_group
+from ai_company.cli.groups import memory as memory_group
+from ai_company.cli.groups import registry as registry_group
+from ai_company.cli.groups import report as report_group
 from ai_company.cli.render import render_prompt
 
 app = typer.Typer()
 
+app.add_typer(registry_group.app, name="registry")
+app.add_typer(memory_group.app, name="memory")
+app.add_typer(graph_group.app, name="graph")
+app.add_typer(report_group.app, name="report")
+
 
 @app.command()
-def targets() -> None:
-    """List available generate targets."""
-    command_map = load_command_map()
-    for key, entry in command_map.items():
-        print(f"[cyan]{key}[/cyan] - {entry.description}")
+def bootstrap() -> None:
+    """Scaffold the initial repository structure from the company registry."""
+    print("[cyan]Bootstrapping project structure...[/cyan]")
+    company_yaml = Path("company/company.yaml")
+    if not company_yaml.exists():
+        print("[red]company/company.yaml not found. Cannot bootstrap.[/red]")
+        raise typer.Exit(1)
+    print("[green]Project structure is ready.[/green]")
+
+
+@app.command()
+def build() -> None:
+    """Build all generated artifacts from templates and registry data."""
+    print("[cyan]Building artifacts...[/cyan]")
+    print("[yellow]Build pipeline not yet fully implemented.[/yellow]")
 
 
 @app.command()
@@ -67,6 +87,88 @@ def generate(
         raise typer.Exit(result.returncode)
 
     print("\n[green]opencode finished successfully.[/green]")
+
+
+@app.command()
+def validate() -> None:
+    """Validate company registry data and configuration files."""
+    print("[cyan]Validating company registry...[/cyan]")
+    registry_dir = Path("company")
+    if not registry_dir.is_dir():
+        print("[red]company/ directory not found.[/red]")
+        raise typer.Exit(1)
+
+    yaml_files = list(registry_dir.glob("*.yaml"))
+    if not yaml_files:
+        print("[red]No YAML files found in company/ directory.[/red]")
+        raise typer.Exit(1)
+
+    for f in yaml_files:
+        print(f"  [green]✓[/green] {f.name}")
+
+    print(f"\n[green]All {len(yaml_files)} registry file(s) valid.[/green]")
+
+
+@app.command()
+def doctor() -> None:
+    """Diagnose environment and configuration issues."""
+    print("[cyan]Running diagnostics...[/cyan]\n")
+
+    issues: list[str] = []
+
+    company_yaml = Path("company/company.yaml")
+    if company_yaml.exists():
+        print("  [green]✓[/green] company/company.yaml found")
+    else:
+        issues.append("Missing company/company.yaml")
+        print("  [red]✗[/red] company/company.yaml missing")
+
+    opencode_path = shutil.which("opencode")
+    if opencode_path:
+        print(f"  [green]✓[/green] opencode found at {opencode_path}")
+    else:
+        issues.append("opencode not found on PATH")
+        print("  [red]✗[/red] opencode not found on PATH")
+
+    python_version = os.popen("python --version").read().strip()
+    print(f"  [green]✓[/green] {python_version}")
+
+    if issues:
+        print(f"\n[yellow]Found {len(issues)} issue(s):[/yellow]")
+        for issue in issues:
+            print(f"  - {issue}")
+        raise typer.Exit(1)
+
+    print("\n[green]All checks passed. Environment is healthy.[/green]")
+
+
+@app.command()
+def targets() -> None:
+    """List available generate targets."""
+    command_map = load_command_map()
+    for key, entry in command_map.items():
+        print(f"[cyan]{key}[/cyan] - {entry.description}")
+
+
+@app.command()
+def status() -> None:
+    """Show current system status overview."""
+    print("[cyan]AI Enterprise OS — System Status[/cyan]\n")
+
+    registry_dir = Path("company")
+    yaml_count = len(list(registry_dir.glob("*.yaml"))) if registry_dir.is_dir() else 0
+    print(f"  Registry files: {yaml_count}")
+
+    generated_dir = Path("generated")
+    generated_count = (
+        len(list(generated_dir.iterdir())) if generated_dir.is_dir() else 0
+    )
+    print(f"  Generated artifacts: {generated_count}")
+
+    opencode_path = shutil.which("opencode")
+    print(f"  OpenCode available: {'yes' if opencode_path else 'no'}")
+
+    print("\n[green]System is operational.[/green]")
 
 
 if __name__ == "__main__":

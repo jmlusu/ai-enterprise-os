@@ -44,5 +44,6 @@ build-backend = "hatchling.build"
 packages = ["src/ai_company"]
 
 [tool.pytest.ini_options]
-# No tests exist yet — exit 0 even with zero collected
 minversion = "9.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
