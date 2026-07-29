@@ -15,7 +15,8 @@ def test_bootstrap() -> None:
 
 
 def test_bootstrap_missing_yaml(monkeypatch: pytest.MonkeyPatch) -> None:
-    import tempfile, shutil
+    import shutil
+    import tempfile
     temp_dir = Path(tempfile.mkdtemp())
     try:
         monkeypatch.chdir(temp_dir)

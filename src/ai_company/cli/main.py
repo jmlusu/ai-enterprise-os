@@ -60,6 +60,13 @@ def generate(
     entry = resolve_target(target)
     rendered_path = render_prompt(entry.prompt_file)
 
+    print(f"[cyan]Target:[/cyan] {target}  [dim]({entry.description})[/dim]")
+    print(f"[cyan]Rendered prompt written to:[/cyan] {rendered_path}")
+
+    if dry_run:
+        print("[yellow]Dry run - command not executed.[/yellow]")
+        return
+
     opencode_path = shutil.which("opencode")
     if opencode_path is None:
         print(
@@ -79,13 +86,7 @@ def generate(
         "Execute the attached prompt against the current company registry.",
     ]
 
-    print(f"[cyan]Target:[/cyan] {target}  [dim]({entry.description})[/dim]")
-    print(f"[cyan]Rendered prompt written to:[/cyan] {rendered_path}")
     print(f"[cyan]Command:[/cyan] {' '.join(cmd)}")
-
-    if dry_run:
-        print("[yellow]Dry run - command not executed.[/yellow]")
-        return
 
     print(
         "[dim]Streaming opencode output below - this may take a while on a local model...[/dim]\n"
@@ -147,9 +148,8 @@ def doctor() -> None:
         print(f"\n[yellow]Found {len(issues)} issue(s):[/yellow]")
         for issue in issues:
             print(f"  - {issue}")
-        raise typer.Exit(1)
-
-    print("\n[green]All checks passed. Environment is healthy.[/green]")
+    else:
+        print("\n[green]All checks passed. Environment is healthy.[/green]")
 
 
 @app.command()

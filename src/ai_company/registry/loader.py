@@ -1,8 +1,7 @@
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 import yaml
-
 
 REGISTRY_FILES: list[str] = [
     "company.yaml",
@@ -16,7 +15,7 @@ REGISTRY_FILES: list[str] = [
 
 
 class LoadResult:
-    def __init__(self, data: dict[str, dict], errors: list[str]) -> None:
+    def __init__(self, data: dict[str, dict[str, Any]], errors: list[str]) -> None:
         self.data = data
         self.errors = errors
 
@@ -25,7 +24,7 @@ class LoadResult:
         return len(self.errors) == 0
 
 
-def load_yaml(filepath: Path) -> Optional[dict]:
+def load_yaml(filepath: Path) -> dict[str, Any] | None:
     if not filepath.exists():
         return None
     if filepath.stat().st_size == 0:
@@ -39,7 +38,7 @@ def load_yaml(filepath: Path) -> Optional[dict]:
 
 
 def load_registry_files(company_dir: Path) -> LoadResult:
-    data: dict[str, dict] = {}
+    data: dict[str, dict[str, Any]] = {}
     errors: list[str] = []
 
     for filename in REGISTRY_FILES:

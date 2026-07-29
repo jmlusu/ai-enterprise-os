@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import ValidationError
 
 from ai_company.models.company import (
@@ -22,7 +24,7 @@ class ValidationReport:
         return self.valid
 
 
-def validate_parsed_data(parsed: dict) -> ValidationReport:
+def validate_parsed_data(parsed: dict[str, Any]) -> ValidationReport:
     errors: list[str] = []
     warnings: list[str] = []
 

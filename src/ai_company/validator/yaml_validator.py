@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import yaml
-
 from ai_company.registry.loader import REGISTRY_FILES, load_yaml
 from ai_company.validator.reports import ValidationReport
 

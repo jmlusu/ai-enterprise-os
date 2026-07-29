@@ -2,13 +2,12 @@ from pathlib import Path
 
 import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError
-from typing import Optional
 
 
 class VisionData(BaseModel):
     name: str
-    description: Optional[str] = None
-    company_name: Optional[str] = None
+    description: str | None = None
+    company_name: str | None = None
 
 
 class Role(BaseModel):
@@ -22,28 +21,28 @@ class DepartmentData(BaseModel):
 
 
 class BoardEntry(BaseModel):
-    name: Optional[str] = None
-    role: Optional[str] = None
+    name: str | None = None
+    role: str | None = None
 
 
 class ExecutiveEntry(BaseModel):
-    name: Optional[str] = None
-    title: Optional[str] = None
+    name: str | None = None
+    title: str | None = None
 
 
 class PolicyEntry(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
 
 
 class SpecialistEntry(BaseModel):
-    name: Optional[str] = None
-    expertise: Optional[str] = None
+    name: str | None = None
+    expertise: str | None = None
 
 
 class WorkflowEntry(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
     steps: list[str] = []
 
 
@@ -67,15 +66,15 @@ class CompanyRegistry(BaseModel):
 
 class ManifestDepartment(BaseModel):
     name: str
-    display_name: Optional[str] = None
-    description: Optional[str] = None
+    display_name: str | None = None
+    description: str | None = None
 
 
 class CompanyManifest(BaseModel):
     name: str
-    description: Optional[str] = None
-    company_name: Optional[str] = None
-    version: Optional[str] = None
+    description: str | None = None
+    company_name: str | None = None
+    version: str | None = None
     departments: list[ManifestDepartment] = []
 
     @classmethod
@@ -88,7 +87,7 @@ class CompanyManifest(BaseModel):
             with open(path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
             if not isinstance(data, dict):
-                raise ValueError("Company manifest must be a mapping")
+                raise TypeError("Company manifest must be a mapping")
             return cls(**data)
         except yaml.YAMLError as e:
             raise ValueError(f"YAML syntax error in manifest: {e}")

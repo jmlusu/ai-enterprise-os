@@ -1,4 +1,7 @@
-def parse_company_data(raw: dict) -> dict:
+from typing import Any
+
+
+def parse_company_data(raw: dict[str, Any]) -> dict[str, Any]:
     name = raw.get("name", "")
     if not isinstance(name, str):
         name = str(name) if name else ""
@@ -10,12 +13,12 @@ def parse_company_data(raw: dict) -> dict:
     }
 
 
-def parse_departments(raw: dict) -> dict[str, dict]:
-    departments: dict[str, dict] = {}
+def parse_departments(raw: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    departments: dict[str, dict[str, Any]] = {}
     if not isinstance(raw, dict):
         return departments
     for dept_name, roles_list in raw.items():
-        roles: list[dict] = []
+        roles: list[dict[str, str]] = []
         if isinstance(roles_list, list):
             for item in roles_list:
                 if isinstance(item, dict):
@@ -27,11 +30,13 @@ def parse_departments(raw: dict) -> dict[str, dict]:
     return departments
 
 
-def parse_list_field(raw: dict, key: str, model_keys: list[str]) -> list[dict]:
+def parse_list_field(
+    raw: dict[str, Any], key: str, model_keys: list[str]
+) -> list[dict[str, Any]]:
     items = raw.get(key, [])
     if not isinstance(items, list):
         items = [items] if items else []
-    result: list[dict] = []
+    result: list[dict[str, Any]] = []
     for item in items:
         if isinstance(item, dict):
             entry = {k: item.get(k) for k in model_keys}
@@ -42,7 +47,7 @@ def parse_list_field(raw: dict, key: str, model_keys: list[str]) -> list[dict]:
     return result
 
 
-def parse_registry(raw_data: dict[str, dict]) -> dict:
+def parse_registry(raw_data: dict[str, dict[str, Any]]) -> dict[str, Any]:
     raw_company = raw_data.get("company", {}) or {}
     raw_departments = raw_data.get("departments", {}) or {}
     raw_board = raw_data.get("board", {}) or {}

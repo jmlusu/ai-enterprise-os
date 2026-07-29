@@ -1,6 +1,12 @@
+from typing import Any
+
+
 class ResolutionReport:
     def __init__(
-        self, resolved: dict, unresolved_refs: list[str], warnings: list[str]
+        self,
+        resolved: dict[str, Any],
+        unresolved_refs: list[str],
+        warnings: list[str],
     ) -> None:
         self.resolved = resolved
         self.unresolved_refs = unresolved_refs
@@ -10,13 +16,13 @@ class ResolutionReport:
     def success(self) -> bool:
         return len(self.unresolved_refs) == 0
 
-    def merge_into(self, target: dict) -> dict:
+    def merge_into(self, target: dict[str, Any]) -> dict[str, Any]:
         target["unresolved_refs"] = self.unresolved_refs
         return target
 
 
 def resolve(
-    parsed: dict,
+    parsed: dict[str, Any],
 ) -> ResolutionReport:
     unresolved: list[str] = []
     warnings: list[str] = []

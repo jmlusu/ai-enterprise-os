@@ -6,7 +6,6 @@ from ai_company.registry.resolver import resolve
 from ai_company.registry.validator import validate_parsed_data
 from ai_company.validator.reports import ValidationReport
 
-
 DEPARTMENT_NAMES = [
     "executive", "strategic", "technical", "marketing",
     "sales", "research", "product",

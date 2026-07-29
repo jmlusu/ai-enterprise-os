@@ -1,7 +1,7 @@
 import shutil
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
 
 import pytest
 import yaml
@@ -13,18 +13,16 @@ def temp_dir() -> Iterator[Path]:
     yield d
     shutil.rmtree(d, ignore_errors=True)
 
+from pydantic import ValidationError
+
 from ai_company.models.company import (
     BoardEntry,
     CompanyManifest,
     CompanyRegistry,
     DepartmentData,
-    ExecutiveEntry,
     ManifestDepartment,
-    PolicyEntry,
     Role,
-    SpecialistEntry,
     VisionData,
-    WorkflowEntry,
 )
 from ai_company.registry.loader import load_registry_files, load_yaml
 from ai_company.registry.parser import parse_registry
@@ -86,12 +84,12 @@ class TestCompanyRegistry:
 
     def test_prevents_attribute_reassignment(self) -> None:
         reg = CompanyRegistry(vision=VisionData(name="V"))
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             reg.vision = VisionData(name="X")
 
     def test_prevents_dict_field_reassignment(self) -> None:
         reg = CompanyRegistry(vision=VisionData(name="V"))
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             reg.departments = {}
 
 
@@ -352,7 +350,7 @@ class TestRegistryEngine:
     def test_immutable_registry(self) -> None:
         result = registry_engine.load(Path("company"))
         assert result.registry is not None
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             result.registry.vision = VisionData(name="X")
 
     def test_load_from_missing_dir(self, temp_dir: Path) -> None:
@@ -582,11 +580,11 @@ class TestFrozenImmutability:
     def test_cannot_reassign_root_attr(self) -> None:
         result = registry_engine.load(Path("company"))
         assert result.registry is not None
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             result.registry.departments = {}
 
     def test_cannot_reassign_nested_attr(self) -> None:
         result = registry_engine.load(Path("company"))
         assert result.registry is not None
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             result.registry.vision = VisionData(name="X")

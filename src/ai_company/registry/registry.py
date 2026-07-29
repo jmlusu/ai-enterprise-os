@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Optional
+from typing import Self, cast
 
 from pydantic import ValidationError
 
@@ -10,7 +12,6 @@ from ai_company.models.company import (
     DepartmentData,
     ExecutiveEntry,
     PolicyEntry,
-    Role,
     SpecialistEntry,
     VisionData,
     WorkflowEntry,
@@ -24,10 +25,10 @@ from ai_company.registry.validator import validate_parsed_data
 class RegistryLoadResult:
     def __init__(
         self,
-        registry: Optional[CompanyRegistry],
+        registry: CompanyRegistry | None,
         errors: list[str],
         warnings: list[str],
-        manifest: Optional[CompanyManifest] = None,
+        manifest: CompanyManifest | None = None,
     ) -> None:
         self.registry = registry
         self.errors = errors
@@ -40,19 +41,19 @@ class RegistryLoadResult:
 
 
 class RegistryEngine:
-    _instance: Optional["RegistryEngine"] = None
-    _registry: Optional[CompanyRegistry] = None
-    _last_result: Optional[RegistryLoadResult] = None
+    _instance: RegistryEngine | None = None
+    _registry: CompanyRegistry | None = None
+    _last_result: RegistryLoadResult | None = None
 
-    def __new__(cls) -> "RegistryEngine":
+    def __new__(cls) -> Self:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-        return cls._instance
+        return cast(Self, cls._instance)
 
     def load(
         self,
-        company_dir: Optional[Path] = None,
-        manifest: Optional[CompanyManifest] = None,
+        company_dir: Path | None = None,
+        manifest: CompanyManifest | None = None,
     ) -> RegistryLoadResult:
         if company_dir is None:
             company_dir = Path("company")
@@ -131,7 +132,7 @@ class RegistryEngine:
         return self._registry
 
     @property
-    def last_result(self) -> Optional[RegistryLoadResult]:
+    def last_result(self) -> RegistryLoadResult | None:
         return self._last_result
 
 

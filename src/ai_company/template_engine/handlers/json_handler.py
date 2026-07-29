@@ -1,7 +1,7 @@
 import json
 
-from ai_company.template_engine.handlers.base import BaseHandler
 from ai_company.template_engine.handlers._substitution import walk_and_substitute
+from ai_company.template_engine.handlers.base import BaseHandler
 
 
 class JsonHandler(BaseHandler):

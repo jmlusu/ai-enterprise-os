@@ -47,7 +47,7 @@ def validate_jinja_template(filepath: Path) -> ValidationReport:
         return report
 
     if report.passed:
-        report.add_info(f"Template parses successfully", path=str(filepath))
+        report.add_info("Template parses successfully", path=str(filepath))
 
     return report
 

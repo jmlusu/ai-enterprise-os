@@ -1,19 +1,18 @@
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
 import yaml
 
-from ai_company.template_engine import TemplateLoader, TemplateContext, Renderer, Writer
+from ai_company.template_engine import Renderer, TemplateContext, TemplateLoader, Writer
 from ai_company.template_engine.handlers import (
+    DEFAULT_HANDLERS,
     BaseHandler,
     JinjaHandler,
-    PythonHandler,
-    MarkdownHandler,
     JsonHandler,
+    MarkdownHandler,
+    PythonHandler,
     YamlHandler,
-    DEFAULT_HANDLERS,
 )
 
 

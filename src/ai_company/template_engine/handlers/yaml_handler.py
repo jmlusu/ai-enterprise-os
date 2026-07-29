@@ -1,10 +1,10 @@
 import yaml
 
-from ai_company.template_engine.handlers.base import BaseHandler
 from ai_company.template_engine.handlers._substitution import (
     protect_yaml_vars,
     resolve_yaml_placeholders,
 )
+from ai_company.template_engine.handlers.base import BaseHandler
 
 
 class YamlHandler(BaseHandler):

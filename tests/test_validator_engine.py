@@ -1,10 +1,9 @@
 import shutil
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 import pytest
-import yaml
 
 from ai_company.validator.engine import ValidatorEngine
 from ai_company.validator.manifest_validator import validate_manifest_file
@@ -13,13 +12,19 @@ from ai_company.validator.output_validator import (
     validate_generated_file,
 )
 from ai_company.validator.registry_validator import validate_registry_integrity
-from ai_company.validator.reports import ValidationIssue, ValidationReport, ValidatorResult
+from ai_company.validator.reports import (
+    ValidationIssue,
+    ValidationReport,
+    ValidatorResult,
+)
 from ai_company.validator.template_validator import (
     validate_jinja_template,
     validate_templates_directory,
 )
-from ai_company.validator.yaml_validator import validate_yaml_directory, validate_yaml_file
-
+from ai_company.validator.yaml_validator import (
+    validate_yaml_directory,
+    validate_yaml_file,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -8,7 +8,7 @@ class ValidationIssue(BaseModel):
     message: str
     severity: Literal["error", "warning", "info"] = "error"
     field: str = ""
-    path: Optional[str] = None
+    path: str | None = None
 
 
 class ValidationReport(BaseModel):
@@ -19,16 +19,16 @@ class ValidationReport(BaseModel):
     warnings: list[ValidationIssue] = Field(default_factory=list)
     infos: list[ValidationIssue] = Field(default_factory=list)
 
-    def add_error(self, message: str, field: str = "", path: Optional[str] = None) -> None:
+    def add_error(self, message: str, field: str = "", path: str | None = None) -> None:
         self.errors.append(ValidationIssue(message=message, severity="error", field=field, path=path))
         self.passed = False
         self.total_checks += 1
 
-    def add_warning(self, message: str, field: str = "", path: Optional[str] = None) -> None:
+    def add_warning(self, message: str, field: str = "", path: str | None = None) -> None:
         self.warnings.append(ValidationIssue(message=message, severity="warning", field=field, path=path))
         self.total_checks += 1
 
-    def add_info(self, message: str, field: str = "", path: Optional[str] = None) -> None:
+    def add_info(self, message: str, field: str = "", path: str | None = None) -> None:
         self.infos.append(ValidationIssue(message=message, severity="info", field=field, path=path))
         self.total_checks += 1
 
