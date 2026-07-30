@@ -369,13 +369,19 @@ def docs_generate() -> None:
     gen = CompanyGenerator()
     result = gen.generate_docs()
 
-    console_print(f"  [green]✓[/green] Docs: {result['docs']}")
-    for w in result.get("warnings", []):
+    summary = result.summary()
+    console_print(f"  [green]✓[/green] Docs: {summary['pages']}")
+    for w in result.warnings:
         console_print(f"  [yellow]![/yellow] {w}")
+
+    output_dir = Path("generated")
+    console_print(f"\n[cyan]Doc pages:[/cyan] {output_dir.resolve() / 'docs'}")
+    for p in sorted(output_dir.glob("docs/*.md")):
+        console_print(f"  [green]✓[/green] {p.relative_to(output_dir)}")
 
 
 @app.command()
-def docs_validate() -> None:
+def doc_validate() -> None:
     """Validate documentation data."""
     console_print("[cyan]Validating documentation data...[/cyan]")
     gen = CompanyGenerator()

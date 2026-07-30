@@ -12,6 +12,7 @@ from ai_company.company.executive_generator import ExecutiveGenerator
 from ai_company.company.specialist_generator import SpecialistGenerator
 from ai_company.company.workflow_generator import WorkflowGenerator
 from ai_company.company.prompt_generator import PromptLibraryGenerator
+from ai_company.company.doc_generator import DocGenerator
 from ai_company.company.generator import CompanyGenerator
 from ai_company.company.hierarchy import HierarchyBuilder, HierarchyError
 from ai_company.company.models import OrgEdge, OrgGraph, OrgMetadata, OrgNode
@@ -42,4 +43,5 @@ __all__ = [
     "SpecialistGenerator",
     "WorkflowGenerator",
     "PromptLibraryGenerator",
+    "DocGenerator",
 ]

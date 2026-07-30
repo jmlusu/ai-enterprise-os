@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -20,6 +19,7 @@ from ai_company.company.executive_generator import ExecutiveGenerator
 from ai_company.company.specialist_generator import SpecialistGenerator
 from ai_company.company.workflow_generator import WorkflowGenerator
 from ai_company.company.prompt_generator import PromptLibraryGenerator
+from ai_company.company.doc_generator import DocGenerator
 from ai_company.company.organization import OrganizationGenerator, OrganizationResult
 from ai_company.models.company import CompanyManifest, CompanyRegistry
 from ai_company.registry.registry import RegistryEngine
@@ -344,14 +344,23 @@ class CompanyGenerator:
     # Documentation generation (stub for Phase 8)
     # ------------------------------------------------------------------
 
-    def generate_docs(self) -> dict[str, Any]:
-        """Generate documentation artifacts. (Not yet implemented)"""
-        self._warn_not_implemented("generate_docs")
-        return {"docs": 0, "warnings": list(self._warnings)}
+    def generate_docs(self) -> DocGenerator.Result:
+        """Generate documentation artifacts from the registry."""
+        registry = self._load_registry()
+        manifest = self._load_manifest()
+        doc_gen = DocGenerator(registry, manifest)
+        result = doc_gen.generate()
+        doc_gen.write_artifacts(result, self._output_dir)
+        return result
 
     def validate_docs(self) -> list[str]:
-        """Validate documentation data. (Not yet implemented)"""
-        return []
+        """Validate that there are entities to generate docs for."""
+        try:
+            registry = self._load_registry()
+        except RuntimeError as e:
+            return [str(e)]
+        doc_gen = DocGenerator(registry)
+        return doc_gen.validate()
 
     def _warn_not_implemented(self, method: str) -> None:
         self._warnings.append(
