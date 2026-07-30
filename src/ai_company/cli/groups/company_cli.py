@@ -337,9 +337,15 @@ def prompt_generate() -> None:
     gen = CompanyGenerator()
     result = gen.generate_prompts()
 
-    console_print(f"  [green]✓[/green] Prompts: {result['prompts']}")
-    for w in result.get("warnings", []):
+    summary = result.summary()
+    console_print(f"  [green]✓[/green] Prompts: {summary['prompts']}")
+    for w in result.warnings:
         console_print(f"  [yellow]![/yellow] {w}")
+
+    output_dir = Path("generated")
+    console_print(f"\n[cyan]Prompt library:[/cyan] {output_dir.resolve() / 'prompts'}")
+    for p in sorted(output_dir.glob("prompts/*.md")):
+        console_print(f"  [green]✓[/green] {p.relative_to(output_dir)}")
 
 
 @app.command()

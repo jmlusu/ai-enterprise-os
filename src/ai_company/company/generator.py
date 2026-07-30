@@ -19,6 +19,7 @@ from ai_company.company.department_generator import DepartmentGenerator
 from ai_company.company.executive_generator import ExecutiveGenerator
 from ai_company.company.specialist_generator import SpecialistGenerator
 from ai_company.company.workflow_generator import WorkflowGenerator
+from ai_company.company.prompt_generator import PromptLibraryGenerator
 from ai_company.company.organization import OrganizationGenerator, OrganizationResult
 from ai_company.models.company import CompanyManifest, CompanyRegistry
 from ai_company.registry.registry import RegistryEngine
@@ -321,14 +322,23 @@ class CompanyGenerator:
     # Prompt generation (stub for Phase 7)
     # ------------------------------------------------------------------
 
-    def generate_prompts(self) -> dict[str, Any]:
-        """Generate prompt library artifacts. (Not yet implemented)"""
-        self._warn_not_implemented("generate_prompts")
-        return {"prompts": 0, "warnings": list(self._warnings)}
+    def generate_prompts(self) -> PromptLibraryGenerator.Result:
+        """Generate prompt library artifacts from the registry."""
+        registry = self._load_registry()
+        manifest = self._load_manifest()
+        prompt_gen = PromptLibraryGenerator(registry, manifest)
+        result = prompt_gen.generate()
+        prompt_gen.write_artifacts(result, self._output_dir)
+        return result
 
     def validate_prompts(self) -> list[str]:
-        """Validate prompt data. (Not yet implemented)"""
-        return []
+        """Validate that there are entities to generate prompts for."""
+        try:
+            registry = self._load_registry()
+        except RuntimeError as e:
+            return [str(e)]
+        prompt_gen = PromptLibraryGenerator(registry)
+        return prompt_gen.validate()
 
     # ------------------------------------------------------------------
     # Documentation generation (stub for Phase 8)
