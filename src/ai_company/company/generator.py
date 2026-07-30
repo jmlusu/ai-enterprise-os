@@ -17,6 +17,7 @@ import yaml
 from ai_company.company.board_generator import BoardGenerator, BoardResult
 from ai_company.company.department_generator import DepartmentGenerator
 from ai_company.company.executive_generator import ExecutiveGenerator
+from ai_company.company.specialist_generator import SpecialistGenerator
 from ai_company.company.organization import OrganizationGenerator, OrganizationResult
 from ai_company.models.company import CompanyManifest, CompanyRegistry
 from ai_company.registry.registry import RegistryEngine
@@ -276,14 +277,23 @@ class CompanyGenerator:
     # Specialist generation (stub for Phase 5)
     # ------------------------------------------------------------------
 
-    def generate_specialists(self) -> dict[str, Any]:
-        """Generate specialist agent artifacts. (Not yet implemented)"""
-        self._warn_not_implemented("generate_specialists")
-        return {"specialists": 0, "warnings": list(self._warnings)}
+    def generate_specialists(self) -> SpecialistGenerator.Result:
+        """Generate specialist agent artifacts from the registry."""
+        registry = self._load_registry()
+        manifest = self._load_manifest()
+        spec_gen = SpecialistGenerator(registry, manifest)
+        result = spec_gen.generate()
+        spec_gen.write_artifacts(result, self._output_dir)
+        return result
 
     def validate_specialists(self) -> list[str]:
-        """Validate specialist data. (Not yet implemented)"""
-        return []
+        """Validate that the registry has specialists defined."""
+        try:
+            registry = self._load_registry()
+        except RuntimeError as e:
+            return [str(e)]
+        spec_gen = SpecialistGenerator(registry)
+        return spec_gen.validate()
 
     # ------------------------------------------------------------------
     # Workflow generation (stub for Phase 6)

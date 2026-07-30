@@ -1,0 +1,30 @@
+profile_template: |
+  # {name}
+
+  **Expertise:** {expertise}
+
+  ## Bio
+
+  {bio}
+
+  ## Prompt
+
+  {prompt_text}
+
+  ## Quick Links
+
+  - [Configuration](specialist.yaml)
+  - [Prompt](prompt.md)
+
+memory_template: |
+  # Memory Structure: {name}
+
+  ## Role
+
+  {expertise} specialist.
+
+  ## Current Context
+
+  - **Name:** {name}
+  - **Expertise:** {expertise}
+  - **Company:** {company}
