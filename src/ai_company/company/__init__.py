@@ -7,6 +7,7 @@ prompt, documentation, and graph generators.
 """
 
 from ai_company.company.board_generator import BoardGenerator, BoardResult
+from ai_company.company.department_generator import DepartmentGenerator
 from ai_company.company.executive_generator import ExecutiveGenerator
 from ai_company.company.generator import CompanyGenerator
 from ai_company.company.hierarchy import HierarchyBuilder, HierarchyError
@@ -34,4 +35,5 @@ __all__ = [
     "BoardGenerator",
     "BoardResult",
     "ExecutiveGenerator",
+    "DepartmentGenerator",
 ]

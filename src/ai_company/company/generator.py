@@ -15,6 +15,7 @@ from typing import Any
 import yaml
 
 from ai_company.company.board_generator import BoardGenerator, BoardResult
+from ai_company.company.department_generator import DepartmentGenerator
 from ai_company.company.executive_generator import ExecutiveGenerator
 from ai_company.company.organization import OrganizationGenerator, OrganizationResult
 from ai_company.models.company import CompanyManifest, CompanyRegistry
@@ -252,14 +253,24 @@ class CompanyGenerator:
     # Department generation (stub for Phase 4)
     # ------------------------------------------------------------------
 
-    def generate_departments(self) -> dict[str, Any]:
-        """Generate department artifacts. (Not yet implemented)"""
-        self._warn_not_implemented("generate_departments")
-        return {"departments": 0, "warnings": list(self._warnings)}
+    def generate_departments(self) -> DepartmentGenerator.Result:
+        """Generate department artifacts from the manifest and registry."""
+        registry = self._load_registry()
+        manifest = self._load_manifest()
+        dept_gen = DepartmentGenerator(registry, manifest)
+        result = dept_gen.generate()
+        dept_gen.write_artifacts(result, self._output_dir)
+        return result
 
     def validate_departments(self) -> list[str]:
-        """Validate department data. (Not yet implemented)"""
-        return []
+        """Validate that the manifest has departments defined."""
+        try:
+            registry = self._load_registry()
+        except RuntimeError as e:
+            return [str(e)]
+        manifest = self._load_manifest()
+        dept_gen = DepartmentGenerator(registry, manifest)
+        return dept_gen.validate()
 
     # ------------------------------------------------------------------
     # Specialist generation (stub for Phase 5)

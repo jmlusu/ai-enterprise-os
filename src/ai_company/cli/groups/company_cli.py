@@ -241,9 +241,15 @@ def dept_generate() -> None:
     gen = CompanyGenerator()
     result = gen.generate_departments()
 
-    console_print(f"  [green]✓[/green] Departments: {result['departments']}")
-    for w in result.get("warnings", []):
+    summary = result.summary()
+    console_print(f"  [green]✓[/green] Departments: {summary['departments']}")
+    for w in result.warnings:
         console_print(f"  [yellow]![/yellow] {w}")
+
+    output_dir = Path("generated")
+    console_print(f"\n[cyan]Artifacts written to:[/cyan] {output_dir.resolve()}")
+    for p in sorted(output_dir.glob("departments/*/README.md")):
+        console_print(f"  [green]✓[/green] {p.relative_to(output_dir)}")
 
 
 @app.command()

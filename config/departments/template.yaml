@@ -1,0 +1,41 @@
+readme_template: |
+  # {display_name}
+
+  {description}
+
+  ## Roles
+
+  {roles_md}
+
+  ## Quick Links
+
+  - [Department Configuration](department.yaml)
+  - [Agent Prompt](prompt.md)
+
+prompt_template: |
+  # Department Prompt: {display_name}
+
+  You are the {display_name} department agent for {company_name}.
+
+  ## Department Context
+
+  {description}
+
+  ## Roles
+
+  {roles_md}
+
+  ## Responsibilities
+
+  {responsibilities_md}
+
+  ## Cross-Functional Dependencies
+
+  {dependencies_md}
+
+agents_template: |
+  # Agents: {display_name}
+
+  The following agents are defined for the {display_name} department:
+
+  {agents_md}
