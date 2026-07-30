@@ -95,8 +95,9 @@ class JsonlAuditStore:
             archive = Path(archive_path)
             archive.parent.mkdir(parents=True, exist_ok=True)
             with open(archive, "w", encoding="utf-8") as f:
-                for event in self._events:
-                    f.write(json.dumps(event.to_dict()) + "\n")
+                f.writelines(
+                    json.dumps(event.to_dict()) + "\n" for event in self._events
+                )
             self._events.clear()
             if self._log_path:
                 self._log_path.unlink(missing_ok=True)

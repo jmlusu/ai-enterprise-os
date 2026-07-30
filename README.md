@@ -60,7 +60,7 @@ Multi-format template rendering system with format-specific handlers.
 from ai_company.template_engine import TemplateLoader, TemplateContext, Renderer
 
 loader = TemplateLoader()
-content, fmt = loader.load("template.j2")        # fmt = "jinja"
+content, fmt = loader.load("template.j2")  # fmt = "jinja"
 ctx = TemplateContext.from_dict({"name": "World"})
 output = Renderer().render(content, ctx.to_dict(), fmt=fmt)
 ```
@@ -81,9 +81,11 @@ The Pydantic-based Validator Engine validates 5 targets across the pipeline:
 from ai_company.validator import ValidatorEngine
 
 result = ValidatorEngine().validate_all()
-print(result.summary())   # e.g. "Validator Engine [PASSED]  42 checks, 0 errors, 2 warnings across 5 target(s)"
-result.passed             # True if all reports passed
-result.total_errors       # total error count
+print(
+    result.summary()
+)  # e.g. "Validator Engine [PASSED]  42 checks, 0 errors, 2 warnings across 5 target(s)"
+result.passed  # True if all reports passed
+result.total_errors  # total error count
 ```
 
 ## Project structure

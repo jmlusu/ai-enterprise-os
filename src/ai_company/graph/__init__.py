@@ -13,8 +13,8 @@ from .workflow import WorkflowGraphEngine
 
 __all__ = [
     "DependencyGraphEngine",
+    "GraphVisualizer",
     "OrganizationGraphEngine",
     "ProjectGraphEngine",
-    "GraphVisualizer",
     "WorkflowGraphEngine",
 ]

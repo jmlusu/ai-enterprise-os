@@ -45,8 +45,8 @@ repos:
     hooks:
       - id: mypy
         name: mypy type-check
-        args: [--strict, src/]
         language: system
         types: [python]
         pass_filenames: false
         require_serial: true
+        entry: uv run --group dev mypy --strict src/

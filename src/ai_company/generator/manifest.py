@@ -12,12 +12,9 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import yaml
-
-if TYPE_CHECKING:
-    pass
 
 logger = logging.getLogger(__name__)
 

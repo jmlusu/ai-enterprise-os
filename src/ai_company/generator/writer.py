@@ -185,7 +185,7 @@ class FileWriter:
             return absolute_destination
 
         except Exception as e:
-            error_message = f"Failed to write file {absolute_destination}: {str(e)}"
+            error_message = f"Failed to write file {absolute_destination}: {e!s}"
             self.logger.error(error_message)
             raise FileWriteError(
                 error_message, str(absolute_destination), "write_failed"
@@ -275,7 +275,7 @@ class FileWriter:
                 test_file.write_text("test", encoding="utf-8")
                 test_file.unlink()
             except Exception as e:
-                issues.append(f"File is not writable: {str(e)}")
+                issues.append(f"File is not writable: {e!s}")
 
         # Validate content if provided
         if content and self.validation_enabled:
@@ -283,7 +283,7 @@ class FileWriter:
                 if not isinstance(content, str):
                     issues.append(f"Content is not a string: {type(content)}")
             except Exception as e:
-                issues.append(f"Content validation failed: {str(e)}")
+                issues.append(f"Content validation failed: {e!s}")
 
         return len(issues) == 0, issues
 
@@ -322,7 +322,7 @@ class FileWriter:
             return True
 
         except Exception as e:
-            self.logger.error(f"Failed to rollback file {file_path}: {str(e)}")
+            self.logger.error(f"Failed to rollback file {file_path}: {e!s}")
             return False
 
     def rollback_all(self) -> list[str]:

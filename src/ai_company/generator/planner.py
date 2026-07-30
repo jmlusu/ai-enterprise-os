@@ -9,10 +9,8 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
-if TYPE_CHECKING:
-    pass
 from ai_company.generator.context import GeneratorContext
 from ai_company.template_engine.renderer import Renderer
 
@@ -307,11 +305,11 @@ class GenerationPlanner:
 
         # Executive tasks may depend on company-level data
         for task_id, task in plan.tasks.items():
-            if task.task_type == "executive":
-                dependencies[task_id].append("company_data")
-            elif task.task_type == "specialist":
-                dependencies[task_id].append("company_data")
-            elif task.task_type == "department":
+            if (
+                task.task_type == "executive"
+                or task.task_type == "specialist"
+                or task.task_type == "department"
+            ):
                 dependencies[task_id].append("company_data")
 
         return dict(dependencies)

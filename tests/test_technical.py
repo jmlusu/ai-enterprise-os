@@ -3,6 +3,7 @@
 from pydantic import ValidationError
 
 from ai_company.models.company import (
+    KPI,
     Agent,
     BoardMember,
     Budget,
@@ -11,7 +12,6 @@ from ai_company.models.company import (
     Decision,
     Governance,
     Integration,
-    KPI,
     Meeting,
     Permission,
     Policy,

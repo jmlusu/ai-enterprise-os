@@ -13,14 +13,11 @@ import logging
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from ai_company.generator.context import GeneratorContext
 from ai_company.generator.dependency import DependencyResolver
 from ai_company.generator.planner import GenerationPlan, GenerationPlanner
-
-if TYPE_CHECKING:
-    pass
 
 logger = logging.getLogger(__name__)
 
@@ -233,7 +230,7 @@ class GeneratorEngine:
             return result
 
         except Exception as e:
-            self.logger.error(f"Generation failed: {str(e)}")
+            self.logger.error(f"Generation failed: {e!s}")
 
             # Perform rollback if enabled
             if self.config.rollback_enabled and self.status:

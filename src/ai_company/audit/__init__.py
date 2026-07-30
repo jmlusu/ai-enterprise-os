@@ -14,9 +14,9 @@ from .session import SessionTracker
 __all__ = [
     "AuditEngine",
     "AuditEvent",
+    "AuditLogger",
     "EventBuilder",
     "JsonlAuditStore",
-    "AuditLogger",
     "MetricsCollector",
     "SessionTracker",
 ]

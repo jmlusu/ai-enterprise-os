@@ -79,8 +79,9 @@ class MemoryStore:
 
     @staticmethod
     def _dict_to_entry(data: dict[str, Any]) -> MemoryEntry:
-        from ai_company.memory.engine import MemoryType
         from datetime import datetime
+
+        from ai_company.memory.engine import MemoryType
 
         return MemoryEntry(
             id=data["id"],

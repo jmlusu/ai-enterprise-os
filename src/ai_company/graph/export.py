@@ -11,7 +11,6 @@ from typing import Any, cast
 import networkx as nx
 import yaml
 
-
 # Professionally curated color palette for node types
 COLOR_PALETTE: dict[str, str] = {
     # Organization roles
@@ -262,8 +261,8 @@ class GraphExporter:
 
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
-            from matplotlib.patches import Patch
             import numpy as np
+            from matplotlib.patches import Patch
         except ImportError:
             self.logger.warning("matplotlib not available, cannot render PNG/SVG/PDF")
             return ""
@@ -461,7 +460,7 @@ class GraphExporter:
             self.logger.exception("Unexpected error during graph rendering")
             return ""
         finally:
-            plt.rcParams.update(_rc)
+            plt.rcParams.update(_rc)  # type: ignore[arg-type]
 
     def save(self, graph: nx.Graph, output_path: str, format: str = "json") -> str:
         """Save graph to file in specified format."""

@@ -18,13 +18,10 @@ import logging
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from ai_company.template_engine.loader import TemplateLoader
 from ai_company.template_engine.renderer import Renderer
-
-if TYPE_CHECKING:
-    pass
 
 logger = logging.getLogger(__name__)
 
@@ -234,9 +231,9 @@ class TemplateRenderer:
                     template_id, context, self.fallback_engine, cache, validate, False
                 )
             else:
-                self.logger.error(f"Failed to render template {template_id}: {str(e)}")
+                self.logger.error(f"Failed to render template {template_id}: {e!s}")
                 raise TemplateRenderError(
-                    f"Failed to render template {template_id}: {str(e)}",
+                    f"Failed to render template {template_id}: {e!s}",
                     template_id=template_id,
                     template_path=getattr(template, "path", None),
                     error_code=error_code,

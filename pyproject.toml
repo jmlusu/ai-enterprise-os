@@ -30,6 +30,24 @@ dev = [
 target-version = "py312"
 exclude = [".venv", ".opencode", "generated", "test_output"]
 
+[tool.ruff.lint]
+ignore = [
+    "BLE001",   # blind except Exception — acceptable for graceful error handling
+    "C401",     # unnecessary generator — set comprehensions don't always improve clarity
+    "C408",     # unnecessary dict() call — dict() is sometimes clearer
+    "DTZ005",   # datetime.now() without tz — naive datetimes are acceptable here
+    "DTZ006",   # datetime.fromtimestamp() without tz
+    "RUF012",   # mutable class vars — intentional for PROVIDERS lookup table
+    "RUF015",   # prefer next(iter(...)) — list indexing is more readable
+    "RUF022",   # __all__ not sorted — not actionable for this project
+    "RUF059",   # unused unpacked var — sometimes needed for API compatibility
+    "S110",     # try-except-pass — intentionally used for warm-up renders
+    "SIM102",   # nested if statements — nested ifs are more readable sometimes
+    "SIM103",   # return condition directly — explicit returns are clearer
+    "SIM114",   # combine if branches — separate branches are more maintainable
+    "TC005",    # empty type-checking block — placeholder for future types
+]
+
 [tool.mypy]
 python_version = "3.12"
 strict = true

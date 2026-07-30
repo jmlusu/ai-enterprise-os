@@ -2,17 +2,16 @@
 
 from pathlib import Path
 
-
 from ai_company.generator.context import GeneratorContext
 from ai_company.generator.prompt_generator import PromptGenerator
 from ai_company.models.company import (
+    KPI,
     Agent,
+    Budget,
     CompanyManifest,
     CompanyRegistry,
     ExecutiveAgentConfig,
     ExecutiveEntry,
-    KPI,
-    Budget,
     VisionData,
 )
 from ai_company.registry.registry import RegistryEngine

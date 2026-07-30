@@ -67,43 +67,43 @@ episodic patterns.
 @dataclass
 class MemoryEntry:
     # Identity
-    id: str                                   # "mem_20260730_143022_123456789"
-    memory_type: MemoryType                   # episodic | semantic | procedural | relational | temporal | aggregate
+    id: str  # "mem_20260730_143022_123456789"
+    memory_type: MemoryType  # episodic | semantic | procedural | relational | temporal | aggregate
 
     # Content
-    content: dict[str, Any]                   # type-specific payload
-    summary: str                              # auto-generated one-liner
-    tags: list[str]                           # automated + manual tags
-    source: str                               # writer identifier (agent_id or service)
+    content: dict[str, Any]  # type-specific payload
+    summary: str  # auto-generated one-liner
+    tags: list[str]  # automated + manual tags
+    source: str  # writer identifier (agent_id or service)
 
     # Salience
-    importance: float                         # 0.0–1.0, decays over time
-    base_importance: float                    # initial importance (before decay)
-    recall_count: int                         # incremented on every retrieve()
+    importance: float  # 0.0–1.0, decays over time
+    base_importance: float  # initial importance (before decay)
+    recall_count: int  # incremented on every retrieve()
 
     # Topology
-    parent_id: str | None                     # causal/relational parent
-    agent_id: str | None                      # originating agent
-    session_id: str | None                    # originating session
+    parent_id: str | None  # causal/relational parent
+    agent_id: str | None  # originating agent
+    session_id: str | None  # originating session
 
     # Lifecycle
-    version: int                              # incremented on update
-    tier: str                                 # working | short_term | long_term | archived
-    encrypted: bool                           # true if payload is AES-256-GCM encrypted
-    archived: bool                            # soft-delete flag
-    consolidated: bool                        # true if merged into an aggregate
+    version: int  # incremented on update
+    tier: str  # working | short_term | long_term | archived
+    encrypted: bool  # true if payload is AES-256-GCM encrypted
+    archived: bool  # soft-delete flag
+    consolidated: bool  # true if merged into an aggregate
 
     # Temporal
     created_at: datetime
     updated_at: datetime | None
     accessed_at: datetime | None
-    expires_at: datetime | None               # auto-archival deadline
+    expires_at: datetime | None  # auto-archival deadline
 
     # Embedding (semantic search)
-    embedding: list[float] | None             # 384-dim from all-MiniLM-L6-v2
+    embedding: list[float] | None  # 384-dim from all-MiniLM-L6-v2
 
     # Extensibility
-    metadata: dict[str, Any]                  # arbitrary key-value extensions
+    metadata: dict[str, Any]  # arbitrary key-value extensions
 ```
 
 ### 2.2 MemoryType Enum
@@ -146,18 +146,22 @@ class FileLock:
         self.lock_fd = open(self.lock_path, "w")
         if sys.platform == "win32":
             import msvcrt
+
             msvcrt.locking(self.lock_fd.fileno(), msvcrt.LK_NBLCK, 1)
         else:
             import fcntl
+
             fcntl.flock(self.lock_fd, fcntl.LOCK_EX)
         return self
 
     def __exit__(self, *args):
         if sys.platform == "win32":
             import msvcrt
+
             msvcrt.locking(self.lock_fd.fileno(), msvcrt.LK_UNLCK, 1)
         else:
             import fcntl
+
             fcntl.flock(self.lock_fd, fcntl.LOCK_UN)
         self.lock_fd.close()
 ```
@@ -229,7 +233,8 @@ def vector_search(query: str, k: int = 10, min_score: float = 0.3) -> list[Score
     top_k = np.argsort(scores)[-k:][::-1]
     return [
         ScoredEntry(entry=entries[i], score=float(scores[i]))
-        for i in top_k if scores[i] >= min_score
+        for i in top_k
+        if scores[i] >= min_score
     ]
 ```
 
@@ -358,7 +363,8 @@ def vector_search(query: str, k: int = 10, min_score: float = 0.3) -> list[Score
     top_k = np.argsort(scores)[-k:][::-1]
     return [
         ScoredEntry(entry=entries[i], score=float(scores[i]))
-        for i in top_k if scores[i] >= min_score
+        for i in top_k
+        if scores[i] >= min_score
     ]
 ```
 
@@ -388,7 +394,7 @@ All cognitive assets encrypted at rest without introducing excessive recall late
 
 ```python
 class EncryptionKeyManager:
-    current_key: bytes       # 256-bit active key
+    current_key: bytes  # 256-bit active key
     previous_key: bytes | None  # supports 2-key rotation window
 
     def encrypt(self, plaintext: str) -> str:
