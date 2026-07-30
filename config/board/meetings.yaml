@@ -1,0 +1,77 @@
+# Board Meeting Schedule Template
+# Defines the annual meeting calendar for the board and its committees.
+# The BoardGenerator produces specific meeting dates for the current year.
+
+annual_schedule:
+  board_meetings:
+    frequency: "quarterly"
+    default_count: 4
+    months: ["March", "June", "September", "December"]
+    duration_hours: 4
+    default_time: "09:00"
+    default_timezone: "UTC"
+    format: "hybrid"  # in_person | virtual | hybrid
+    locations:
+      - "Company Headquarters"
+      - "Virtual (Zoom)"
+    agenda_structure:
+      - title: "Call to Order & Governance"
+        duration_minutes: 15
+      - title: "CEO Report & Strategic Review"
+        duration_minutes: 45
+      - title: "Financial Review"
+        duration_minutes: 30
+      - title: "Committee Reports"
+        duration_minutes: 30
+      - title: "Executive Session"
+        duration_minutes: 30
+      - title: "Old Business & Action Items"
+        duration_minutes: 15
+      - title: "New Business"
+        duration_minutes: 15
+      - title: "Adjournment"
+        duration_minutes: 0
+
+  special_meetings:
+    procedure: >
+      Special meetings may be called by the Chairperson, the CEO,
+      or any two Board members with at least 48 hours written notice.
+    purpose_examples:
+      - "Emergency cybersecurity incident response"
+      - "Merger or acquisition approval"
+      - "CEO succession decision"
+      - "Capital raise approval"
+
+  committee_meetings:
+    audit_committee:
+      frequency: "quarterly"
+      duration_hours: 2
+      months: ["February", "May", "August", "November"]
+    compensation_committee:
+      frequency: "quarterly"
+      duration_hours: 2
+      months: ["January", "April", "July", "October"]
+    ai_ethics_committee:
+      frequency: "monthly"
+      duration_hours: 1.5
+      months: ["January", "February", "March", "April", "May", "June",
+               "July", "August", "September", "October", "November", "December"]
+    nominating_and_governance_committee:
+      frequency: "semi-annual"
+      duration_hours: 2
+      months: ["March", "September"]
+    technology_committee:
+      frequency: "quarterly"
+      duration_hours: 2
+      months: ["February", "May", "August", "November"]
+
+  annual_events:
+    - name: "Annual General Meeting"
+      description: "Shareholder meeting for board election and major approvals"
+      typical_month: "June"
+    - name: "Board Retreat"
+      description: "Strategic planning session"
+      typical_month: "January"
+    - name: "Board Self-Assessment"
+      description: "Annual board and individual director evaluation"
+      typical_month: "December"

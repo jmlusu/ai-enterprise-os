@@ -1,0 +1,116 @@
+# Committee Charter Templates
+# Each charter provides the formal terms of reference for a board committee.
+# The BoardGenerator renders these with actual member names and dates.
+
+charters:
+  - committee: "Audit Committee"
+    preamble: >
+      This Charter governs the operations of the Audit Committee (the "Committee")
+      of the Board of Directors (the "Board") of Lightspeed Holdings Limited
+      (the "Company"). The Committee shall assist the Board in fulfilling its
+      oversight responsibilities regarding financial reporting, internal controls,
+      and the audit process.
+    authority: >
+      The Committee has the authority to engage independent auditors, legal counsel,
+      and other advisors as it deems necessary to carry out its responsibilities.
+      The Company shall provide appropriate funding for such engagements.
+    composition_rules:
+      - "All members shall be independent as defined by applicable regulations"
+      - "At least one member shall be a financial expert"
+      - "No member may serve on more than three public company audit committees"
+    meeting_rules:
+      quorum: "majority"
+      min_meetings_per_year: 4
+      executive_sessions: true
+    reporting:
+      - "Report to the full Board at each regular Board meeting"
+      - "Prepare annual committee self-assessment"
+      - "Maintain minutes of all Committee proceedings"
+
+  - committee: "Compensation Committee"
+    preamble: >
+      This Charter governs the operations of the Compensation Committee
+      (the "Committee") of the Board of Directors (the "Board") of
+      Lightspeed Holdings Limited (the "Company"). The Committee shall
+      oversee the Company's compensation philosophy, plans, and programs.
+    authority: >
+      The Committee has the authority to engage compensation consultants,
+      legal counsel, and other advisors. The Company shall provide appropriate
+      funding for such engagements.
+    composition_rules:
+      - "All members shall be independent as defined by applicable regulations"
+      - "Members shall have experience in human resources or compensation matters"
+    meeting_rules:
+      quorum: "majority"
+      min_meetings_per_year: 4
+      executive_sessions: true
+    reporting:
+      - "Report to the full Board at each regular Board meeting"
+      - "Prepare annual compensation report"
+      - "Maintain minutes of all Committee proceedings"
+
+  - committee: "AI Ethics Committee"
+    preamble: >
+      This Charter governs the operations of the AI Ethics Committee
+      (the "Committee") of the Board of Directors (the "Board") of
+      Lightspeed Holdings Limited (the "Company"). The Committee shall
+      guide the ethical development and deployment of the Company's AI systems.
+    authority: >
+      The Committee may engage external AI ethics experts, policy advisors,
+      and researchers. The Committee has the authority to recommend suspension
+      of AI system deployments pending ethical review.
+    composition_rules:
+      - "At least one member shall have AI/ML technical expertise"
+      - "At least one member shall have policy or legal expertise"
+      - "External advisors may be invited as non-voting participants"
+    meeting_rules:
+      quorum: "majority"
+      min_meetings_per_year: 12
+      executive_sessions: false
+    reporting:
+      - "Report to the full Board at each regular Board meeting"
+      - "Prepare quarterly AI ethics impact assessment"
+      - "Maintain minutes of all Committee proceedings"
+
+  - committee: "Nominating and Governance Committee"
+    preamble: >
+      This Charter governs the operations of the Nominating and Governance
+      Committee (the "Committee") of the Board of Directors (the "Board") of
+      Lightspeed Holdings Limited (the "Company"). The Committee shall oversee
+      board composition, succession planning, and corporate governance.
+    authority: >
+      The Committee has the authority to engage executive search firms,
+      governance consultants, and legal counsel. The Company shall provide
+      appropriate funding for such engagements.
+    composition_rules:
+      - "All members shall be independent"
+      - "Members shall have experience in governance or leadership development"
+    meeting_rules:
+      quorum: "majority"
+      min_meetings_per_year: 2
+      executive_sessions: true
+    reporting:
+      - "Report to the full Board at each regular Board meeting"
+      - "Prepare annual governance review"
+      - "Maintain minutes of all Committee proceedings"
+
+  - committee: "Technology Committee"
+    preamble: >
+      This Charter governs the operations of the Technology Committee
+      (the "Committee") of the Board of Directors (the "Board") of
+      Lightspeed Holdings Limited (the "Company"). The Committee shall
+      advise the Board on technology strategy and innovation.
+    authority: >
+      The Committee may engage technology consultants and industry experts.
+      The Committee shall have access to the Company's technology leadership.
+    composition_rules:
+      - "At least one member shall have technology or engineering background"
+      - "The CTO shall attend meetings as a non-voting advisor"
+    meeting_rules:
+      quorum: "majority"
+      min_meetings_per_year: 4
+      executive_sessions: false
+    reporting:
+      - "Report to the full Board at each regular Board meeting"
+      - "Prepare annual technology assessment"
+      - "Maintain minutes of all Committee proceedings"

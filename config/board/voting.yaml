@@ -1,0 +1,64 @@
+# Board Voting Rules and Procedures
+# Defines thresholds, quorum requirements, and voting mechanics.
+
+quorum:
+  board_meetings:
+    threshold: 0.5  # fraction of seated members needed
+    calculation: "vacant_seats_excluded"  # vacant_seats_excluded | total_seats
+  committee_meetings:
+    threshold: 0.5
+    calculation: "total_members"
+
+voting:
+  standard_resolution:
+    threshold: "majority"  # majority | supermajority | unanimous
+    description: "Simple majority of votes cast (excluding abstentions)"
+
+  material_transaction:
+    threshold: "supermajority"
+    supermajority_fraction: 0.667
+    description: "Two-thirds of votes cast required for mergers, acquisitions, or material asset sales"
+    examples:
+      - "Merger or acquisition > $10M"
+      - "Sale of material IP assets"
+      - "Change of control transaction"
+
+  board_member_election:
+    threshold: "majority"
+    description: "Directors elected by majority of votes cast in uncontested elections"
+
+  committee_appointment:
+    threshold: "majority"
+    description: "Committee members appointed by majority vote of the full Board"
+
+  emergency_action:
+    threshold: "unanimous"
+    description: "Unanimous consent required for actions taken outside of regular meetings"
+    procedure: "Written consent signed by all voting members"
+
+  amendment_to_charter:
+    threshold: "supermajority"
+    supermajority_fraction: 0.75
+    description: "Three-fourths of votes cast required to amend Board Charter or Committee Charters"
+
+proxy_voting:
+  allowed: true
+  restrictions:
+    - "Proxy must be in writing"
+    - "Proxy valid only for specified meeting"
+    - "No cascading proxies"
+    - "Committee members must attend in person (no proxies for committee votes)"
+  proxy_holder: "Must be another Board member"
+
+conflict_of_interest:
+  policy: >
+    Any Board member with a direct or indirect interest in a matter before the Board
+    shall disclose such interest, recuse themselves from deliberation and voting,
+    and have their abstention recorded in the minutes.
+  disclosure_threshold: 50000  # USD value above which interest must be disclosed
+
+minutes:
+  approval: "Minutes shall be approved at the next regular Board meeting"
+  retention_years: 7
+  distribution: "All Board members and Corporate Secretary"
+  confidential: true

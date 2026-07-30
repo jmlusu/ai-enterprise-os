@@ -1,0 +1,84 @@
+# Standard Board Committee Definitions
+# Each committee defines its purpose, typical size, meeting frequency,
+# required expertise, and reporting line to the full board.
+
+committees:
+  - name: "Audit Committee"
+    purpose: "Oversee financial reporting, internal controls, risk management, and the independent audit process."
+    min_size: 3
+    max_size: 5
+    meeting_frequency: "quarterly"
+    expertise_required: ["finance", "accounting", "risk_management"]
+    independence_required: true
+    chair_title: "Audit Committee Chair"
+    reporting_line: "Full Board"
+    responsibilities:
+      - "Review financial statements and disclosures"
+      - "Oversee internal audit function"
+      - "Evaluate independent auditor performance"
+      - "Monitor internal controls and risk management"
+      - "Review related-party transactions"
+
+  - name: "Compensation Committee"
+    purpose: "Establish and oversee executive compensation philosophy, plans, and programs."
+    min_size: 3
+    max_size: 5
+    meeting_frequency: "quarterly"
+    expertise_required: ["hr", "compensation", "governance"]
+    independence_required: true
+    chair_title: "Compensation Committee Chair"
+    reporting_line: "Full Board"
+    responsibilities:
+      - "Set CEO and executive compensation"
+      - "Oversee equity compensation plans"
+      - "Review compensation benchmarking"
+      - "Evaluate pay-for-performance alignment"
+      - "Approve severance and change-in-control arrangements"
+
+  - name: "AI Ethics Committee"
+    purpose: "Guide the ethical development and deployment of AI systems, ensuring alignment with human values and regulatory standards."
+    min_size: 3
+    max_size: 7
+    meeting_frequency: "monthly"
+    expertise_required: ["ai_ethics", "machine_learning", "policy", "law"]
+    independence_required: false
+    chair_title: "AI Ethics Committee Chair"
+    reporting_line: "Full Board"
+    responsibilities:
+      - "Review AI system designs for ethical implications"
+      - "Establish AI safety guidelines"
+      - "Monitor regulatory developments in AI"
+      - "Oversee bias and fairness testing"
+      - "Advise board on AI-related risks and opportunities"
+
+  - name: "Nominating and Governance Committee"
+    purpose: "Identify and recommend qualified board candidates and oversee corporate governance practices."
+    min_size: 2
+    max_size: 4
+    meeting_frequency: "semi-annual"
+    expertise_required: ["governance", "leadership", "diversity"]
+    independence_required: true
+    chair_title: "Nominating and Governance Committee Chair"
+    reporting_line: "Full Board"
+    responsibilities:
+      - "Identify and recruit board candidates"
+      - "Evaluate board composition and diversity"
+      - "Oversee board orientation and education"
+      - "Review governance policies and practices"
+      - "Lead board self-assessment process"
+
+  - name: "Technology Committee"
+    purpose: "Advise on technology strategy, architecture decisions, and innovation roadmaps."
+    min_size: 2
+    max_size: 4
+    meeting_frequency: "quarterly"
+    expertise_required: ["technology", "cybersecurity", "product_development"]
+    independence_required: false
+    chair_title: "Technology Committee Chair"
+    reporting_line: "Full Board"
+    responsibilities:
+      - "Review technology strategy and roadmap"
+      - "Assess cybersecurity posture"
+      - "Evaluate R&D investment priorities"
+      - "Monitor technology competitive landscape"
+      - "Advise on AI and emerging technology risks"

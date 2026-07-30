@@ -1,0 +1,49 @@
+# Board Governance Template
+# This file defines the governance structure, board size ranges, term policies,
+# and member expectations. The BoardGenerator reads this alongside the registry
+# board.yaml members to produce full board documentation.
+
+governance:
+  framework: "standard"  # standard | hybrid | stakeholder
+  board_size:
+    min: 3
+    max: 15
+    current: 5
+  term_years: 3
+  max_terms: 3
+  staggered: true
+  staggered_buckets: [1, 2, 2]  # number of members whose term expires each year
+
+expectations:
+  meeting_attendance: 75  # minimum % attendance required
+  committee_service: 1     # minimum number of committees per member
+  independence_ratio: 0.5  # target ratio of independent directors
+  code_of_conduct: "Board members must act in the best interest of the company, avoid conflicts of interest, and maintain confidentiality."
+
+evaluation:
+  frequency: "annual"
+  type: "self_assessment"  # self_assessment | peer_review | external
+  metrics:
+    - "Strategic contribution"
+    - "Meeting preparation and participation"
+    - "Committee effectiveness"
+    - "Fiduciary diligence"
+    - "Ethical conduct"
+
+succession:
+  policy: "The Nominating and Governance Committee oversees board succession planning, ensuring a diverse pipeline of qualified candidates."
+  criteria:
+    - "Domain expertise relevant to AI Enterprise OS"
+    - "Leadership experience in technology or AI"
+    - "Commitment to ethical AI principles"
+    - "Diversity of background and perspective"
+    - "Independence from management"
+
+compensation:
+  model: "equity_and_cash"
+  cash_retainer: 75000
+  equity_retainer: 150000
+  committee_chair_extra: 15000
+  board_chair_extra: 50000
+  meeting_fee: 2000
+  currency: "USD"

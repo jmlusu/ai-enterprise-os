@@ -7,6 +7,7 @@ import typer
 
 from ai_company.bootstrap.bootstrap import BootstrapGenerator
 from ai_company.cli.command_map import load_command_map, resolve_target
+from ai_company.cli.groups import company_cli as company_group
 from ai_company.cli.groups import executive as executive_group
 from ai_company.cli.groups import graph as graph_group
 from ai_company.cli.groups import memory as memory_group
@@ -21,6 +22,7 @@ app = typer.Typer()
 # Configure cross-platform console at startup
 configure_console()
 
+app.add_typer(company_group.app, name="company")
 app.add_typer(executive_group.app, name="exec")
 app.add_typer(registry_group.app, name="registry")
 app.add_typer(memory_group.app, name="memory")
