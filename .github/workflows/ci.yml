@@ -78,6 +78,8 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: uv sync
+      - name: Generate artifacts
+        run: uv run ai-company build
       - name: Validate registry
         run: uv run ai-company validate
 

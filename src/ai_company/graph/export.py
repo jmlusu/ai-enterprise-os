@@ -460,7 +460,7 @@ class GraphExporter:
             self.logger.exception("Unexpected error during graph rendering")
             return ""
         finally:
-            plt.rcParams.update(_rc)  # type: ignore[arg-type]
+            plt.rcParams.update(cast(Any, _rc))
 
     def save(self, graph: nx.Graph, output_path: str, format: str = "json") -> str:
         """Save graph to file in specified format."""
