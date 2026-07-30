@@ -1,4 +1,4 @@
-"""CLI-facing wrapper for the Organization Generator and Board Generator.
+"""CLI-facing wrapper for all company-level generators.
 
 The :class:`CompanyGenerator` provides high-level methods that can be
 called from CLI commands, with file output, logging, and integration
@@ -10,12 +10,14 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 from ai_company.company.board_generator import BoardGenerator, BoardResult
+from ai_company.company.executive_generator import ExecutiveGenerator
 from ai_company.company.organization import OrganizationGenerator, OrganizationResult
-from ai_company.models.company import CompanyRegistry
+from ai_company.models.company import CompanyManifest, CompanyRegistry
 from ai_company.registry.registry import RegistryEngine
 
 logger = logging.getLogger(__name__)
@@ -44,6 +46,7 @@ class CompanyGenerator:
         self._company_dir = Path(company_dir)
         self._output_dir = Path(output_dir)
         self._registry = registry
+        self._warnings: list[str] = []
 
     # ------------------------------------------------------------------
     # Generation
@@ -222,3 +225,109 @@ class CompanyGenerator:
             return [str(e)]
         board_gen = BoardGenerator(registry, config_dir=Path("config/board"))
         return board_gen.validate()
+
+    # ------------------------------------------------------------------
+    # Executive generation
+    # ------------------------------------------------------------------
+
+    def generate_executives(self) -> ExecutiveGenerator.Result:
+        """Generate executive artifact packages from the loaded registry."""
+        registry = self._load_registry()
+        manifest = self._load_manifest()
+        exec_gen = ExecutiveGenerator(registry, manifest)
+        result = exec_gen.generate()
+        exec_gen.write_artifacts(result, self._output_dir)
+        return result
+
+    def validate_executives(self) -> list[str]:
+        """Validate that the registry can produce executive artifacts."""
+        try:
+            registry = self._load_registry()
+        except RuntimeError as e:
+            return [str(e)]
+        exec_gen = ExecutiveGenerator(registry)
+        return exec_gen.validate()
+
+    # ------------------------------------------------------------------
+    # Department generation (stub for Phase 4)
+    # ------------------------------------------------------------------
+
+    def generate_departments(self) -> dict[str, Any]:
+        """Generate department artifacts. (Not yet implemented)"""
+        self._warn_not_implemented("generate_departments")
+        return {"departments": 0, "warnings": list(self._warnings)}
+
+    def validate_departments(self) -> list[str]:
+        """Validate department data. (Not yet implemented)"""
+        return []
+
+    # ------------------------------------------------------------------
+    # Specialist generation (stub for Phase 5)
+    # ------------------------------------------------------------------
+
+    def generate_specialists(self) -> dict[str, Any]:
+        """Generate specialist agent artifacts. (Not yet implemented)"""
+        self._warn_not_implemented("generate_specialists")
+        return {"specialists": 0, "warnings": list(self._warnings)}
+
+    def validate_specialists(self) -> list[str]:
+        """Validate specialist data. (Not yet implemented)"""
+        return []
+
+    # ------------------------------------------------------------------
+    # Workflow generation (stub for Phase 6)
+    # ------------------------------------------------------------------
+
+    def generate_workflows(self) -> dict[str, Any]:
+        """Generate workflow artifacts. (Not yet implemented)"""
+        self._warn_not_implemented("generate_workflows")
+        return {"workflows": 0, "warnings": list(self._warnings)}
+
+    def validate_workflows(self) -> list[str]:
+        """Validate workflow data. (Not yet implemented)"""
+        return []
+
+    # ------------------------------------------------------------------
+    # Prompt generation (stub for Phase 7)
+    # ------------------------------------------------------------------
+
+    def generate_prompts(self) -> dict[str, Any]:
+        """Generate prompt library artifacts. (Not yet implemented)"""
+        self._warn_not_implemented("generate_prompts")
+        return {"prompts": 0, "warnings": list(self._warnings)}
+
+    def validate_prompts(self) -> list[str]:
+        """Validate prompt data. (Not yet implemented)"""
+        return []
+
+    # ------------------------------------------------------------------
+    # Documentation generation (stub for Phase 8)
+    # ------------------------------------------------------------------
+
+    def generate_docs(self) -> dict[str, Any]:
+        """Generate documentation artifacts. (Not yet implemented)"""
+        self._warn_not_implemented("generate_docs")
+        return {"docs": 0, "warnings": list(self._warnings)}
+
+    def validate_docs(self) -> list[str]:
+        """Validate documentation data. (Not yet implemented)"""
+        return []
+
+    def _warn_not_implemented(self, method: str) -> None:
+        self._warnings.append(
+            f"{method} is not yet implemented — no artifacts generated"
+        )
+
+    def _load_manifest(self) -> CompanyManifest:
+        manifest_path = Path("config/company/company.yaml")
+        if manifest_path.exists():
+            try:
+                return CompanyManifest.load(manifest_path)
+            except (FileNotFoundError, ValueError):
+                pass
+        reg = self._load_registry()
+        return CompanyManifest(
+            name=reg.vision.company_name or reg.vision.name or "Company",
+            company_name=reg.vision.company_name or reg.vision.name,
+            description=reg.vision.description or "",
+        )

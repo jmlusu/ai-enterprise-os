@@ -185,3 +185,179 @@ def board_report() -> None:
         console_print(f"    - {mtg.title} ({mtg.meeting_date or 'TBD'})")
 
     console_print(f"\n  [bold]Voting Records:[/bold] {len(reg.voting_records)}")
+
+
+@app.command()
+def exec_generate() -> None:
+    """Generate executive artifact packages."""
+    console_print("[cyan]Generating executive artifacts...[/cyan]")
+
+    try:
+        gen = CompanyGenerator()
+        result = gen.generate_executives()
+    except RuntimeError as e:
+        console_print(f"[red]Executive generation failed:[/red] {e}")
+        raise typer.Exit(1) from e
+
+    summary = result.summary()
+    console_print("  [green]✓[/green] Executive artifacts generated")
+    console_print(f"      Executives: {summary['executives']}")
+
+    if result.warnings:
+        console_print(f"\n[yellow]Warnings ({len(result.warnings)}):[/yellow]")
+        for w in result.warnings:
+            console_print(f"  [yellow]![/yellow] {w}")
+
+    output_dir = Path("generated")
+    console_print(f"\n[cyan]Artifacts written to:[/cyan] {output_dir.resolve()}")
+    for p in sorted(output_dir.glob("executives/*/executive.yaml")):
+        console_print(f"  [green]✓[/green] {p.relative_to(output_dir)}")
+
+
+@app.command()
+def exec_validate() -> None:
+    """Validate that the registry can produce executive artifacts."""
+    console_print("[cyan]Validating executive data...[/cyan]")
+
+    gen = CompanyGenerator()
+    errors = gen.validate_executives()
+
+    if errors:
+        for err in errors:
+            console_print(f"  [red]✗[/red] {err}")
+        console_print(
+            f"\n[red]Executive validation failed with {len(errors)} error(s).[/red]"
+        )
+        raise typer.Exit(1)
+
+    console_print("  [green]✓[/green] Executive data is valid")
+
+
+@app.command()
+def dept_generate() -> None:
+    """Generate department artifacts."""
+    console_print("[cyan]Generating department artifacts...[/cyan]")
+
+    gen = CompanyGenerator()
+    result = gen.generate_departments()
+
+    console_print(f"  [green]✓[/green] Departments: {result['departments']}")
+    for w in result.get("warnings", []):
+        console_print(f"  [yellow]![/yellow] {w}")
+
+
+@app.command()
+def dept_validate() -> None:
+    """Validate department data."""
+    console_print("[cyan]Validating department data...[/cyan]")
+    gen = CompanyGenerator()
+    errors = gen.validate_departments()
+    if errors:
+        for err in errors:
+            console_print(f"  [red]✗[/red] {err}")
+        raise typer.Exit(1)
+    console_print("  [green]✓[/green] Department data is valid")
+
+
+@app.command()
+def specialist_generate() -> None:
+    """Generate specialist agent artifacts."""
+    console_print("[cyan]Generating specialist artifacts...[/cyan]")
+
+    gen = CompanyGenerator()
+    result = gen.generate_specialists()
+
+    console_print(f"  [green]✓[/green] Specialists: {result['specialists']}")
+    for w in result.get("warnings", []):
+        console_print(f"  [yellow]![/yellow] {w}")
+
+
+@app.command()
+def specialist_validate() -> None:
+    """Validate specialist data."""
+    console_print("[cyan]Validating specialist data...[/cyan]")
+    gen = CompanyGenerator()
+    errors = gen.validate_specialists()
+    if errors:
+        for err in errors:
+            console_print(f"  [red]✗[/red] {err}")
+        raise typer.Exit(1)
+    console_print("  [green]✓[/green] Specialist data is valid")
+
+
+@app.command()
+def workflow_generate() -> None:
+    """Generate workflow artifacts."""
+    console_print("[cyan]Generating workflow artifacts...[/cyan]")
+
+    gen = CompanyGenerator()
+    result = gen.generate_workflows()
+
+    console_print(f"  [green]✓[/green] Workflows: {result['workflows']}")
+    for w in result.get("warnings", []):
+        console_print(f"  [yellow]![/yellow] {w}")
+
+
+@app.command()
+def workflow_validate() -> None:
+    """Validate workflow data."""
+    console_print("[cyan]Validating workflow data...[/cyan]")
+    gen = CompanyGenerator()
+    errors = gen.validate_workflows()
+    if errors:
+        for err in errors:
+            console_print(f"  [red]✗[/red] {err}")
+        raise typer.Exit(1)
+    console_print("  [green]✓[/green] Workflow data is valid")
+
+
+@app.command()
+def prompt_generate() -> None:
+    """Generate prompt library artifacts."""
+    console_print("[cyan]Generating prompt library...[/cyan]")
+
+    gen = CompanyGenerator()
+    result = gen.generate_prompts()
+
+    console_print(f"  [green]✓[/green] Prompts: {result['prompts']}")
+    for w in result.get("warnings", []):
+        console_print(f"  [yellow]![/yellow] {w}")
+
+
+@app.command()
+def prompt_validate() -> None:
+    """Validate prompt data."""
+    console_print("[cyan]Validating prompt data...[/cyan]")
+    gen = CompanyGenerator()
+    errors = gen.validate_prompts()
+    if errors:
+        for err in errors:
+            console_print(f"  [red]✗[/red] {err}")
+        raise typer.Exit(1)
+    console_print("  [green]✓[/green] Prompt data is valid")
+
+
+@app.command()
+def docs_generate() -> None:
+    """Generate documentation artifacts."""
+    console_print("[cyan]Generating documentation...[/cyan]")
+
+    gen = CompanyGenerator()
+    result = gen.generate_docs()
+
+    console_print(f"  [green]✓[/green] Docs: {result['docs']}")
+    for w in result.get("warnings", []):
+        console_print(f"  [yellow]![/yellow] {w}")
+
+
+@app.command()
+def docs_validate() -> None:
+    """Validate documentation data."""
+    console_print("[cyan]Validating documentation data...[/cyan]")
+    gen = CompanyGenerator()
+    errors = gen.validate_docs()
+    if errors:
+        for err in errors:
+            console_print(f"  [red]✗[/red] {err}")
+        raise typer.Exit(1)
+    console_print("  [green]✓[/green] Documentation data is valid")

@@ -34,7 +34,6 @@ from ai_company.models.company import (
     WorkflowEntry,
 )
 
-
 # =========================================================================
 # Fixtures
 # =========================================================================
@@ -407,10 +406,10 @@ class TestRelationshipResolver:
         """Specialist with matching expertise keywords should be placed."""
         from ai_company.models.company import (
             CompanyRegistry,
-            SpecialistEntry,
-            ExecutiveEntry,
             DepartmentData,
+            ExecutiveEntry,
             Role,
+            SpecialistEntry,
             VisionData,
         )
 

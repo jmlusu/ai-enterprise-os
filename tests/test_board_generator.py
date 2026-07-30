@@ -18,15 +18,14 @@ import yaml
 from ai_company.company.board_generator import BoardGenerator, _infer_expertise
 from ai_company.company.models import OrgGraph, OrgNode
 from ai_company.models.company import (
-    BoardMember,
     BoardEntry,
+    BoardMember,
     Committee,
     CompanyRegistry,
     Meeting,
     VisionData,
     Voting,
 )
-
 
 # =========================================================================
 # Fixtures

@@ -528,10 +528,15 @@ class BoardGenerator:
             "## 1. Governance Structure",
             "",
             f"- **Framework:** {gov.get('framework', 'standard').title()}",
-            f"- **Board Size:** {gov.get('board_size', {}).get('min', 3)}–{gov.get('board_size', {}).get('max', 15)} "
-            f"(current: {gov.get('board_size', {}).get('current', len(result.member_profiles))})",
-            f"- **Term Length:** {gov.get('term_years', 3)} years, "
-            f"max {gov.get('max_terms', 3)} terms",
+            (
+                f"- **Board Size:** {gov.get('board_size', {}).get('min', 3)}"
+                f"–{gov.get('board_size', {}).get('max', 15)} "
+                f"(current: {gov.get('board_size', {}).get('current', len(result.member_profiles))})"
+            ),
+            (
+                f"- **Term Length:** {gov.get('term_years', 3)} years, "
+                f"max {gov.get('max_terms', 3)} terms"
+            ),
             f"- **Staggered Terms:** {'Yes' if gov.get('staggered') else 'No'}",
             "",
             "## 2. Director Expectations",

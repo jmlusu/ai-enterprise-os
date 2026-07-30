@@ -9,3 +9,57 @@ registry:
   agent: architect
   model: opencode/north-mini-code-free
   description: Load and validate company YAML into an in-memory graph
+
+company:
+  prompt_file: prompts/opencode/03_company_generator.md
+  agent: architect
+  model: opencode/north-mini-code-free
+  description: Generate the full organization hierarchy and artifacts
+
+board:
+  prompt_file: prompts/opencode/04_board_generator.md
+  agent: architect
+  model: opencode/north-mini-code-free
+  description: Generate board governance artifacts
+
+exec:
+  prompt_file: prompts/opencode/05_executive_generator.md
+  agent: architect
+  model: opencode/north-mini-code-free
+  description: Generate executive artifact packages
+
+dept:
+  prompt_file: prompts/opencode/06_department_generator.md
+  agent: architect
+  model: opencode/north-mini-code-free
+  description: Generate department artifacts
+
+specialist:
+  prompt_file: prompts/opencode/07_specialist_generator.md
+  agent: architect
+  model: opencode/north-mini-code-free
+  description: Generate specialist agent artifacts
+
+workflow:
+  prompt_file: prompts/opencode/08_workflow_generator.md
+  agent: architect
+  model: opencode/north-mini-code-free
+  description: Generate workflow artifacts
+
+prompt:
+  prompt_file: prompts/opencode/09_prompt_generator.md
+  agent: architect
+  model: opencode/north-mini-code-free
+  description: Generate prompt library artifacts
+
+docs:
+  prompt_file: prompts/opencode/10_docs_generator.md
+  agent: architect
+  model: opencode/north-mini-code-free
+  description: Generate documentation artifacts
+
+graph:
+  prompt_file: prompts/opencode/11_graph_export.md
+  agent: architect
+  model: opencode/north-mini-code-free
+  description: Export organizational graphs

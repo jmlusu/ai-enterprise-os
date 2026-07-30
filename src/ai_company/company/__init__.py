@@ -6,14 +6,15 @@ It is consumed by the board, executive, department, specialist, workflow,
 prompt, documentation, and graph generators.
 """
 
-from ai_company.company.models import OrgEdge, OrgGraph, OrgMetadata, OrgNode
-from ai_company.company.hierarchy import HierarchyBuilder, HierarchyError
-from ai_company.company.roles import RoleGenerator, RoleError
-from ai_company.company.relationships import RelationshipResolver, RelationshipError
-from ai_company.company.reporting import ReportingStructure, ReportingError
-from ai_company.company.organization import OrganizationGenerator
-from ai_company.company.generator import CompanyGenerator
 from ai_company.company.board_generator import BoardGenerator, BoardResult
+from ai_company.company.executive_generator import ExecutiveGenerator
+from ai_company.company.generator import CompanyGenerator
+from ai_company.company.hierarchy import HierarchyBuilder, HierarchyError
+from ai_company.company.models import OrgEdge, OrgGraph, OrgMetadata, OrgNode
+from ai_company.company.organization import OrganizationGenerator
+from ai_company.company.relationships import RelationshipError, RelationshipResolver
+from ai_company.company.reporting import ReportingError, ReportingStructure
+from ai_company.company.roles import RoleError, RoleGenerator
 
 __all__ = [
     "OrgNode",
@@ -32,4 +33,5 @@ __all__ = [
     "CompanyGenerator",
     "BoardGenerator",
     "BoardResult",
+    "ExecutiveGenerator",
 ]

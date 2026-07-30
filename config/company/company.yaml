@@ -6,21 +6,45 @@ departments:
   - name: executive
     display_name: "Executive"
     description: "Executive leadership and strategic direction"
-  - name: strategic
-    display_name: "Strategic"
-    description: "Strategic planning and business operations"
-  - name: technical
-    display_name: "Technical"
-    description: "Technical architecture and software development"
+  - name: engineering
+    display_name: "Engineering"
+    description: "Software development and technical infrastructure"
+  - name: finance
+    display_name: "Finance"
+    description: "Financial planning, accounting, and treasury"
+  - name: operations
+    display_name: "Operations"
+    description: "Business operations and process optimization"
+  - name: security
+    display_name: "Security"
+    description: "Information security and compliance"
   - name: marketing
     display_name: "Marketing"
     description: "Brand, content, and growth marketing"
   - name: sales
     display_name: "Sales"
     description: "Enterprise and channel sales"
+  - name: hr
+    display_name: "Human Resources"
+    description: "Talent acquisition, development, and culture"
+  - name: legal
+    display_name: "Legal"
+    description: "Legal affairs, IP, and regulatory compliance"
+  - name: it
+    display_name: "IT"
+    description: "Internal technology and infrastructure support"
+  - name: data
+    display_name: "Data"
+    description: "Data engineering, analytics, and platform"
+  - name: ai
+    display_name: "AI"
+    description: "AI research, model development, and agent systems"
   - name: research
     display_name: "Research"
     description: "AI/ML research and data science"
   - name: product
     display_name: "Product"
     description: "Product design, management, and marketing"
+  - name: customer-success
+    display_name: "Customer Success"
+    description: "Customer onboarding, support, and advocacy"

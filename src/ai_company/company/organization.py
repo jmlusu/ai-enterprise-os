@@ -53,7 +53,7 @@ class OrganizationGenerator:
     # Public API
     # ------------------------------------------------------------------
 
-    def generate(self) -> "OrganizationResult":
+    def generate(self) -> OrganizationResult:
         """Execute the full organization generation pipeline.
 
         Pipeline steps:

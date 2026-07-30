@@ -205,8 +205,7 @@ class OrgGraph:
         type_counts: dict[str, int] = defaultdict(int)
         for n in self._nodes.values():
             type_counts[n.node_type] += 1
-            if n.level > meta.max_depth:
-                meta.max_depth = n.level
+            meta.max_depth = max(meta.max_depth, n.level)
         meta.node_type_counts = dict(type_counts)
 
         # span of control: count direct children per node

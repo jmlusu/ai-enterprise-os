@@ -219,7 +219,7 @@ class RelationshipResolver:
                     reports_to_depts[key] = set()
                 reports_to_depts[key].add(ex.department)
 
-        for _boss, depts in reports_to_depts.items():
+        for depts in reports_to_depts.values():
             dept_list = list(depts)
             for i in range(len(dept_list)):
                 for j in range(i + 1, len(dept_list)):

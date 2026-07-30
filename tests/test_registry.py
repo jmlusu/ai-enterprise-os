@@ -447,7 +447,7 @@ class TestCompanyManifest:
         assert m.name == "AI Enterprise OS Vision"
         assert m.company_name == "Lightspeed Holdings Limited"
         assert m.version == "1.0.0"
-        assert len(m.departments) == 7
+        assert len(m.departments) == 15
 
     def test_load_file_not_found(self) -> None:
         with pytest.raises(FileNotFoundError):
@@ -534,7 +534,7 @@ class TestCompanyManifest:
         n = m.normalize()
         assert n.name == "AI Enterprise OS Vision"
         assert n.version == "1.0.0"
-        assert len(n.departments) == 7
+        assert len(n.departments) == 15
         for d in n.departments:
             assert d.name == d.name.lower()
             assert "_" not in d.name
