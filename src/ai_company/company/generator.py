@@ -20,6 +20,7 @@ from ai_company.company.specialist_generator import SpecialistGenerator
 from ai_company.company.workflow_generator import WorkflowGenerator
 from ai_company.company.prompt_generator import PromptLibraryGenerator
 from ai_company.company.doc_generator import DocGenerator
+from ai_company.company.graph_exporter import GraphExporter
 from ai_company.company.organization import OrganizationGenerator, OrganizationResult
 from ai_company.models.company import CompanyManifest, CompanyRegistry
 from ai_company.registry.registry import RegistryEngine
@@ -361,6 +362,18 @@ class CompanyGenerator:
             return [str(e)]
         doc_gen = DocGenerator(registry)
         return doc_gen.validate()
+
+    def generate_graph_export(self) -> GraphExporter.Result:
+        """Generate graph export artifacts (Mermaid, enriched JSON)."""
+        return GraphExporter(self._load_registry()).generate()
+
+    def validate_graph_export(self) -> list[str]:
+        """Validate that there are entities to build a graph from."""
+        try:
+            registry = self._load_registry()
+        except RuntimeError as e:
+            return [str(e)]
+        return GraphExporter(registry).validate()
 
     def _warn_not_implemented(self, method: str) -> None:
         self._warnings.append(

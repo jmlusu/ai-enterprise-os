@@ -2,10 +2,11 @@ from pathlib import Path
 
 import typer
 
+from ai_company.company.graph_exporter import GraphExporter
 from ai_company.registry.registry import RegistryEngine
 from ai_company.utils.console import console_print
 
-app = typer.Typer(help="Query the in-memory company graph")
+app = typer.Typer(help="Query and export the company graph")
 
 
 @app.command()
@@ -53,47 +54,25 @@ def stats() -> None:
 
 @app.command()
 def export() -> None:
-    """Export the company graph as JSON."""
+    """Export the company graph as Mermaid diagram and enriched JSON."""
     engine = RegistryEngine()
-    result = engine.load(Path("company"))
-    if result.registry is None:
+    registry_result = engine.load(Path("company"))
+    if registry_result.registry is None:
         console_print("[red]No registry loaded.[/red]")
         raise typer.Exit(1)
-    reg = result.registry
+    reg = registry_result.registry
 
+    exporter = GraphExporter(reg)
+    errors = exporter.validate()
+    if errors:
+        for err in errors:
+            console_print(f"  [red]✗[/red] {err}")
+        raise typer.Exit(1)
+
+    result = exporter.generate()
     output_dir = Path("generated")
-    output_dir.mkdir(parents=True, exist_ok=True)
+    created = exporter.write_artifacts(result, output_dir)
 
-    import json
-
-    graph_data = {
-        "vision": reg.vision.model_dump() if hasattr(reg.vision, "model_dump") else {},
-        "departments": {
-            name: {
-                "name": dept.name,
-                "roles": [r.model_dump() for r in dept.roles]
-                if hasattr(dept, "roles")
-                else [],
-            }
-            for name, dept in reg.departments.items()
-        },
-        "executives": [
-            {
-                "name": ex.name,
-                "title": ex.title,
-                "department": ex.department,
-                "reports_to": ex.reports_to,
-            }
-            for ex in reg.executives
-        ],
-        "board": [
-            {
-                "name": m.name if hasattr(m, "name") else str(m),
-            }
-            for m in (reg.board_members or reg.board)
-        ],
-    }
-
-    json_path = output_dir / "graph_export.json"
-    json_path.write_text(json.dumps(graph_data, indent=2), encoding="utf-8")
-    console_print(f"[green]Graph exported to {json_path}[/green]")
+    console_print(f"[green]Generated {len(created)} graph artifact(s):[/green]")
+    for p in created:
+        console_print(f"  [green]✓[/green] {p.relative_to(output_dir)}")
