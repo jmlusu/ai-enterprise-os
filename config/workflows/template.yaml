@@ -1,0 +1,12 @@
+workflow_template: |
+  # {name}
+
+  {description}
+
+  ## Steps
+
+  {steps_md}
+
+  ## Quick Links
+
+  - [Configuration](workflow.yaml)

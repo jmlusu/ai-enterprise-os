@@ -18,6 +18,7 @@ from ai_company.company.board_generator import BoardGenerator, BoardResult
 from ai_company.company.department_generator import DepartmentGenerator
 from ai_company.company.executive_generator import ExecutiveGenerator
 from ai_company.company.specialist_generator import SpecialistGenerator
+from ai_company.company.workflow_generator import WorkflowGenerator
 from ai_company.company.organization import OrganizationGenerator, OrganizationResult
 from ai_company.models.company import CompanyManifest, CompanyRegistry
 from ai_company.registry.registry import RegistryEngine
@@ -299,14 +300,22 @@ class CompanyGenerator:
     # Workflow generation (stub for Phase 6)
     # ------------------------------------------------------------------
 
-    def generate_workflows(self) -> dict[str, Any]:
-        """Generate workflow artifacts. (Not yet implemented)"""
-        self._warn_not_implemented("generate_workflows")
-        return {"workflows": 0, "warnings": list(self._warnings)}
+    def generate_workflows(self) -> WorkflowGenerator.Result:
+        """Generate workflow artifacts from the registry."""
+        registry = self._load_registry()
+        wf_gen = WorkflowGenerator(registry)
+        result = wf_gen.generate()
+        wf_gen.write_artifacts(result, self._output_dir)
+        return result
 
     def validate_workflows(self) -> list[str]:
-        """Validate workflow data. (Not yet implemented)"""
-        return []
+        """Validate that the registry has workflows defined."""
+        try:
+            registry = self._load_registry()
+        except RuntimeError as e:
+            return [str(e)]
+        wf_gen = WorkflowGenerator(registry)
+        return wf_gen.validate()
 
     # ------------------------------------------------------------------
     # Prompt generation (stub for Phase 7)

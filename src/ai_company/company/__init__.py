@@ -10,6 +10,7 @@ from ai_company.company.board_generator import BoardGenerator, BoardResult
 from ai_company.company.department_generator import DepartmentGenerator
 from ai_company.company.executive_generator import ExecutiveGenerator
 from ai_company.company.specialist_generator import SpecialistGenerator
+from ai_company.company.workflow_generator import WorkflowGenerator
 from ai_company.company.generator import CompanyGenerator
 from ai_company.company.hierarchy import HierarchyBuilder, HierarchyError
 from ai_company.company.models import OrgEdge, OrgGraph, OrgMetadata, OrgNode
@@ -38,4 +39,5 @@ __all__ = [
     "ExecutiveGenerator",
     "DepartmentGenerator",
     "SpecialistGenerator",
+    "WorkflowGenerator",
 ]
