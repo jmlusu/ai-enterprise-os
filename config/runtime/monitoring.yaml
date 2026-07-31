@@ -1,0 +1,15 @@
+# Runtime Monitoring Configuration
+# Controls observability of the runtime: metrics collection, event
+# publishing, audit records, and memory persistence of runtime activity.
+
+version: "1.0"
+description: "Monitoring settings for the Enterprise Runtime Engine"
+
+monitoring:
+  enabled: true
+  metrics_interval_seconds: 5.0
+  publish_events: true             # publish runtime.* events on the Event Bus
+  audit_events: true               # record lifecycle events in the audit log
+  memory_records: true             # persist runtime state/records to memory
+  namespace: "runtime"             # memory namespace for runtime records
+  history_max_records: 1000

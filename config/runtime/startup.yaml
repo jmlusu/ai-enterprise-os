@@ -1,0 +1,78 @@
+# Runtime Startup Sequence Configuration
+# Declares the ordered startup steps for the Runtime Engine.
+#
+# Internal targets:
+#   load_constitution        — load config/company/*.yaml into runtime context
+#   load_project_state       — recover persisted RuntimeState
+#   load_configuration       — load the runtime configuration registry
+#   start_runtime            — start background workers (heartbeat/scheduler/watchdog)
+#   ready                    — mark the runtime RUNNING and publish runtime.started
+#
+# Class steps instantiate an engine from `module.class` and register it under
+# `engine` (or the step name minus the "initialize_" prefix). Steps whose
+# engine is already registered are reused, not re-created.
+
+version: "1.0"
+description: "Ordered startup sequence for the Enterprise Runtime Engine"
+
+startup:
+  required: true
+  timeout_seconds: 60
+  continue_on_error: false
+  recover_persisted_state: true
+
+  steps:
+    - name: "load_constitution"
+      description: "Load the company constitution (company/vision/strategy/culture/governance)"
+      target: "load_constitution"
+
+    - name: "load_project_state"
+      description: "Recover persisted runtime state"
+      target: "load_project_state"
+
+    - name: "load_configuration_registry"
+      description: "Load the runtime configuration registry"
+      target: "load_configuration"
+
+    - name: "initialize_memory"
+      description: "Initialize the Memory Engine"
+      module: "ai_company.memory.engine"
+      class: "MemoryEngine"
+      engine: "memory"
+      params: {}
+
+    - name: "initialize_event_bus"
+      description: "Initialize the Event Bus"
+      module: "ai_company.events.bus"
+      class: "EventBus"
+      engine: "event_bus"
+      params: {}
+
+    - name: "initialize_decision_engine"
+      description: "Initialize the Decision Engine"
+      module: "ai_company.decision.engine"
+      class: "DecisionEngine"
+      engine: "decision"
+      params: {}
+
+    - name: "initialize_workflow_engine"
+      description: "Initialize the Workflow Engine"
+      module: "ai_company.orchestrator.workflow"
+      class: "WorkflowManager"
+      engine: "workflow"
+      params: {}
+
+    - name: "initialize_orchestrator"
+      description: "Initialize the Orchestration Engine (COO)"
+      module: "ai_company.orchestration.engine"
+      class: "OrchestrationEngine"
+      engine: "orchestration"
+      params: {}
+
+    - name: "start_runtime"
+      description: "Start runtime workers (heartbeat, scheduler, watchdog, metrics)"
+      target: "start_runtime"
+
+    - name: "ready"
+      description: "Runtime is ready"
+      target: "ready"

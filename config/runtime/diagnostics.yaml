@@ -1,0 +1,14 @@
+# Runtime Diagnostics Configuration
+# Diagnostics gather engine states, health checks, metrics, configuration
+# versions, warnings, and recommendations for `ai-company runtime
+# diagnostics`.
+
+version: "1.0"
+description: "Diagnostics settings for the Enterprise Runtime Engine"
+
+diagnostics:
+  enabled: true
+  collect_metrics: true
+  collect_health: true
+  collect_config: true
+  max_report_items: 100

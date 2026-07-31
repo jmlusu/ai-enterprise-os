@@ -14,6 +14,7 @@ from ai_company.cli.groups import memory as memory_group
 from ai_company.cli.groups import orchestration as orchestration_group
 from ai_company.cli.groups import registry as registry_group
 from ai_company.cli.groups import report as report_group
+from ai_company.cli.groups import runtime as runtime_group
 from ai_company.cli.render import render_prompt
 from ai_company.company.generator import CompanyGenerator
 from ai_company.utils.console import configure_console, console_print
@@ -31,6 +32,7 @@ app.add_typer(memory_group.app, name="memory")
 app.add_typer(graph_group.app, name="graph")
 app.add_typer(report_group.app, name="report")
 app.add_typer(orchestration_group.app, name="orchestrate")
+app.add_typer(runtime_group.app, name="runtime")
 
 
 @app.command()

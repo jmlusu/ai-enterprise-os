@@ -1,0 +1,66 @@
+# Runtime Scheduler Configuration
+# Declarative runtime jobs: one-time, recurring, cron, dependency-aware,
+# and event-triggered. Handlers are registered with the Runtime Engine
+# (built-ins: noop, event_publish, memory_consolidation, orchestrate_pipeline).
+
+version: "1.0"
+description: "Scheduler settings and job catalog for the Enterprise Runtime Engine"
+
+scheduler:
+  enabled: true
+  worker_interval_seconds: 1.0
+  timezone: "UTC"
+  max_jobs: 1000
+
+  jobs:
+    executive_briefing:
+      name: "Daily executive briefing"
+      description: "Deliver the daily executive briefing"
+      kind: "cron"
+      cron: "0 7 * * *"
+      handler: "event_publish"
+      params:
+        event_type: "runtime.job_executed"
+        message: "executive_briefing"
+      enabled: true
+
+    weekly_kpi_report:
+      name: "Weekly KPI report"
+      description: "Generate the weekly KPI report"
+      kind: "cron"
+      cron: "0 9 * * 1"
+      handler: "orchestrate_pipeline"
+      params:
+        pipeline: "report"
+      enabled: true
+
+    monthly_board_meeting:
+      name: "Monthly board meeting"
+      description: "Prepare the monthly board meeting"
+      kind: "cron"
+      cron: "0 10 1 * *"
+      handler: "event_publish"
+      params:
+        event_type: "runtime.job_executed"
+        message: "monthly_board_meeting"
+      enabled: true
+
+    quarterly_strategy_review:
+      name: "Quarterly strategy review"
+      description: "Kick off the quarterly strategy review"
+      kind: "cron"
+      cron: "0 11 1 1,4,7,10 *"
+      handler: "event_publish"
+      params:
+        event_type: "runtime.job_executed"
+        message: "quarterly_strategy_review"
+      enabled: true
+
+    memory_consolidation:
+      name: "Continuous memory consolidation"
+      description: "Consolidate runtime memory records"
+      kind: "recurring"
+      interval_seconds: 3600
+      handler: "memory_consolidation"
+      params: {}
+      enabled: true

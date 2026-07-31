@@ -38,6 +38,9 @@ generated/
 test_output/
 dist/
 *.log
+
+# Runtime state persistence (generated at ./runtime/runtime_state.json)
+/runtime/
 .env
 .env.*
 !.env.example

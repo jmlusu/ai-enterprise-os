@@ -1,0 +1,16 @@
+# Runtime Heartbeat Configuration
+# Every registered engine/process sends periodic heartbeats. A component
+# whose last heartbeat is older than `timeout_seconds` is considered stale;
+# after `missed_beats_before_failure` consecutive misses the watchdog
+# reports it as failed and the supervisor triggers recovery.
+
+version: "1.0"
+description: "Heartbeat settings for the Enterprise Runtime Engine"
+
+heartbeat:
+  enabled: true
+  interval_seconds: 5.0           # expected cadence for registered components
+  timeout_seconds: 15.0           # silence beyond this marks a component stale
+  missed_beats_before_failure: 3  # consecutive misses before failure is declared
+  check_interval_seconds: 1.0     # watchdog/loop heartbeat inspection cadence
+  components: []                  # optional explicit list; defaults to all registered engines/processes

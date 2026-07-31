@@ -1,0 +1,17 @@
+# Runtime Engine Configuration
+# Core settings for the Enterprise Runtime Engine (kernel / OS layer).
+# Controls identity, persistence, concurrency, and the runtime loop.
+
+version: "1.0"
+description: "Core settings for the Enterprise Runtime Engine"
+
+runtime:
+  name: "AI Enterprise Runtime"
+  version: "1.0"
+  environment: "development"       # development | staging | production
+  state_dir: "runtime"             # directory for persisted runtime state
+  persist_state: true              # persist RuntimeState across restarts
+  max_workers: 4                   # concurrency cap for runtime workers
+  loop_interval_seconds: 1.0       # main runtime loop cadence
+  default_engine_timeout_seconds: 30.0
+  audit_events: true               # record lifecycle events in the audit log

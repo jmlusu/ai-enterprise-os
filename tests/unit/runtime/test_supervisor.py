@@ -1,0 +1,124 @@
+"""Unit tests for the runtime supervisor."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+
+from ai_company.runtime.health import HealthMonitor
+from ai_company.runtime.heartbeat import HeartbeatManager
+from ai_company.runtime.models import RecoveryResult
+from ai_company.runtime.recovery import RecoveryManager
+from ai_company.runtime.supervisor import Supervisor
+
+
+class _FlakyEngine:
+    def health(self) -> dict:
+        return {"status": "unhealthy", "error": "flaky"}
+
+
+class _StableEngine:
+    def health(self) -> dict:
+        return {"status": "healthy"}
+
+
+def _recovery_manager(restart_ok: bool = True) -> RecoveryManager:
+    if restart_ok:
+        return RecoveryManager(
+            config={"policies": {"engine-*": {"actions": ["restart"]}}}
+        )
+    return RecoveryManager(config={"policies": {"engine-*": {"actions": ["teleport"]}}})
+
+
+def test_on_failure_recovers_component() -> None:
+    recovery = _recovery_manager()
+    recovery.register_factory("engine-a", lambda: None)
+    supervisor = Supervisor(recovery=recovery)
+    supervisor.on_failure("engine-a", "heartbeat_timeout")
+    assert recovery.attempts("engine-a") == 1
+    assert supervisor.recent_failures() != {}
+
+
+def test_failed_recovery_isolates_component() -> None:
+    recovery = _recovery_manager(restart_ok=False)
+    supervisor = Supervisor(recovery=recovery)
+    supervisor.on_failure("engine-a", "heartbeat_timeout")
+    assert supervisor.isolated() == ["engine-a"]
+
+
+def test_isolated_component_ignores_failures() -> None:
+    recovery = _recovery_manager(restart_ok=False)
+    supervisor = Supervisor(recovery=recovery)
+    supervisor.on_failure("engine-a", "first")
+    attempts_before = recovery.attempts("engine-a")
+    supervisor.on_failure("engine-a", "second")
+    assert recovery.attempts("engine-a") == attempts_before
+
+
+def test_unisolate_resets_attempts() -> None:
+    recovery = _recovery_manager()
+    recovery.register_factory("engine-a", lambda: None)
+    supervisor = Supervisor(recovery=recovery)
+    supervisor.on_failure("engine-a", "test")
+    supervisor.isolate("engine-a", "manual")
+    supervisor.unisolate("engine-a")
+    assert supervisor.isolated() == []
+    assert recovery.attempts("engine-a") == 0
+
+
+def test_check_once_detects_unhealthy_engine() -> None:
+    health = HealthMonitor()
+    health.register("engine-a", _FlakyEngine())
+    recovery = _recovery_manager()
+    recovery.register_factory("engine-a", lambda: None)
+    supervisor = Supervisor(health=health, recovery=recovery)
+    failures = supervisor.check_once()
+    assert "engine-a" in failures
+
+
+def test_check_once_detects_stale_heartbeat() -> None:
+    heartbeats = HeartbeatManager(
+        settings={"timeout_seconds": 0.001, "missed_beats_before_failure": 1}
+    )
+    heartbeats.register("engine-a")
+    recovery = _recovery_manager()
+    recovery.register_factory("engine-a", lambda: None)
+    supervisor = Supervisor(heartbeats=heartbeats, recovery=recovery)
+    failures = supervisor.check_once(now=datetime.now(UTC) + timedelta(seconds=5))
+    assert "engine-a" in failures
+
+
+def test_healthy_system_no_failures() -> None:
+    health = HealthMonitor()
+    health.register("engine-a", _StableEngine())
+    supervisor = Supervisor(health=health)
+    assert supervisor.check_once() == []
+
+
+def test_start_stop_roundtrip() -> None:
+    supervisor = Supervisor(config={"check_interval_seconds": 0.05})
+    supervisor.start()
+    assert supervisor.is_running()
+    supervisor.stop()
+    assert not supervisor.is_running()
+
+
+def test_on_engine_failed_callback() -> None:
+    captured: list[tuple[str, str, RecoveryResult]] = []
+    recovery = _recovery_manager()
+    recovery.register_factory("engine-a", lambda: None)
+    supervisor = Supervisor(
+        recovery=recovery,
+        on_engine_failed=lambda name, reason, result: captured.append(
+            (name, reason, result)
+        ),
+    )
+    supervisor.on_failure("engine-a", "boom")
+    assert captured and captured[0][0] == "engine-a"
+    assert captured[0][1] == "boom"
+
+
+def test_snapshot() -> None:
+    supervisor = Supervisor()
+    snapshot = supervisor.snapshot()
+    assert snapshot["running"] is False
+    assert snapshot["isolated"] == []

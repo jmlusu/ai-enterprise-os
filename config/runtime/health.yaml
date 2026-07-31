@@ -1,0 +1,17 @@
+# Runtime Health Monitoring Configuration
+# Health checks collect per-engine liveness, system resource usage,
+# queue sizes, and runtime error rates. Thresholds below determine
+# DEGRADED vs UNHEALTHY classification. Health data is exposed to the
+# dashboard via `ai-company runtime health`.
+
+version: "1.0"
+description: "Health monitoring settings for the Enterprise Runtime Engine"
+
+health:
+  enabled: true
+  check_interval_seconds: 5.0
+  engine_timeout_seconds: 5.0      # per-engine probe timeout
+  cpu_percent_high: 80.0           # above this -> DEGRADED
+  memory_percent_high: 80.0        # above this -> DEGRADED
+  queue_size_warn: 100             # pending items above this -> DEGRADED
+  error_rate_high: 0.2             # error ratio above this -> DEGRADED

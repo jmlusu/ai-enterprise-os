@@ -12,6 +12,7 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "networkx>=3.6.1",
     "shellingham>=1.5.4",
+    "croniter>=6.0.0",
 ]
 
 [project.scripts]

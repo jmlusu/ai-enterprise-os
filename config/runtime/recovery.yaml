@@ -1,0 +1,26 @@
+# Runtime Recovery Configuration
+# Recovery policies control how the supervisor handles failed engines
+# and processes: restart via registered factories, reload persisted
+# state, and isolate when recovery is exhausted.
+
+version: "1.0"
+description: "Recovery settings for the Enterprise Runtime Engine"
+
+recovery:
+  enabled: true
+  default_max_attempts: 3
+  backoff_base_seconds: 1.0
+  backoff_multiplier: 2.0
+  max_backoff_seconds: 60.0
+  restart_engines: true
+  restart_processes: true
+  reload_state: true
+
+  policies:
+    engine:
+      max_attempts: 3
+      actions: ["restart", "reload_state", "isolate"]
+
+    process:
+      max_attempts: 2
+      actions: ["restart", "isolate"]
