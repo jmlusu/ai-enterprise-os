@@ -33,7 +33,7 @@ app.add_typer(report_group.app, name="report")
 
 @app.command()
 def bootstrap() -> None:
-    """Scaffold the initial repository structure from the company registry."""
+    """Scaffold the project structure and generate the full company."""
     console_print("[cyan]Bootstrapping project structure...[/cyan]")
     generator = BootstrapGenerator()
     result = generator.run()
@@ -46,11 +46,26 @@ def bootstrap() -> None:
         console_print(f"  [yellow]![/yellow] {w}")
     if result.created_files:
         console_print(
-            f"\n  [green]✓[/green] Generated {len(result.created_files)} file(s):"
+            f"  [green]✓[/green] Scaffolded {len(result.created_files)} file(s)"
         )
-        for f in result.created_files:
-            console_print(f"    [dim]{f}[/dim]")
-    console_print("\n[green]Project structure is ready.[/green]")
+
+    console_print("[cyan]Generating company artifacts...[/cyan]")
+    company_gen = CompanyGenerator()
+    all_result = company_gen.generate_all()
+    for name, summary in all_result.summaries.items():
+        parts = ", ".join(f"{k}={v}" for k, v in summary.items())
+        console_print(f"  [green]✓[/green] {name:<14} {parts}")
+    for w in all_result.warnings:
+        console_print(f"  [yellow]![/yellow] {w}")
+    console_print(
+        f"  [green]✓[/green] Generated {len(all_result.created_files)} artifact file(s)"
+    )
+
+    engine = ValidatorEngine()
+    validation = engine.validate_all()
+    console_print(f"  [green]✓[/green] {validation.summary()}")
+
+    console_print("\n[green]Company bootstrap complete.[/green]")
 
 
 @app.command()
