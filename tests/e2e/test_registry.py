@@ -33,7 +33,7 @@ class TestE2ERegistry:
         eng = RegistryEngine()
         result = eng.load(Path("company"))
         assert result.registry is not None
-        for dept in ["executive", "technical", "strategic", "marketing", "sales"]:
+        for dept in ["executive", "engineering", "finance", "operations", "ai"]:
             assert dept in result.registry.departments, f"Missing: {dept}"
 
     def test_registry_executives_present(self) -> None:

@@ -208,9 +208,13 @@ class OrgGraph:
             meta.max_depth = max(meta.max_depth, n.level)
         meta.node_type_counts = dict(type_counts)
 
-        # span of control: count direct children per node
+        # span of control: count direct reports (reports_to edges only)
         for nid in self._nodes:
-            children = self.children_of(nid)
+            children = [
+                e.source_id
+                for e in self._edges
+                if e.target_id == nid and e.edge_type == "reports_to"
+            ]
             if children:
                 meta.span_of_control[nid] = len(children)
 

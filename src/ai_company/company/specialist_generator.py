@@ -75,12 +75,13 @@ class SpecialistGenerator:
         name = entry.name or ""
         slug = name.lower().replace(" ", "_").replace(".", "")
         expertise = entry.expertise or "General"
+        department = getattr(entry, "department", None) or ""
+        bio = getattr(entry, "bio", "") or f"{expertise} specialist."
+        tools = list(getattr(entry, "tools", None) or [])
 
         ctx = GeneratorContext(self._manifest, self._registry)
         prompt_gen = PromptGenerator(ctx)
         prompt_text = prompt_gen.generate_specialist_prompt(name)
-
-        bio = getattr(entry, "bio", "") or f"{expertise} specialist."
 
         profile = config.get("profile_template", "").format(
             name=name,
@@ -95,14 +96,22 @@ class SpecialistGenerator:
             company=self._manifest.company_name or self._manifest.name,
         )
 
+        yaml_entry: dict[str, Any] = {
+            "name": name,
+            "expertise": expertise,
+        }
+        if department:
+            yaml_entry["department"] = department
+        if bio:
+            yaml_entry["bio"] = bio
+        if tools:
+            yaml_entry["tools"] = tools
+
         return {
             "slug": slug,
             "name": name,
             "expertise": expertise,
-            "yaml": {
-                "name": name,
-                "expertise": expertise,
-            },
+            "yaml": yaml_entry,
             "prompt_md": prompt_text,
             "profile_md": profile,
             "memory_md": memory,

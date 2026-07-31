@@ -62,6 +62,9 @@ class PolicyEntry(BaseModel):
 class SpecialistEntry(BaseModel):
     name: str | None = None
     expertise: str | None = None
+    department: str | None = None
+    bio: str | None = None
+    tools: list[str] = []
 
 
 class WorkflowEntry(BaseModel):

@@ -114,7 +114,8 @@ class GeneratorContext:
                     ["name", "role", "model", "instructions", "tools", "department"],
                 ),
                 "specialists": _entries_to_dicts(
-                    reg.specialists, ["name", "expertise"]
+                    reg.specialists,
+                    ["name", "expertise", "department", "bio", "tools"],
                 ),
                 "policies": _entries_to_dicts(reg.policies, ["name", "description"]),
                 "workflows": _entries_to_dicts(

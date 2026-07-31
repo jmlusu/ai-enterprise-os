@@ -14,6 +14,7 @@ from ai_company.cli.groups import memory as memory_group
 from ai_company.cli.groups import registry as registry_group
 from ai_company.cli.groups import report as report_group
 from ai_company.cli.render import render_prompt
+from ai_company.company.generator import CompanyGenerator
 from ai_company.utils.console import configure_console, console_print
 from ai_company.validator.engine import ValidatorEngine
 
@@ -69,8 +70,19 @@ def build() -> None:
         console_print(f"  [yellow]![/yellow] {w}")
     if result.created_files:
         console_print(
-            f"  [green]✓[/green] Generated {len(result.created_files)} file(s)"
+            f"  [green]✓[/green] Scaffolded {len(result.created_files)} file(s)"
         )
+
+    company_gen = CompanyGenerator()
+    all_result = company_gen.generate_all()
+    for name, summary in all_result.summaries.items():
+        parts = ", ".join(f"{k}={v}" for k, v in summary.items())
+        console_print(f"  [green]✓[/green] {name:<14} {parts}")
+    for w in all_result.warnings:
+        console_print(f"  [yellow]![/yellow] {w}")
+    console_print(
+        f"  [green]✓[/green] Generated {len(all_result.created_files)} artifact file(s)"
+    )
 
     engine = ValidatorEngine()
     validation = engine.validate_all()

@@ -136,8 +136,9 @@ class RelationshipResolver:
     def _resolve_specialist_placements(self) -> None:
         """Place specialists into appropriate departments.
 
-        A specialist is linked to a department if their expertise keywords
-        match the department name or roles within it.  Otherwise they are
+        A specialist is linked to a department if they declare one via
+        the ``department`` field, or if their expertise keywords match
+        the department name or roles within it.  Otherwise they are
         left as unattached (the graph will flag them as orphans).
         """
         for spec in self._registry.specialists:
@@ -147,22 +148,35 @@ class RelationshipResolver:
             if self._graph.get_node(spec_id) is None:
                 continue
 
-            expertise_lower = (spec.expertise or "").lower()
             matched = False
 
-            for dept_name in self._registry.departments:
-                dept_id = self._make_id("dept", dept_name)
-                if self._graph.get_node(dept_id) is None:
-                    continue
+            # 1. Explicit department declaration
+            declared = (spec.department or "").lower()
+            if (
+                declared
+                and self._graph.get_node(self._make_id("dept", declared)) is not None
+            ):
+                self._graph.add_edge(
+                    OrgEdge(spec_id, self._make_id("dept", declared), "member_of")
+                )
+                matched = True
 
-                # Simple keyword matching
-                if dept_name.lower() in expertise_lower or any(
-                    dept_name.lower() in (role.title or "").lower()
-                    for role in self._registry.departments[dept_name].roles
-                ):
-                    self._graph.add_edge(OrgEdge(spec_id, dept_id, "member_of"))
-                    matched = True
-                    break
+            # 2. Keyword matching against department names/roles
+            if not matched:
+                expertise_lower = (spec.expertise or "").lower()
+                for dept_name in self._registry.departments:
+                    dept_id = self._make_id("dept", dept_name)
+                    if self._graph.get_node(dept_id) is None:
+                        continue
+
+                    # Simple keyword matching
+                    if dept_name.lower() in expertise_lower or any(
+                        dept_name.lower() in (role.title or "").lower()
+                        for role in self._registry.departments[dept_name].roles
+                    ):
+                        self._graph.add_edge(OrgEdge(spec_id, dept_id, "member_of"))
+                        matched = True
+                        break
 
             if not matched:
                 self._warnings.append(

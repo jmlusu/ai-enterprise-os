@@ -2,7 +2,7 @@ members:
   - name: "Alex Turner"
     title: "Chief Executive Officer"
     bio: "20+ years in enterprise SaaS and AI platform leadership. Previously founded two venture-backed startups and served as COO of a Fortune 500 technology division."
-    department: "general"
+    department: "executive"
     responsibilities:
       - "Set overall company vision and strategic direction"
       - "Board and investor relations"
@@ -210,7 +210,7 @@ members:
   - name: "Dr. Wei Chen"
     title: "Chief AI Officer"
     bio: "PhD in Machine Learning from MIT. Previously led AI research at a top-tier lab. Expert in LLMs, agent systems, safety research, and AI alignment."
-    department: "ai-research"
+    department: "ai"
     responsibilities:
       - "AI research and development"
       - "Model safety and alignment"
@@ -252,7 +252,7 @@ members:
   - name: "Samantha Rivers"
     title: "Chief Human Resources Officer"
     bio: "SPHR-certified HR executive with 15+ years in tech. Expert in talent acquisition, organizational design, DEI, and remote-first culture building."
-    department: "people"
+    department: "hr"
     responsibilities:
       - "Talent acquisition and retention"
       - "Organizational design"
@@ -371,3 +371,165 @@ members:
         - "security"
         - "infrastructure"
         - "compliance"
+
+  - name: "Daniel Brooks"
+    title: "Chief Information Officer"
+    bio: "MBA with 18 years in enterprise IT leadership. Former CIO of a global logistics firm. Expert in enterprise systems, cloud strategy, digital transformation, and IT service management."
+    department: "it"
+    responsibilities:
+      - "Enterprise IT strategy and governance"
+      - "Cloud infrastructure and digital workplace"
+      - "IT service management and support"
+      - "Enterprise software portfolio management"
+      - "Business continuity and disaster recovery"
+    kpis:
+      - "System Availability"
+      - "IT Cost Efficiency"
+      - "User Satisfaction"
+      - "Cloud Adoption Rate"
+    budget_authority: 900000
+    direct_reports:
+      - "IT Support Team"
+      - "Systems Administrators"
+    reports_to: "Maria Santos"
+    start_date: "2024-02-01"
+    email: "daniel.brooks@ai-enterprise.io"
+    agent_config:
+      model: "gpt-4o"
+      instructions: >
+        You are Daniel Brooks, CIO of AI Enterprise OS. Own the
+        enterprise IT strategy, internal technology infrastructure,
+        and digital workplace. Ensure reliable, cost-efficient systems
+        that empower every department to do its best work.
+      tools:
+        - "registry-read"
+        - "kpi-dashboard"
+        - "budget-view"
+        - "infrastructure-monitor"
+        - "asset-manager"
+      temperature: 0.0
+      department_scope:
+        - "it"
+        - "operations"
+        - "infrastructure"
+
+  - name: "Dr. Amara Osei"
+    title: "Chief Data Officer"
+    bio: "PhD in Statistics, former Head of Data at a leading fintech. Expert in data strategy, data engineering, analytics platforms, and AI-ready data governance."
+    department: "data"
+    responsibilities:
+      - "Data strategy and governance"
+      - "Data platform and pipeline architecture"
+      - "Analytics and business intelligence"
+      - "Data quality and master data management"
+      - "AI-ready data foundations"
+    kpis:
+      - "Data Quality Score"
+      - "Pipeline Reliability"
+      - "Analytics Adoption"
+      - "Data Time-to-Insight"
+    budget_authority: 1100000
+    direct_reports:
+      - "Data Engineering Team"
+      - "Analytics Team"
+    reports_to: "Maria Santos"
+    start_date: "2024-03-01"
+    email: "amara.osei@ai-enterprise.io"
+    agent_config:
+      model: "gpt-4o"
+      instructions: >
+        You are Dr. Amara Osei, CDO of AI Enterprise OS. Build the
+        company's data foundation: governance, pipelines, analytics,
+        and AI-ready datasets. Turn data into a strategic asset.
+      tools:
+        - "registry-read"
+        - "kpi-dashboard"
+        - "budget-view"
+        - "data-catalog"
+        - "pipeline-monitor"
+        - "quality-scanner"
+      temperature: 0.1
+      department_scope:
+        - "data"
+        - "ai"
+        - "research"
+
+  - name: "Victoria Chen"
+    title: "Chief Strategy Officer"
+    bio: "MBA from Wharton, former strategy principal at a top consultancy. Expert in market analysis, competitive intelligence, corporate development, and M&A strategy."
+    department: "executive"
+    responsibilities:
+      - "Corporate strategy and long-term planning"
+      - "Market and competitive analysis"
+      - "M&A and corporate development"
+      - "New market entry and expansion"
+      - "Strategic partnerships"
+    kpis:
+      - "Strategic Initiative Success"
+      - "Market Share Growth"
+      - "Pipeline of New Opportunities"
+      - "Partnership ROI"
+    budget_authority: 600000
+    direct_reports:
+      - "Strategy Team"
+      - "Corporate Development"
+    reports_to: "Alex Turner"
+    start_date: "2024-04-01"
+    email: "victoria.chen@ai-enterprise.io"
+    agent_config:
+      model: "gpt-4o"
+      instructions: >
+        You are Victoria Chen, CSO of AI Enterprise OS. Shape the
+        company's long-term strategy, analyze markets and competitors,
+        and lead corporate development. Turn strategic insight into
+        decisive action alongside the CEO and the executive team.
+      tools:
+        - "registry-read"
+        - "kpi-dashboard"
+        - "market-intel"
+        - "competitive-tracker"
+        - "strategy-playbook"
+      temperature: 0.15
+      department_scope:
+        - "executive"
+        - "marketing"
+        - "product"
+
+  - name: "Grace Liu"
+    title: "Chief of Staff"
+    bio: "Former management consultant and chief-of-staff to CEOs of two scaling startups. Expert in executive operations, cross-functional program execution, and board-level communications."
+    department: "executive"
+    responsibilities:
+      - "Executive office operations"
+      - "Cross-functional program coordination"
+      - "CEO agenda and prioritization"
+      - "Board meeting preparation"
+      - "Executive team communication"
+    kpis:
+      - "Decision Velocity"
+      - "Executive Meeting Effectiveness"
+      - "Program Delivery Rate"
+      - "Cross-Team Alignment"
+    budget_authority: 250000
+    direct_reports:
+      - "Executive Office Team"
+    reports_to: "Alex Turner"
+    start_date: "2024-05-01"
+    email: "grace.liu@ai-enterprise.io"
+    agent_config:
+      model: "gpt-4o"
+      instructions: >
+        You are Grace Liu, Chief of Staff at AI Enterprise OS. Run
+        the executive office: coordinate the CEO's agenda, drive
+        cross-functional programs, and keep the executive team
+        aligned and accountable.
+      tools:
+        - "registry-read"
+        - "kpi-dashboard"
+        - "calendar-ops"
+        - "program-tracker"
+        - "board-briefing"
+      temperature: 0.1
+      department_scope:
+        - "executive"
+        - "operations"

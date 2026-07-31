@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -26,6 +27,32 @@ from ai_company.models.company import CompanyManifest, CompanyRegistry
 from ai_company.registry.registry import RegistryEngine
 
 logger = logging.getLogger(__name__)
+
+
+class GenerateAllResult:
+    """Aggregated result of running every company generator.
+
+    Attributes:
+        summaries: Per-generator summary dicts keyed by generator name.
+        warnings: Collected warnings from all generators.
+        created_files: Paths of every file written to disk.
+    """
+
+    def __init__(self) -> None:
+        self.summaries: dict[str, dict[str, Any]] = {}
+        self.warnings: list[str] = []
+        self.created_files: list[Path] = []
+
+    def summary(self) -> dict[str, Any]:
+        total_files = sum(
+            s.get("files", 0) for s in self.summaries.values() if isinstance(s, dict)
+        )
+        return {
+            "generators": len(self.summaries),
+            "files": len(self.created_files),
+            "total_files": total_files,
+            "warnings": len(self.warnings),
+        }
 
 
 class CompanyGenerator:
@@ -66,6 +93,86 @@ class CompanyGenerator:
 
         # Write artifacts
         self._write_artifacts(result)
+
+        return result
+
+    def generate_all(self) -> GenerateAllResult:
+        """Run every generator and write all artifacts.
+
+        Executes, in order: organization, board, executives, departments,
+        specialists, workflows, prompts, docs, and graph export. Each
+        sub-generator's summary and created files are aggregated into a
+        single :class:`GenerateAllResult`.
+        """
+        result = GenerateAllResult()
+        registry = self._load_registry()
+        manifest = self._load_manifest()
+
+        def _run(
+            name: str,
+            gen_result: Any,
+            written: list[Path] | None = None,
+        ) -> None:
+            result.summaries[name] = gen_result.summary()
+            warnings = getattr(gen_result, "warnings", None)
+            if warnings:
+                result.warnings.extend(warnings)
+            if written:
+                result.created_files.extend(written)
+
+        # 1. Organization structure
+        org_gen = OrganizationGenerator(registry)
+        org_result = org_gen.generate()
+        self._write_artifacts(org_result)
+        _run("organization", org_result)
+
+        # 2. Board
+        board_gen = BoardGenerator(registry, config_dir=Path("config/board"))
+        board_result = board_gen.generate()
+        written = board_gen.write_artifacts(board_result, self._output_dir)
+        _run("board", board_result, written)
+
+        # 3. Executives
+        exec_gen = ExecutiveGenerator(registry, manifest)
+        exec_result = exec_gen.generate()
+        written = exec_gen.write_artifacts(exec_result, self._output_dir)
+        _run("executives", exec_result, written)
+
+        # 4. Departments
+        dept_gen = DepartmentGenerator(registry, manifest)
+        dept_result = dept_gen.generate()
+        written = dept_gen.write_artifacts(dept_result, self._output_dir)
+        _run("departments", dept_result, written)
+
+        # 5. Specialists
+        spec_gen = SpecialistGenerator(registry, manifest)
+        spec_result = spec_gen.generate()
+        written = spec_gen.write_artifacts(spec_result, self._output_dir)
+        _run("specialists", spec_result, written)
+
+        # 6. Workflows
+        wf_gen = WorkflowGenerator(registry)
+        wf_result = wf_gen.generate()
+        written = wf_gen.write_artifacts(wf_result, self._output_dir)
+        _run("workflows", wf_result, written)
+
+        # 7. Prompts
+        prompt_gen = PromptLibraryGenerator(registry, manifest)
+        prompt_result = prompt_gen.generate()
+        written = prompt_gen.write_artifacts(prompt_result, self._output_dir)
+        _run("prompts", prompt_result, written)
+
+        # 8. Docs
+        doc_gen = DocGenerator(registry, manifest)
+        doc_result = doc_gen.generate()
+        written = doc_gen.write_artifacts(doc_result, self._output_dir)
+        _run("docs", doc_result, written)
+
+        # 9. Graph export
+        graph_gen = GraphExporter(registry)
+        graph_result = graph_gen.generate()
+        written = graph_gen.write_artifacts(graph_result, self._output_dir)
+        _run("graph", graph_result, written)
 
         return result
 

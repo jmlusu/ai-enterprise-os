@@ -85,6 +85,27 @@ def _parse_executives(members: list[Any]) -> list[dict[str, Any]]:
     return result
 
 
+def _parse_specialists(items: list[Any]) -> list[dict[str, Any]]:
+    """Parse specialist entries with optional department, bio, and tools."""
+    result: list[dict[str, Any]] = []
+    for item in items:
+        if isinstance(item, str):
+            result.append({"name": item, "expertise": None})
+            continue
+        if not isinstance(item, dict):
+            continue
+        result.append(
+            {
+                "name": item.get("name"),
+                "expertise": item.get("expertise"),
+                "department": item.get("department"),
+                "bio": item.get("bio"),
+                "tools": item.get("tools") or [],
+            }
+        )
+    return result
+
+
 def parse_registry(raw_data: dict[str, dict[str, Any]]) -> dict[str, Any]:
     raw_company = raw_data.get("company", {}) or {}
     raw_departments = raw_data.get("departments", {}) or {}
@@ -108,7 +129,7 @@ def parse_registry(raw_data: dict[str, dict[str, Any]]) -> dict[str, Any]:
         "board": parse_list_field(raw_board, "members", ["name", "role"]),
         "executives": _parse_executives(raw_executives.get("members", [])),
         "policies": parse_list_field(raw_policies, "items", ["name", "description"]),
-        "specialists": parse_list_field(raw_specialists, "list", ["name", "expertise"]),
+        "specialists": _parse_specialists(raw_specialists.get("list", [])),
         "workflows": parse_list_field(
             raw_workflows, "items", ["name", "description", "steps"]
         ),

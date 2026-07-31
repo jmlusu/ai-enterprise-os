@@ -152,24 +152,20 @@ class ReportingStructure:
     # ------------------------------------------------------------------
 
     def find_orphans(self) -> list[str]:
-        """Return node IDs that are disconnected from the reporting graph.
+        """Return node IDs that are disconnected from the organization graph.
 
-        An orphan is a node that has no incoming *or* outgoing ``reports_to``
-        edges and is not at level 0.
+        A node is considered connected if it participates in any edge —
+        ``reports_to``, ``member_of``, or ``leads``.  A node is an orphan
+        only when it has no edges at all and is not at level 0.
         """
         orphans: list[str] = []
         for nid, node in self._graph.nodes.items():
             if node.level == 0:
                 continue
-            has_reports_to = any(
-                e.source_id == nid and e.edge_type == "reports_to"
-                for e in self._graph.edges
+            connected = any(
+                e.source_id == nid or e.target_id == nid for e in self._graph.edges
             )
-            has_reported_by = any(
-                e.target_id == nid and e.edge_type == "reports_to"
-                for e in self._graph.edges
-            )
-            if not has_reports_to and not has_reported_by:
+            if not connected:
                 orphans.append(nid)
         return orphans
 

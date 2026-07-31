@@ -328,7 +328,7 @@ class TestRegistryEngine:
         reg = result.registry
         assert reg is not None
         assert "executive" in reg.departments
-        assert "technical" in reg.departments
+        assert "engineering" in reg.departments
         exec_dept = reg.departments["executive"]
         assert len(exec_dept.roles) >= 2
         assert exec_dept.roles[0].title == "CEO"
@@ -393,12 +393,20 @@ class TestRegistryIntegrationWithRealData:
         assert reg is not None
         assert reg.vision.name == "AI Enterprise OS Vision"
         assert "executive" in reg.departments
-        assert "strategic" in reg.departments
-        assert "technical" in reg.departments
+        assert "engineering" in reg.departments
+        assert "finance" in reg.departments
+        assert "operations" in reg.departments
+        assert "security" in reg.departments
         assert "marketing" in reg.departments
         assert "sales" in reg.departments
+        assert "hr" in reg.departments
+        assert "legal" in reg.departments
+        assert "it" in reg.departments
+        assert "data" in reg.departments
+        assert "ai" in reg.departments
         assert "research" in reg.departments
         assert "product" in reg.departments
+        assert "customer-success" in reg.departments
 
 
 # ---------------------------------------------------------------------------
@@ -573,7 +581,7 @@ class TestManifestWithRegistryEngine:
         )
         result = eng.load(Path("company"), manifest=manifest)
         assert result.success
-        assert any("technical" in w for w in result.warnings)
+        assert any("engineering" in w for w in result.warnings)
 
     def test_load_with_invalid_manifest_fails(self, temp_dir: Path) -> None:
         eng = self.engine()

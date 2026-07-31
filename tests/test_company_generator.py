@@ -588,3 +588,85 @@ class TestCompanyGenerator:
         data = json.loads(json_path.read_text(encoding="utf-8"))
         reloaded = OrgGraph.from_dict(data)
         assert len(reloaded.nodes) == result.metadata.total_nodes
+
+    # ------------------------------------------------------------------
+    # generate_all()
+    # ------------------------------------------------------------------
+
+    def test_generate_all_summaries(
+        self, minimal_registry: CompanyRegistry, tmp_path: Path
+    ) -> None:
+        gen = CompanyGenerator(output_dir=tmp_path, registry=minimal_registry)
+        result = gen.generate_all()
+        expected = {
+            "organization",
+            "board",
+            "executives",
+            "departments",
+            "specialists",
+            "workflows",
+            "prompts",
+            "docs",
+            "graph",
+        }
+        assert expected <= set(result.summaries.keys())
+        assert result.summaries["executives"]["executives"] > 0
+        assert result.summaries["departments"]["departments"] > 0
+        assert result.summaries["specialists"]["specialists"] > 0
+        assert result.summaries["board"]["members"] > 0
+
+    def test_generate_all_writes_artifacts(
+        self, minimal_registry: CompanyRegistry, tmp_path: Path
+    ) -> None:
+        gen = CompanyGenerator(output_dir=tmp_path, registry=minimal_registry)
+        result = gen.generate_all()
+        assert len(result.created_files) > 0
+        # Spot-check key artifact directories
+        assert (tmp_path / "organization.json").exists()
+        assert (tmp_path / "board.json").exists()
+        assert (tmp_path / "board.yaml").exists()
+        assert (tmp_path / "executives").is_dir()
+        assert (tmp_path / "departments").is_dir()
+        assert (tmp_path / "specialists").is_dir()
+        assert (tmp_path / "workflows").is_dir()
+        assert (tmp_path / "prompts").is_dir()
+        assert (tmp_path / "docs").is_dir()
+        assert (tmp_path / "graph").is_dir()
+
+    def test_generate_all_executive_package(
+        self, full_registry: CompanyRegistry, tmp_path: Path
+    ) -> None:
+        gen = CompanyGenerator(output_dir=tmp_path, registry=full_registry)
+        gen.generate_all()
+        exec_dirs = [d for d in (tmp_path / "executives").iterdir() if d.is_dir()]
+        assert len(exec_dirs) == len(full_registry.executives)
+        for d in exec_dirs:
+            for filename in (
+                "executive.yaml",
+                "prompt.md",
+                "profile.md",
+                "knowledge.md",
+                "memory.md",
+                "agent.py",
+            ):
+                assert (d / filename).exists(), f"Missing {d.name}/{filename}"
+
+    def test_generate_all_specialist_package(
+        self, full_registry: CompanyRegistry, tmp_path: Path
+    ) -> None:
+        gen = CompanyGenerator(output_dir=tmp_path, registry=full_registry)
+        gen.generate_all()
+        spec_dirs = [d for d in (tmp_path / "specialists").iterdir() if d.is_dir()]
+        assert len(spec_dirs) == len(full_registry.specialists)
+        for d in spec_dirs:
+            for filename in ("specialist.yaml", "prompt.md", "profile.md", "memory.md"):
+                assert (d / filename).exists(), f"Missing {d.name}/{filename}"
+
+    def test_generate_all_with_empty_registry(
+        self, empty_registry: CompanyRegistry, tmp_path: Path
+    ) -> None:
+        """generate_all must not raise on an empty registry."""
+        gen = CompanyGenerator(output_dir=tmp_path, registry=empty_registry)
+        result = gen.generate_all()
+        assert "organization" in result.summaries
+        assert isinstance(result.warnings, list)
