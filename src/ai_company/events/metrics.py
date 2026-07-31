@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
 
 
 class EventMetrics:
@@ -27,8 +27,8 @@ class EventMetrics:
         self._by_priority: Counter[str] = Counter()
         self._by_source: Counter[str] = Counter()
         self._by_subscriber: Counter[str] = Counter()
-        self._processing_times: Dict[str, List[float]] = {}
-        self._start_time: datetime = datetime.now(timezone.utc)
+        self._processing_times: dict[str, list[float]] = {}
+        self._start_time: datetime = datetime.now(UTC)
         self._errors: Counter[str] = Counter()
         self._subscriber_errors: Counter[str] = Counter()
 
@@ -67,11 +67,11 @@ class EventMetrics:
         """Record a subscriber error."""
         self._subscriber_errors[subscriber_name] += 1
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get all collected metrics."""
-        uptime = (datetime.now(timezone.utc) - self._start_time).total_seconds()
+        uptime = (datetime.now(UTC) - self._start_time).total_seconds()
 
-        avg_times: Dict[str, float] = {}
+        avg_times: dict[str, float] = {}
         for et, times in self._processing_times.items():
             avg_times[et] = (sum(times) / len(times)) * 1000 if times else 0.0
 

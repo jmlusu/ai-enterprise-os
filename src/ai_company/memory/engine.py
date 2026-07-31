@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -222,7 +222,7 @@ class MemoryEngine:
             return None
 
         entry.version += 1
-        entry.updated_at = datetime.now(timezone.utc)
+        entry.updated_at = datetime.now(UTC)
 
         if content is not None:
             entry.content = content
@@ -612,7 +612,7 @@ class MemoryEngine:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         data = {
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "config": self.config.model_dump(mode="json") if self.config else None,
             "total_entries": self.store.count(),
             "entries": [e.to_dict() for e in self.store.get_all()],
@@ -625,7 +625,7 @@ class MemoryEngine:
         return path
 
     @classmethod
-    def from_config(cls, config_path: str | Path) -> "MemoryEngine":
+    def from_config(cls, config_path: str | Path) -> MemoryEngine:
         """Create MemoryEngine from YAML configuration file."""
         config_path = Path(config_path)
         if not config_path.exists():

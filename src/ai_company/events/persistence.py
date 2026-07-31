@@ -11,7 +11,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ai_company.events.models import Event, EventEnvelope, EventType
 
@@ -38,7 +38,7 @@ class EventPersistence:
         self.storage_path = Path(storage_path)
         self.max_file_size_bytes = max_file_size_bytes
         self.auto_flush = auto_flush
-        self._file: Optional[Any] = None
+        self._file: Any | None = None
         self._current_size: int = 0
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -73,12 +73,12 @@ class EventPersistence:
 
     def load_events(
         self,
-        since: Optional[datetime] = None,
-        until: Optional[datetime] = None,
-        event_types: Optional[List[EventType]] = None,
-        source_filter: Optional[str] = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
+        event_types: list[EventType] | None = None,
+        source_filter: str | None = None,
         limit: int = 1000,
-    ) -> List[Event]:
+    ) -> list[Event]:
         """Load events from the store with optional filters.
 
         Args:
@@ -94,7 +94,7 @@ class EventPersistence:
         if not self.storage_path.exists():
             return []
 
-        events: List[Event] = []
+        events: list[Event] = []
         type_strs = {et.value for et in (event_types or [])}
 
         with open(self.storage_path, "r") as f:
@@ -171,13 +171,13 @@ class EventPersistence:
             self._file.close()
             self._file = None
 
-    def _event_to_record(self, event: Event) -> Dict[str, Any]:
+    def _event_to_record(self, event: Event) -> dict[str, Any]:
         """Convert event to storage record dict."""
         record = event.model_dump(mode="json")
         record["_type"] = "event"
         return record
 
-    def _record_to_event(self, data: Dict[str, Any]) -> Optional[Event]:
+    def _record_to_event(self, data: dict[str, Any]) -> Event | None:
         """Convert storage record dict to Event."""
         try:
             return Event(**data)
@@ -185,7 +185,7 @@ class EventPersistence:
             self.logger.warning(f"Failed to deserialize event record: {e}")
             return None
 
-    def _write_record(self, record: Dict[str, Any]) -> None:
+    def _write_record(self, record: dict[str, Any]) -> None:
         """Write a single JSON record to the store."""
         line = json.dumps(record, default=str) + "\n"
 

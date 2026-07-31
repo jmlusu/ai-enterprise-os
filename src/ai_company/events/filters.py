@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from ai_company.events.models import Event, EventPriority, EventType
 
@@ -46,7 +47,7 @@ class EventFilter(ABC):
 class TypeFilter(EventFilter):
     """Filter events by their type."""
 
-    def __init__(self, event_types: List[EventType]) -> None:
+    def __init__(self, event_types: list[EventType]) -> None:
         self.event_types = event_types
 
     def matches(self, event: Event) -> bool:
@@ -66,7 +67,7 @@ class PriorityFilter(EventFilter):
 class SourceFilter(EventFilter):
     """Filter events by source component."""
 
-    def __init__(self, sources: List[str]) -> None:
+    def __init__(self, sources: list[str]) -> None:
         self.sources = sources
 
     def matches(self, event: Event) -> bool:
@@ -76,7 +77,7 @@ class SourceFilter(EventFilter):
 class TagFilter(EventFilter):
     """Filter events by tags."""
 
-    def __init__(self, required_tags: List[str]) -> None:
+    def __init__(self, required_tags: list[str]) -> None:
         self.required_tags = required_tags
 
     def matches(self, event: Event) -> bool:
@@ -86,7 +87,7 @@ class TagFilter(EventFilter):
 class PayloadFilter(EventFilter):
     """Filter events by payload field values."""
 
-    def __init__(self, conditions: Dict[str, Any]) -> None:
+    def __init__(self, conditions: dict[str, Any]) -> None:
         self.conditions = conditions
 
     def matches(self, event: Event) -> bool:
@@ -134,7 +135,7 @@ class FilterChain:
     All filters must pass for the event to proceed.
     """
 
-    def __init__(self, filters: Optional[List[EventFilter]] = None) -> None:
+    def __init__(self, filters: list[EventFilter] | None = None) -> None:
         self.filters = filters or []
 
     def add_filter(self, filter_: EventFilter) -> None:

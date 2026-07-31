@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ai_company.events.models import EventType
 
@@ -18,7 +18,7 @@ class EventTypeRegistry:
     """
 
     # Domain categorization of event types
-    DOMAIN_MAP: Dict[str, str] = {
+    DOMAIN_MAP: dict[str, str] = {
         "company": "Company Lifecycle",
         "department": "Department Lifecycle",
         "executive": "Executive Lifecycle",
@@ -38,8 +38,8 @@ class EventTypeRegistry:
     }
 
     def __init__(self) -> None:
-        self._registered: Dict[str, EventType] = {}
-        self._metadata: Dict[str, Dict[str, Any]] = {}
+        self._registered: dict[str, EventType] = {}
+        self._metadata: dict[str, dict[str, Any]] = {}
         self.logger = logging.getLogger(self.__class__.__name__)
         self._register_builtins()
 
@@ -64,7 +64,7 @@ class EventTypeRegistry:
         return f"{domain_label}: {action.replace('_', ' ').title()}"
 
     def register(
-        self, event_type: str, metadata: Optional[Dict[str, Any]] = None
+        self, event_type: str, metadata: dict[str, Any] | None = None
     ) -> EventType:
         """Register a custom event type.
 
@@ -99,21 +99,21 @@ class EventTypeRegistry:
         }
         return self._registered[event_type]
 
-    def get_metadata(self, event_type: str) -> Optional[Dict[str, Any]]:
+    def get_metadata(self, event_type: str) -> dict[str, Any] | None:
         """Get metadata for an event type."""
         return self._metadata.get(event_type)
 
-    def get_all_types(self) -> List[str]:
+    def get_all_types(self) -> list[str]:
         """Get all registered event type strings."""
         return list(self._registered.keys())
 
-    def get_types_by_domain(self, domain: str) -> List[str]:
+    def get_types_by_domain(self, domain: str) -> list[str]:
         """Get all event types in a domain."""
         return [et for et in self._registered if et.startswith(f"{domain}.")]
 
-    def get_domains(self) -> Dict[str, List[str]]:
+    def get_domains(self) -> dict[str, list[str]]:
         """Get all domains and their event types."""
-        domains: Dict[str, List[str]] = {}
+        domains: dict[str, list[str]] = {}
         for et in self._registered:
             domain = et.split(".")[0]
             if domain not in domains:

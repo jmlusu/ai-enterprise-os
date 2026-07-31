@@ -6,7 +6,6 @@ import heapq
 import logging
 import threading
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 from ai_company.events.models import Event, EventPriority
 
@@ -34,7 +33,7 @@ class PriorityProcessor:
     Within the same priority level, events are processed FIFO.
     """
 
-    PRIORITY_ORDER: Dict[EventPriority, int] = {
+    PRIORITY_ORDER: dict[EventPriority, int] = {
         EventPriority.CRITICAL: 0,
         EventPriority.HIGH: 1,
         EventPriority.NORMAL: 2,
@@ -43,7 +42,7 @@ class PriorityProcessor:
     }
 
     def __init__(self) -> None:
-        self._queue: List[PrioritizedEvent] = []
+        self._queue: list[PrioritizedEvent] = []
         self._sequence: int = 0
         self._lock = threading.Lock()
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -72,7 +71,7 @@ class PriorityProcessor:
                 f"(idx={priority_idx})"
             )
 
-    def dequeue(self) -> Optional[Event]:
+    def dequeue(self) -> Event | None:
         """Get the highest-priority event from the queue.
 
         Returns:
@@ -84,7 +83,7 @@ class PriorityProcessor:
             pe = heapq.heappop(self._queue)
             return pe.event
 
-    def peek(self) -> Optional[Event]:
+    def peek(self) -> Event | None:
         """Look at the highest-priority event without removing it.
 
         Returns:

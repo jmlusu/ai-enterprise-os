@@ -10,8 +10,8 @@ from __future__ import annotations
 import logging
 from collections import deque
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from ai_company.events.models import DeliveryResult, Event, EventStatus
 
@@ -35,8 +35,8 @@ class HistoryEntry:
     event_type: str
     source: str
     action: str  # published, delivered, failed, replayed, dead_lettered
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    details: Dict[str, Any] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 class EventHistory:
@@ -70,7 +70,7 @@ class EventHistory:
     def record_delivery(self, event: Event, result: DeliveryResult) -> None:
         """Record an event delivery result."""
         action = "delivered" if result.status == EventStatus.DELIVERED else "failed"
-        details: Dict[str, Any] = {
+        details: dict[str, Any] = {
             "subscriber": result.subscriber_name,
         }
         if result.processing_time_ms is not None:
@@ -120,10 +120,10 @@ class EventHistory:
     def get_history(
         self,
         limit: int = 100,
-        event_type: Optional[str] = None,
-        action: Optional[str] = None,
-        source: Optional[str] = None,
-    ) -> List[HistoryEntry]:
+        event_type: str | None = None,
+        action: str | None = None,
+        source: str | None = None,
+    ) -> list[HistoryEntry]:
         """Get filtered event history.
 
         Args:
@@ -146,7 +146,7 @@ class EventHistory:
 
         return entries[-limit:]
 
-    def get_recent(self, limit: int = 20) -> List[HistoryEntry]:
+    def get_recent(self, limit: int = 20) -> list[HistoryEntry]:
         """Get the most recent history entries."""
         return list(self._entries)[-limit:]
 
@@ -158,7 +158,7 @@ class EventHistory:
         """Clear all history entries."""
         self._entries.clear()
 
-    def export(self) -> List[Dict[str, Any]]:
+    def export(self) -> list[dict[str, Any]]:
         """Export all history as serializable dicts."""
         return [
             {

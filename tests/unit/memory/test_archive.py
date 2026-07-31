@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import tempfile
+from datetime import UTC
 from pathlib import Path
 
 import pytest
 
-from ai_company.memory.models import MemoryEntry, MemoryType, MemoryNamespace
-from ai_company.memory.store import MemoryStore
 from ai_company.memory.archive import MemoryArchiver
+from ai_company.memory.models import MemoryEntry, MemoryNamespace, MemoryType
+from ai_company.memory.store import MemoryStore
 
 
 @pytest.fixture
@@ -54,10 +55,10 @@ class TestMemoryArchiver:
         assert count >= 1
 
     def test_archive_older_than(self, archiver, store) -> None:
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta
 
         old = store.get("a3")
-        old.created_at = datetime.now(timezone.utc) - timedelta(days=100)
+        old.created_at = datetime.now(UTC) - timedelta(days=100)
         store.save(old)
         assert archiver.archive_older_than(days=30) >= 1
 

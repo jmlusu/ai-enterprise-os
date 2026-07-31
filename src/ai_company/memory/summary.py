@@ -35,7 +35,7 @@ class MemorySummarizer:
             text = str(content["text"])
             summary_parts.append(text[:300] if len(text) > 300 else text)
         if "decision" in content:
-            summary_parts.append(f"Decision: {str(content['decision'])}")
+            summary_parts.append(f"Decision: {content['decision']!s}")
         if "result" in content:
             result = str(content["result"])
             summary_parts.append(result[:200] if len(result) > 200 else result)

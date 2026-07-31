@@ -7,7 +7,6 @@ import math
 import re
 from abc import ABC, abstractmethod
 from collections import Counter
-from typing import Dict, List, Optional, Tuple
 
 from ai_company.memory.models import MemoryEntry
 
@@ -18,17 +17,17 @@ class EmbeddingProvider(ABC):
     """Abstract base class for embedding providers."""
 
     @abstractmethod
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """Generate embedding vector for text."""
         ...
 
     @abstractmethod
-    def similarity(self, vec1: List[float], vec2: List[float]) -> float:
+    def similarity(self, vec1: list[float], vec2: list[float]) -> float:
         """Compute similarity between two vectors."""
         ...
 
     @abstractmethod
-    def batch_embed(self, texts: List[str]) -> List[List[float]]:
+    def batch_embed(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for multiple texts."""
         ...
 
@@ -38,12 +37,12 @@ class TfidfEmbedder(EmbeddingProvider):
 
     def __init__(self, max_features: int = 384):
         self.max_features = max_features
-        self._vocabulary: Dict[str, int] = {}
-        self._idf: Dict[str, float] = {}
+        self._vocabulary: dict[str, int] = {}
+        self._idf: dict[str, float] = {}
         self._fitted = False
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         """Generate TF-IDF embedding for text."""
         if not self._fitted:
             self._fit_basic(text)
@@ -65,11 +64,11 @@ class TfidfEmbedder(EmbeddingProvider):
 
         return vector[: self.max_features]
 
-    def batch_embed(self, texts: List[str]) -> List[List[float]]:
+    def batch_embed(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for multiple texts."""
         return [self.embed(t) for t in texts]
 
-    def similarity(self, vec1: List[float], vec2: List[float]) -> float:
+    def similarity(self, vec1: list[float], vec2: list[float]) -> float:
         """Compute cosine similarity between two vectors."""
         if not vec1 or not vec2:
             return 0.0
@@ -98,7 +97,7 @@ class TfidfEmbedder(EmbeddingProvider):
 
         self._fitted = True
 
-    def _tokenize(self, text: str) -> List[str]:
+    def _tokenize(self, text: str) -> list[str]:
         """Tokenize text into tokens."""
         text = text.lower()
         tokens = re.findall(r"\b[a-z0-9]{2,}\b", text)
@@ -108,11 +107,11 @@ class TfidfEmbedder(EmbeddingProvider):
 class EmbeddingManager:
     """Manages embeddings for memory entries."""
 
-    def __init__(self, provider: Optional[EmbeddingProvider] = None):
+    def __init__(self, provider: EmbeddingProvider | None = None):
         self.provider = provider or TfidfEmbedder()
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def generate_embedding(self, entry: MemoryEntry) -> Optional[List[float]]:
+    def generate_embedding(self, entry: MemoryEntry) -> list[float] | None:
         """Generate embedding for a memory entry."""
         text = self._entry_to_text(entry)
         if not text:
@@ -122,16 +121,16 @@ class EmbeddingManager:
     def search_by_similarity(
         self,
         query: str,
-        entries: List[MemoryEntry],
+        entries: list[MemoryEntry],
         top_k: int = 10,
         threshold: float = 0.0,
-    ) -> List[Tuple[MemoryEntry, float]]:
+    ) -> list[tuple[MemoryEntry, float]]:
         """Search entries by semantic similarity to query."""
         query_vec = self.provider.embed(query)
         if not query_vec:
             return []
 
-        scored: List[Tuple[MemoryEntry, float]] = []
+        scored: list[tuple[MemoryEntry, float]] = []
         for entry in entries:
             if entry.embedding:
                 sim = self.provider.similarity(query_vec, entry.embedding)

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from ai_company.memory.embedding import EmbeddingManager
 from ai_company.memory.models import (
@@ -25,7 +25,7 @@ class MemorySearch:
     def __init__(
         self,
         store: MemoryStore,
-        embedding_manager: Optional[EmbeddingManager] = None,
+        embedding_manager: EmbeddingManager | None = None,
     ) -> None:
         self.store = store
         self.embedding_manager = embedding_manager or EmbeddingManager()
@@ -232,7 +232,7 @@ class MemorySearch:
                 score += 0.1
 
         # Recency boost
-        age_days = (datetime.now(timezone.utc) - entry.created_at).days
+        age_days = (datetime.now(UTC) - entry.created_at).days
         if age_days < 7:
             score += 0.1
         elif age_days < 30:

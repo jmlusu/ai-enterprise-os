@@ -11,9 +11,8 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import List, Optional
 
 from ai_company.events.models import Event, EventEnvelope
 
@@ -36,9 +35,9 @@ class DeadLetterRecord:
     event: Event
     subscriber_name: str
     error: str
-    failed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    failed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     retry_count: int = 3
-    last_envelope: Optional[EventEnvelope] = None
+    last_envelope: EventEnvelope | None = None
 
 
 class DeadLetterQueue:
@@ -60,7 +59,7 @@ class DeadLetterQueue:
         self.storage_path = Path(storage_path)
         self.max_records = max_records
         self.ttl_days = ttl_days
-        self._records: List[DeadLetterRecord] = []
+        self._records: list[DeadLetterRecord] = []
         self.logger = logging.getLogger(self.__class__.__name__)
 
         # Ensure directory exists
@@ -75,7 +74,7 @@ class DeadLetterQueue:
         subscriber_name: str,
         error: str,
         retry_count: int = 3,
-        envelope: Optional[EventEnvelope] = None,
+        envelope: EventEnvelope | None = None,
     ) -> DeadLetterRecord:
         """Add a failed event to the dead letter queue.
 
@@ -108,7 +107,7 @@ class DeadLetterQueue:
         )
         return record
 
-    def peek(self, limit: int = 10) -> List[DeadLetterRecord]:
+    def peek(self, limit: int = 10) -> list[DeadLetterRecord]:
         """View dead letter records without removing them.
 
         Args:
@@ -119,7 +118,7 @@ class DeadLetterQueue:
         """
         return self._records[:limit]
 
-    def pop(self, count: int = 1) -> List[DeadLetterRecord]:
+    def pop(self, count: int = 1) -> list[DeadLetterRecord]:
         """Remove and return dead letter records for re-queuing.
 
         Args:
@@ -153,7 +152,7 @@ class DeadLetterQueue:
         """Return the number of dead letter records."""
         return len(self._records)
 
-    def requeue_events(self, count: int = 1) -> List[Event]:
+    def requeue_events(self, count: int = 1) -> list[Event]:
         """Get events ready for re-queuing onto the bus.
 
         Args:
@@ -170,7 +169,7 @@ class DeadLetterQueue:
         Returns:
             Number of records cleaned up
         """
-        cutoff = datetime.now(timezone.utc) - timedelta(days=self.ttl_days)
+        cutoff = datetime.now(UTC) - timedelta(days=self.ttl_days)
         before = len(self._records)
         self._records = [r for r in self._records if r.failed_at > cutoff]
         removed = before - len(self._records)

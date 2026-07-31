@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from ai_company.workflow.loader import WorkflowLoader
 from ai_company.workflow.models import (
+    WorkflowCategory,
     WorkflowDefinition,
     WorkflowRegistryEntry,
-    WorkflowCategory,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,8 +20,8 @@ class WorkflowRegistry:
 
     def __init__(self, workflows_dir: str | Path = "config/workflows"):
         self.loader = WorkflowLoader(workflows_dir)
-        self._definitions: Dict[str, WorkflowDefinition] = {}
-        self._registry_entries: Dict[str, WorkflowRegistryEntry] = {}
+        self._definitions: dict[str, WorkflowDefinition] = {}
+        self._registry_entries: dict[str, WorkflowRegistryEntry] = {}
         self._initialized = False
 
     def initialize(self) -> None:
@@ -73,9 +72,9 @@ class WorkflowRegistry:
 
     def list_workflows(
         self,
-        category: Optional[WorkflowCategory] = None,
+        category: WorkflowCategory | None = None,
         enabled_only: bool = True,
-    ) -> List[WorkflowRegistryEntry]:
+    ) -> list[WorkflowRegistryEntry]:
         """List all registered workflows."""
         if not self._initialized:
             self.initialize()
@@ -92,13 +91,13 @@ class WorkflowRegistry:
 
     def list_workflow_ids(
         self,
-        category: Optional[WorkflowCategory] = None,
+        category: WorkflowCategory | None = None,
         enabled_only: bool = True,
-    ) -> List[str]:
+    ) -> list[str]:
         """List all workflow IDs."""
         return [w.workflow_id for w in self.list_workflows(category, enabled_only)]
 
-    def get_definition_ids(self) -> List[str]:
+    def get_definition_ids(self) -> list[str]:
         """Get all loaded definition IDs."""
         if not self._initialized:
             self.initialize()
@@ -138,7 +137,7 @@ class WorkflowRegistry:
         self._definitions[workflow_id] = definition
         return definition
 
-    def validate_workflow(self, workflow_id: str) -> List[str]:
+    def validate_workflow(self, workflow_id: str) -> list[str]:
         """Validate a workflow definition, return list of errors."""
         try:
             definition = self.get_definition(workflow_id)
@@ -174,9 +173,9 @@ class WorkflowRegistry:
 
             return errors
         except Exception as e:
-            return [f"Validation error: {str(e)}"]
+            return [f"Validation error: {e!s}"]
 
-    def get_categories(self) -> List[WorkflowCategory]:
+    def get_categories(self) -> list[WorkflowCategory]:
         """Get all workflow categories."""
         if not self._initialized:
             self.initialize()
@@ -184,12 +183,12 @@ class WorkflowRegistry:
 
     def get_workflows_by_category(
         self,
-    ) -> Dict[WorkflowCategory, List[WorkflowRegistryEntry]]:
+    ) -> dict[WorkflowCategory, list[WorkflowRegistryEntry]]:
         """Get workflows grouped by category."""
         if not self._initialized:
             self.initialize()
 
-        result: Dict[WorkflowCategory, List[WorkflowRegistryEntry]] = {}
+        result: dict[WorkflowCategory, list[WorkflowRegistryEntry]] = {}
         for entry in self._registry_entries.values():
             if entry.category not in result:
                 result[entry.category] = []

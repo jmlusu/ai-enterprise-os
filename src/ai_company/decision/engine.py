@@ -13,7 +13,7 @@ from typing import Any
 from ai_company.decision.approval import ApprovalMatrix, ApprovalRouter
 from ai_company.decision.history import DecisionHistory
 from ai_company.decision.matrix import DecisionMatrix
-from ai_company.decision.models import (  # noqa: F401 — re-exported for public API
+from ai_company.decision.models import (
     Decision,
     DecisionCategory,
     DecisionPriority,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ai_company.memory.models import MemoryEntry, MemoryType
@@ -36,8 +36,8 @@ class MemoryArchiver:
             return False
 
         entry.archived = True
-        entry.archived_at = datetime.now(timezone.utc)
-        entry.updated_at = datetime.now(timezone.utc)
+        entry.archived_at = datetime.now(UTC)
+        entry.updated_at = datetime.now(UTC)
         self.store.save(entry)
 
         # Write to archive file if configured
@@ -56,7 +56,7 @@ class MemoryArchiver:
 
         entry.archived = False
         entry.archived_at = None
-        entry.updated_at = datetime.now(timezone.utc)
+        entry.updated_at = datetime.now(UTC)
         self.store.save(entry)
         self.logger.info(f"Memory unarchived: {memory_id}")
         return True
@@ -72,8 +72,8 @@ class MemoryArchiver:
         for entry in self.store.get_by_type(type_str):
             if not entry.archived:
                 entry.archived = True
-                entry.archived_at = datetime.now(timezone.utc)
-                entry.updated_at = datetime.now(timezone.utc)
+                entry.archived_at = datetime.now(UTC)
+                entry.updated_at = datetime.now(UTC)
                 self.store.save(entry)
                 count += 1
 
@@ -86,8 +86,8 @@ class MemoryArchiver:
         for entry in self.store.get_by_namespace(namespace):
             if not entry.archived:
                 entry.archived = True
-                entry.archived_at = datetime.now(timezone.utc)
-                entry.updated_at = datetime.now(timezone.utc)
+                entry.archived_at = datetime.now(UTC)
+                entry.updated_at = datetime.now(UTC)
                 self.store.save(entry)
                 count += 1
         self.logger.info(f"Archived {count} memories in namespace {namespace}")
@@ -96,7 +96,7 @@ class MemoryArchiver:
     def archive_older_than(self, days: int) -> int:
         """Archive memories older than specified days."""
         count = 0
-        cutoff = datetime.now(timezone.utc)
+        cutoff = datetime.now(UTC)
         for entry in self.store.get_all():
             if not entry.archived and (cutoff - entry.created_at).days > days:
                 entry.archived = True
@@ -113,8 +113,8 @@ class MemoryArchiver:
         for entry in self.store.get_all():
             if not entry.archived and entry.importance <= max_importance:
                 entry.archived = True
-                entry.archived_at = datetime.now(timezone.utc)
-                entry.updated_at = datetime.now(timezone.utc)
+                entry.archived_at = datetime.now(UTC)
+                entry.updated_at = datetime.now(UTC)
                 self.store.save(entry)
                 count += 1
         self.logger.info(
@@ -145,7 +145,7 @@ class MemoryArchiver:
     ) -> dict[str, int]:
         """Apply retention policy, returning counts of actions taken."""
         result = {"archived": 0, "purged": 0}
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         for entry in list(self.store.get_all()):
             reason = None
@@ -181,7 +181,7 @@ class MemoryArchiver:
 
         archived = self.list_archived(limit=100000)
         data = {
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "count": len(archived),
             "entries": [e.to_dict() for e in archived],
         }
@@ -196,6 +196,6 @@ class MemoryArchiver:
         """Write entry to archive file."""
         if self.archive_path:
             archive_entry = entry.to_dict()
-            archive_entry["archived_at"] = datetime.now(timezone.utc).isoformat()
+            archive_entry["archived_at"] = datetime.now(UTC).isoformat()
             with open(self.archive_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(archive_entry) + "\n")

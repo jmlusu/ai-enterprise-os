@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ai_company.events.models import Event, EventMetadata, EventPriority, EventType
 
@@ -31,13 +31,13 @@ class Publisher:
     def create_event(
         self,
         event_type: EventType,
-        payload: Optional[Dict[str, Any]] = None,
-        priority: Optional[EventPriority] = None,
-        correlation_id: Optional[str] = None,
-        causation_id: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        payload: dict[str, Any] | None = None,
+        priority: EventPriority | None = None,
+        correlation_id: str | None = None,
+        causation_id: str | None = None,
+        tags: list[str] | None = None,
         max_retries: int = 3,
-        ttl_seconds: Optional[int] = None,
+        ttl_seconds: int | None = None,
     ) -> Event:
         """Create a properly formatted event for publishing.
 

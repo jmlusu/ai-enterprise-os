@@ -2,20 +2,22 @@
 
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
 from pydantic import ValidationError
 
 from ai_company.memory.models import (
-    MemoryEntry,
-    MemoryType,
-    MemoryNamespace,
-    RetentionPolicy,
+    KnowledgeEntry,
     MemoryConfig,
+    MemoryEntry,
+    MemoryNamespace,
+    MemoryStats,
+    MemoryType,
+    RetentionPolicy,
     SearchQuery,
     SearchResult,
-    MemoryStats,
     SnapshotMetadata,
-    KnowledgeEntry,
     _utcnow,
 )
 
@@ -114,11 +116,11 @@ class TestMemoryEntry:
         assert entry.accessed_at is not None
 
     def test_is_expired(self) -> None:
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta
 
         entry = MemoryEntry()
         assert not entry.is_expired(max_age_days=30)
-        entry.created_at = datetime.now(timezone.utc) - timedelta(days=100)
+        entry.created_at = datetime.now(UTC) - timedelta(days=100)
         assert entry.is_expired(max_age_days=30)
         assert not entry.is_expired(max_age_days=200)
 

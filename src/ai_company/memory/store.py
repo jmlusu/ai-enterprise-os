@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ai_company.memory.models import (
     MemoryEntry,
@@ -29,11 +29,11 @@ class MemoryStore:
     """
 
     def __init__(self, storage_path: str | Path | None = None) -> None:
-        self._entries: Dict[str, MemoryEntry] = {}
-        self._namespace_index: Dict[str, set[str]] = {}
-        self._type_index: Dict[str, set[str]] = {}
-        self._tag_index: Dict[str, set[str]] = {}
-        self._parent_index: Dict[str, set[str]] = {}  # parent_id -> children_ids
+        self._entries: dict[str, MemoryEntry] = {}
+        self._namespace_index: dict[str, set[str]] = {}
+        self._type_index: dict[str, set[str]] = {}
+        self._tag_index: dict[str, set[str]] = {}
+        self._parent_index: dict[str, set[str]] = {}  # parent_id -> children_ids
         self.logger = logging.getLogger(self.__class__.__name__)
         self.storage_path = Path(storage_path) if storage_path else None
 
@@ -156,13 +156,13 @@ class MemoryStore:
     def search(
         self,
         query: str = "",
-        namespace: Optional[str] = None,
-        memory_type: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        namespace: str | None = None,
+        memory_type: str | None = None,
+        tags: list[str] | None = None,
         min_importance: float = 0.0,
         include_archived: bool = False,
-        parent_id: Optional[str] = None,
-        metadata_filter: Optional[Dict[str, Any]] = None,
+        parent_id: str | None = None,
+        metadata_filter: dict[str, Any] | None = None,
         limit: int = 100,
     ) -> list[MemoryEntry]:
         """Search entries with filters."""
@@ -184,7 +184,7 @@ class MemoryStore:
 
         # Filter by tags
         if tags:
-            matching_ids: Optional[set[str]] = None
+            matching_ids: set[str] | None = None
             for tag in tags:
                 tag_ids = self._tag_index.get(tag, set())
                 if matching_ids is None:
@@ -265,7 +265,7 @@ class MemoryStore:
     def enforce_retention(self, policy: RetentionPolicy) -> int:
         """Enforce retention policy, return number of entries affected."""
         affected = 0
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         for entry in list(self._entries.values()):
             entry_policy = entry.retention_policy or policy
@@ -357,8 +357,10 @@ class MemoryStore:
         """Rebuild the entire JSONL file from memory."""
         if self.storage_path:
             with open(self.storage_path, "w", encoding="utf-8") as f:
-                for entry in self._entries.values():
-                    f.write(json.dumps(entry.to_dict()) + "\n")
+                f.writelines(
+                    json.dumps(entry.to_dict()) + "\n"
+                    for entry in self._entries.values()
+                )
 
     def _load_from_disk(self) -> None:
         """Load entries from JSONL disk storage."""

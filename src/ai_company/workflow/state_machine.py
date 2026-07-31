@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ai_company.workflow.models import (
+    ApprovalConfig,
+    WorkflowContext,
     WorkflowDefinition,
     WorkflowState,
     WorkflowStateType,
-    WorkflowContext,
-    ApprovalConfig,
 )
 
 logger = logging.getLogger(__name__)
@@ -22,14 +22,14 @@ class TransitionResult:
     def __init__(
         self,
         success: bool,
-        next_state: Optional[str] = None,
-        error: Optional[str] = None,
+        next_state: str | None = None,
+        error: str | None = None,
         approval_required: bool = False,
-        approval_config: Optional[ApprovalConfig] = None,
+        approval_config: ApprovalConfig | None = None,
         action_required: bool = False,
-        action_config: Optional[Dict[str, Any]] = None,
+        action_config: dict[str, Any] | None = None,
         wait_required: bool = False,
-        wait_config: Optional[Dict[str, Any]] = None,
+        wait_config: dict[str, Any] | None = None,
     ):
         self.success = success
         self.next_state = next_state
@@ -177,7 +177,7 @@ class StateMachine:
             logger.warning(f"Condition evaluation failed: {condition}, error: {e}")
             return False
 
-    def get_valid_transitions(self, state_id: str) -> List[str]:
+    def get_valid_transitions(self, state_id: str) -> list[str]:
         """Get all valid transition target states from a state."""
         state = self.get_state(state_id)
         return [t.to for t in state.transitions]
@@ -187,7 +187,7 @@ class StateMachine:
         state = self.get_state(state_id)
         return state.type == WorkflowStateType.TERMINAL
 
-    def get_terminal_status(self, state_id: str) -> Optional[str]:
+    def get_terminal_status(self, state_id: str) -> str | None:
         """Get the terminal status of a terminal state."""
         state = self.get_state(state_id)
         if state.type == WorkflowStateType.TERMINAL and state.terminal_status:
@@ -199,7 +199,7 @@ class StateMachine:
         state = self.get_state(from_state)
         return any(t.to == to_state for t in state.transitions)
 
-    def get_all_states(self) -> Dict[str, WorkflowState]:
+    def get_all_states(self) -> dict[str, WorkflowState]:
         """Get all states in the workflow."""
         return self.definition.states.copy()
 

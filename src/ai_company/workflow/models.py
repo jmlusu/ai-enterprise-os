@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, model_validator
@@ -86,8 +86,8 @@ class Transition(BaseModel):
     condition_type: TransitionConditionType = Field(
         default=TransitionConditionType.AUTO, description="Type of condition"
     )
-    action: Optional[str] = Field(None, description="Action to execute on transition")
-    description: Optional[str] = Field(None, description="Transition description")
+    action: str | None = Field(None, description="Action to execute on transition")
+    description: str | None = Field(None, description="Transition description")
 
     model_config = {"extra": "forbid"}
 
@@ -96,13 +96,13 @@ class ApprovalConfig(BaseModel):
     """Configuration for approval steps."""
 
     required: bool = Field(default=True, description="Whether approval is required")
-    approver_role: Optional[str] = Field(None, description="Role of approver")
-    escalation_role: Optional[str] = Field(None, description="Escalation role")
+    approver_role: str | None = Field(None, description="Role of approver")
+    escalation_role: str | None = Field(None, description="Escalation role")
     decision_engine_integration: bool = Field(
         default=False, description="Use Decision Engine for approval"
     )
-    approval_matrix: Optional[str] = Field(None, description="Approval matrix key")
-    context_fields: List[str] = Field(
+    approval_matrix: str | None = Field(None, description="Approval matrix key")
+    context_fields: list[str] = Field(
         default_factory=list, description="Context fields to pass to Decision Engine"
     )
     escalation_level: int = Field(default=0, description="Escalation level")
@@ -120,7 +120,7 @@ class ActionConfig(BaseModel):
 
     type: str = Field(..., description="Action type identifier")
     handler: str = Field(..., description="Handler function name")
-    parameters: Dict[str, Any] = Field(
+    parameters: dict[str, Any] = Field(
         default_factory=dict, description="Action parameters"
     )
     timeout_seconds: int = Field(default=300, description="Action timeout")
@@ -145,27 +145,27 @@ class WorkflowState(BaseModel):
     name: str = Field(..., description="Human-readable state name")
     description: str = Field(default="", description="State description")
     type: WorkflowStateType = Field(..., description="State type")
-    transitions: List[Transition] = Field(
+    transitions: list[Transition] = Field(
         default_factory=list, description="Possible transitions from this state"
     )
-    approval: Optional[ApprovalConfig] = Field(
+    approval: ApprovalConfig | None = Field(
         None, description="Approval configuration (for approval states)"
     )
-    action: Optional[ActionConfig] = Field(
+    action: ActionConfig | None = Field(
         None, description="Action configuration (for action states)"
     )
-    wait: Optional[WaitConfig] = Field(
+    wait: WaitConfig | None = Field(
         None, description="Wait configuration (for wait states)"
     )
-    terminal_status: Optional[WorkflowTerminalStatus] = Field(
+    terminal_status: WorkflowTerminalStatus | None = Field(
         None, description="Terminal status (for terminal states)"
     )
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional state metadata"
     )
 
     @model_validator(mode="after")
-    def validate_state(self) -> "WorkflowState":
+    def validate_state(self) -> WorkflowState:
         """Validate state configuration matches its type."""
         if self.type == WorkflowStateType.APPROVAL and not self.approval:
             raise ValueError("Approval state must have approval configuration")
@@ -184,10 +184,10 @@ class WorkflowConfig(BaseModel):
     """Workflow runtime configuration."""
 
     timeout_hours: int = Field(default=168, description="Default workflow timeout")
-    retry_policy: Dict[str, Any] = Field(
+    retry_policy: dict[str, Any] = Field(
         default_factory=lambda: {"max_retries": 3, "backoff_seconds": 300}
     )
-    notifications: Dict[str, bool] = Field(
+    notifications: dict[str, bool] = Field(
         default_factory=lambda: {
             "on_start": True,
             "on_complete": True,
@@ -207,11 +207,11 @@ class DataSchemaField(BaseModel):
     required: bool = Field(default=False, description="Whether field is required")
     description: str = Field(default="", description="Field description")
     default: Any = Field(None, description="Default value")
-    minimum: Optional[float] = Field(None, description="Minimum value (numbers)")
-    maximum: Optional[float] = Field(None, description="Maximum value (numbers)")
-    enum: Optional[List[str]] = Field(None, description="Allowed values (strings)")
-    format: Optional[str] = Field(None, description="Format string (dates, etc.)")
-    items: Optional["DataSchemaField"] = Field(None, description="Array item schema")
+    minimum: float | None = Field(None, description="Minimum value (numbers)")
+    maximum: float | None = Field(None, description="Maximum value (numbers)")
+    enum: list[str] | None = Field(None, description="Allowed values (strings)")
+    format: str | None = Field(None, description="Format string (dates, etc.)")
+    items: DataSchemaField | None = Field(None, description="Array item schema")
 
     model_config = {"extra": "forbid"}
 
@@ -224,11 +224,11 @@ class WorkflowDefinition(BaseModel):
     display_name: str = Field(..., description="Human-readable name")
     description: str = Field(default="", description="Workflow description")
     category: WorkflowCategory = Field(default=WorkflowCategory.OPERATIONAL)
-    tags: List[str] = Field(default_factory=list, description="Workflow tags")
+    tags: list[str] = Field(default_factory=list, description="Workflow tags")
     enabled: bool = Field(default=True, description="Whether workflow is enabled")
     config: WorkflowConfig = Field(default_factory=WorkflowConfig)
-    states: Dict[str, WorkflowState] = Field(..., description="Workflow states")
-    data_schema: Dict[str, DataSchemaField] = Field(
+    states: dict[str, WorkflowState] = Field(..., description="Workflow states")
+    data_schema: dict[str, DataSchemaField] = Field(
         default_factory=dict, description="Data validation schema"
     )
     initial_state: str = Field(..., description="Initial state ID")
@@ -236,7 +236,7 @@ class WorkflowDefinition(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     @model_validator(mode="after")
-    def validate_workflow(self) -> "WorkflowDefinition":
+    def validate_workflow(self) -> WorkflowDefinition:
         """Validate workflow definition consistency."""
         if self.initial_state not in self.states:
             raise ValueError(
@@ -270,23 +270,23 @@ class WorkflowContext(BaseModel):
     execution_id: str = Field(default_factory=lambda: str(uuid4()))
     current_state: str = Field(..., description="Current state ID")
     status: WorkflowStatus = Field(default=WorkflowStatus.PENDING)
-    data: Dict[str, Any] = Field(default_factory=dict, description="Workflow data")
+    data: dict[str, Any] = Field(default_factory=dict, description="Workflow data")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    previous_state: Optional[str] = Field(None, description="Previous state ID")
-    terminal_status: Optional[str] = Field(None, description="Terminal status value")
-    started_at: Optional[datetime] = Field(
+    previous_state: str | None = Field(None, description="Previous state ID")
+    terminal_status: str | None = Field(None, description="Terminal status value")
+    started_at: datetime | None = Field(
         default=None, description="When execution started"
     )
-    completed_at: Optional[datetime] = Field(
+    completed_at: datetime | None = Field(
         default=None, description="When execution completed"
     )
-    paused_at: Optional[datetime] = Field(
+    paused_at: datetime | None = Field(
         default=None, description="When execution paused"
     )
-    error: Optional[str] = Field(default=None, description="Error message if failed")
+    error: str | None = Field(default=None, description="Error message if failed")
     retry_count: int = Field(default=0, description="Number of retries")
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
 
@@ -300,7 +300,7 @@ class WorkflowExecution(BaseModel):
         default="1.0", description="Workflow version at start"
     )
     context: WorkflowContext
-    history: List["ExecutionHistoryEntry"] = Field(
+    history: list[ExecutionHistoryEntry] = Field(
         default_factory=list, description="Execution history"
     )
     status: WorkflowStatus = Field(default=WorkflowStatus.PENDING)
@@ -314,19 +314,17 @@ class ExecutionHistoryEntry(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     execution_id: str = Field(..., description="Execution ID")
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    from_state: Optional[str] = Field(None, description="Previous state")
-    to_state: Optional[str] = Field(None, description="Next state")
+    from_state: str | None = Field(None, description="Previous state")
+    to_state: str | None = Field(None, description="Next state")
     event_type: str = Field(..., description="Event type")
-    actor: Optional[str] = Field(None, description="Actor (user, system, etc.)")
-    action: Optional[str] = Field(None, description="Action performed")
-    data_snapshot: Dict[str, Any] = Field(
+    actor: str | None = Field(None, description="Actor (user, system, etc.)")
+    action: str | None = Field(None, description="Action performed")
+    data_snapshot: dict[str, Any] = Field(
         default_factory=dict, description="Data snapshot at this point"
     )
-    approval_result: Optional[ApprovalStatus] = Field(
-        None, description="Approval result"
-    )
-    error: Optional[str] = Field(None, description="Error if any")
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    approval_result: ApprovalStatus | None = Field(None, description="Approval result")
+    error: str | None = Field(None, description="Error if any")
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
 
@@ -338,17 +336,17 @@ class TaskAssignment(BaseModel):
     execution_id: str = Field(..., description="Execution ID")
     step_id: str = Field(..., description="Workflow step/state ID")
     assignee_role: str = Field(..., description="Assigned role")
-    assignee_id: Optional[str] = Field(None, description="Specific assignee ID")
+    assignee_id: str | None = Field(None, description="Specific assignee ID")
     title: str = Field(..., description="Task title")
     description: str = Field(default="", description="Task description")
     status: str = Field(default="pending", description="Task status")
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    assigned_at: Optional[datetime] = Field(None)
-    started_at: Optional[datetime] = Field(None)
-    completed_at: Optional[datetime] = Field(None)
-    due_at: Optional[datetime] = Field(None)
-    result: Optional[Dict[str, Any]] = Field(None, description="Task result")
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    assigned_at: datetime | None = Field(None)
+    started_at: datetime | None = Field(None)
+    completed_at: datetime | None = Field(None)
+    due_at: datetime | None = Field(None)
+    result: dict[str, Any] | None = Field(None, description="Task result")
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
 
@@ -361,9 +359,9 @@ class WorkflowEvent(BaseModel):
     workflow_id: str = Field(..., description="Workflow definition ID")
     event_type: str = Field(..., description="Event type")
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    state_id: Optional[str] = Field(None, description="Current state")
-    data: Dict[str, Any] = Field(default_factory=dict)
-    actor: Optional[str] = Field(None, description="Actor who triggered event")
+    state_id: str | None = Field(None, description="Current state")
+    data: dict[str, Any] = Field(default_factory=dict)
+    actor: str | None = Field(None, description="Actor who triggered event")
 
     model_config = {"extra": "forbid"}
 
@@ -374,14 +372,14 @@ class WorkflowResult(BaseModel):
     execution_id: str
     workflow_id: str
     status: WorkflowStatus
-    final_state: Optional[str] = None
-    terminal_status: Optional[WorkflowTerminalStatus] = None
+    final_state: str | None = None
+    terminal_status: WorkflowTerminalStatus | None = None
     started_at: datetime
-    completed_at: Optional[datetime] = None
-    duration_seconds: Optional[float] = None
-    data: Dict[str, Any] = Field(default_factory=dict)
-    history: List[ExecutionHistoryEntry] = Field(default_factory=list)
-    error: Optional[str] = None
+    completed_at: datetime | None = None
+    duration_seconds: float | None = None
+    data: dict[str, Any] = Field(default_factory=dict)
+    history: list[ExecutionHistoryEntry] = Field(default_factory=list)
+    error: str | None = None
 
     model_config = {"extra": "forbid"}
 
@@ -397,7 +395,7 @@ class WorkflowRegistryEntry(BaseModel):
     version: str
     enabled: bool
     definition_file: str
-    tags: List[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
 
     model_config = {"extra": "forbid"}
 

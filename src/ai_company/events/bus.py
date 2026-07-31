@@ -10,16 +10,17 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from ai_company.events.dead_letter import DeadLetterQueue, DeadLetterRecord
 from ai_company.events.dispatcher import Dispatcher
 from ai_company.events.history import EventHistory
 from ai_company.events.metrics import EventMetrics
 from ai_company.events.middleware import (
-    MiddlewarePipeline,
     LoggingMiddleware,
     MetricsMiddleware,
+    MiddlewarePipeline,
     ValidationMiddleware,
 )
 from ai_company.events.models import (
@@ -93,7 +94,7 @@ class EventBus:
         self.event_type_registry = self.registry  # alias for clarity
 
         # Persistence
-        self.persistence: Optional[EventPersistence] = (
+        self.persistence: EventPersistence | None = (
             EventPersistence(storage_path) if enable_persistence else None
         )
         self.dead_letter = DeadLetterQueue(dead_letter_path)
@@ -117,8 +118,8 @@ class EventBus:
         # State
         self._running = False
         self._lock = threading.Lock()
-        self._publishers: Dict[str, Publisher] = {}
-        self._replay_handler: Optional[ReplayEventHandler] = None
+        self._publishers: dict[str, Publisher] = {}
+        self._replay_handler: ReplayEventHandler | None = None
 
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -188,11 +189,11 @@ class EventBus:
         self.logger.debug(f"Created publisher: {source}")
         return publisher
 
-    def get_publisher(self, source: str) -> Optional[Publisher]:
+    def get_publisher(self, source: str) -> Publisher | None:
         """Get an existing publisher by source name."""
         return self._publishers.get(source)
 
-    def list_publishers(self) -> List[Dict[str, Any]]:
+    def list_publishers(self) -> list[dict[str, Any]]:
         """List all registered publishers."""
         return [
             {"source": p.source, "description": p.description}
@@ -207,7 +208,7 @@ class EventBus:
         self,
         name: str,
         handler: Callable[[Event], Any],
-        event_types: Optional[List[EventType]] = None,
+        event_types: list[EventType] | None = None,
         description: str = "",
         auto_route: bool = True,
     ) -> Subscriber:
@@ -254,7 +255,7 @@ class EventBus:
         self,
         name: str,
         subscriber: Subscriber,
-        event_types: Optional[List[EventType]] = None,
+        event_types: list[EventType] | None = None,
         priority: int = 100,
         description: str = "",
     ) -> Route:
@@ -275,7 +276,7 @@ class EventBus:
         self,
         event: Event,
         delivery_mode: str = "AT_LEAST_ONCE",
-    ) -> List[DeliveryResult]:
+    ) -> list[DeliveryResult]:
         """Publish an event to the bus.
 
         The event flows through:
@@ -300,7 +301,7 @@ class EventBus:
             )
 
         # 1. Middleware
-        def _deliver(event: Event) -> List[DeliveryResult]:
+        def _deliver(event: Event) -> list[DeliveryResult]:
             # 2. Route to subscribers
             subscribers = self.router.route_event(event)
 
@@ -352,12 +353,12 @@ class EventBus:
     def publish_event(
         self,
         event_type: EventType,
-        payload: Optional[Dict[str, Any]] = None,
+        payload: dict[str, Any] | None = None,
         source: str = "unknown",
-        priority: Optional[EventPriority] = None,
-        correlation_id: Optional[str] = None,
+        priority: EventPriority | None = None,
+        correlation_id: str | None = None,
         delivery_mode: str = "AT_LEAST_ONCE",
-    ) -> List[DeliveryResult]:
+    ) -> list[DeliveryResult]:
         """Convenience method to create and publish an event in one call.
 
         Args:
@@ -387,7 +388,7 @@ class EventBus:
         self,
         event: Event,
         timeout: float = 30.0,
-    ) -> Optional[Event]:
+    ) -> Event | None:
         """Publish a request event and wait for a reply.
 
         Request/reply pattern: publishes an event and waits for
@@ -402,7 +403,7 @@ class EventBus:
         """
         import threading as _threading
 
-        reply_event: Optional[Event] = None
+        reply_event: Event | None = None
         reply_received = _threading.Event()
 
         # Register a temporary subscriber for the reply — construct reply event type
@@ -433,7 +434,7 @@ class EventBus:
     # Event Bus Management
     # ------------------------------------------------------------------
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get event bus statistics."""
         stats = self.metrics.get_stats()
         stats.update(
@@ -457,9 +458,9 @@ class EventBus:
     def get_history(
         self,
         limit: int = 100,
-        event_type: Optional[str] = None,
-        action: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        event_type: str | None = None,
+        action: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Get event history with optional filtering."""
         entries = self.history.get_history(
             limit=limit, event_type=event_type, action=action
@@ -476,11 +477,11 @@ class EventBus:
             for e in entries
         ]
 
-    def get_dead_letter_queue(self, limit: int = 10) -> List[DeadLetterRecord]:
+    def get_dead_letter_queue(self, limit: int = 10) -> list[DeadLetterRecord]:
         """View dead letter queue entries."""
         return self.dead_letter.peek(limit=limit)
 
-    def requeue_dead_letter(self, count: int = 1) -> List[DeliveryResult]:
+    def requeue_dead_letter(self, count: int = 1) -> list[DeliveryResult]:
         """Re-queue dead letter events back onto the bus.
 
         Args:
@@ -490,7 +491,7 @@ class EventBus:
             Results from republishing the events
         """
         events = self.dead_letter.requeue_events(count=count)
-        results: List[DeliveryResult] = []
+        results: list[DeliveryResult] = []
         for event in events:
             results.extend(self.publish(event))
         return results
@@ -515,8 +516,8 @@ class EventBus:
     def replay(
         self,
         request: ReplayRequest,
-        handler: Optional[ReplayEventHandler] = None,
-        progress_callback: Optional[Callable[[int, int], None]] = None,
+        handler: ReplayEventHandler | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> ReplaySession:
         """Replay historical events.
 

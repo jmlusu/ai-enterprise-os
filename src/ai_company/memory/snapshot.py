@@ -6,7 +6,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from ai_company.memory.models import MemoryEntry, SnapshotMetadata
 from ai_company.memory.store import MemoryStore
@@ -23,7 +23,7 @@ class MemorySnapshot:
         snapshot_path: str | Path | None = None,
     ) -> None:
         self.store = store
-        self.snapshots: Dict[str, Dict[str, Any]] = {}
+        self.snapshots: dict[str, dict[str, Any]] = {}
         self.snapshot_path = Path(snapshot_path) if snapshot_path else None
         self.logger = logging.getLogger(self.__class__.__name__)
 

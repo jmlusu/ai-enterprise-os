@@ -10,7 +10,8 @@ from __future__ import annotations
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from ai_company.events.models import Event
 
@@ -67,7 +68,7 @@ class MetricsMiddleware(Middleware):
     """Record processing metrics for each event."""
 
     def __init__(self) -> None:
-        self.processing_times: Dict[str, List[float]] = {}
+        self.processing_times: dict[str, list[float]] = {}
 
     def handle(self, event: Event, next_handler: NextHandler) -> Any:
         start = time.monotonic()
@@ -81,9 +82,9 @@ class MetricsMiddleware(Middleware):
                 self.processing_times[event_type] = []
             self.processing_times[event_type].append(elapsed)
 
-    def get_stats(self) -> Dict[str, Dict[str, float]]:
+    def get_stats(self) -> dict[str, dict[str, float]]:
         """Get processing time statistics."""
-        stats: Dict[str, Dict[str, float]] = {}
+        stats: dict[str, dict[str, float]] = {}
         for event_type, times in self.processing_times.items():
             if times:
                 stats[event_type] = {
@@ -116,7 +117,7 @@ class RetryMiddleware(Middleware):
     def handle(self, event: Event, next_handler: NextHandler) -> Any:
         import time as _time
 
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         for attempt in range(1, self.max_retries + 1):
             try:
                 return next_handler(event)
@@ -139,7 +140,7 @@ class MiddlewarePipeline:
     Middleware is executed in the order it was added (first added = first executed).
     """
 
-    def __init__(self, middlewares: Optional[List[Middleware]] = None) -> None:
+    def __init__(self, middlewares: list[Middleware] | None = None) -> None:
         self._middlewares = middlewares or []
 
     def add(self, middleware: Middleware) -> None:

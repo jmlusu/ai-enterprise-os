@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from ai_company.memory.models import MemoryEntry, MemoryType, MemoryNamespace
+from ai_company.memory.models import MemoryEntry, MemoryNamespace, MemoryType
 from ai_company.memory.store import MemoryStore
 
 logger = logging.getLogger(__name__)

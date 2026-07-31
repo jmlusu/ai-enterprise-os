@@ -13,9 +13,9 @@ Memory Hierarchy:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_serializer
@@ -26,7 +26,7 @@ def _utcnow() -> datetime:
 
     Replacement for deprecated datetime.utcnow().
     """
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class MemoryType(str, Enum):
@@ -62,10 +62,10 @@ class MemoryNamespace(str, Enum):
 class RetentionPolicy(BaseModel):
     """Retention policy for memory entries."""
 
-    max_age_days: Optional[int] = Field(
+    max_age_days: int | None = Field(
         default=None, description="Maximum age in days before archival"
     )
-    max_versions: Optional[int] = Field(
+    max_versions: int | None = Field(
         default=None, description="Maximum versions to keep"
     )
     min_importance: float = Field(
@@ -89,13 +89,13 @@ class MemoryConfig(BaseModel):
     archive_path: str = Field(default="memory/archive")
     enable_embeddings: bool = Field(default=False)
     embedder_type: str = Field(default="tfidf")
-    embedder_model: Optional[str] = Field(default=None)
+    embedder_model: str | None = Field(default=None)
     max_memory_per_namespace: int = Field(default=10000)
     default_importance: float = Field(default=0.5, ge=0.0, le=1.0)
     retention: RetentionPolicy = Field(default_factory=lambda: RetentionPolicy())
 
     # Per-type retention policies (overrides global)
-    type_retention: Dict[str, RetentionPolicy] = Field(default_factory=dict)
+    type_retention: dict[str, RetentionPolicy] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
 
@@ -113,11 +113,11 @@ class MemoryEntry(BaseModel):
     namespace: MemoryNamespace = Field(
         default=MemoryNamespace.GLOBAL, description="Memory namespace"
     )
-    content: Dict[str, Any] = Field(
+    content: dict[str, Any] = Field(
         default_factory=dict, description="Memory content data"
     )
     summary: str = Field(default="", description="Text summary of memory")
-    tags: List[str] = Field(default_factory=list, description="Tags for categorization")
+    tags: list[str] = Field(default_factory=list, description="Tags for categorization")
     source: str = Field(
         default="", description="Source of the memory (e.g. system, user, workflow)"
     )
@@ -125,49 +125,49 @@ class MemoryEntry(BaseModel):
         default=0.5, ge=0.0, le=1.0, description="Importance score 0.0-1.0"
     )
     version: int = Field(default=1, ge=1, description="Version number for updates")
-    parent_id: Optional[str] = Field(
+    parent_id: str | None = Field(
         default=None, description="Parent memory ID for hierarchy"
     )
-    children_ids: List[str] = Field(
+    children_ids: list[str] = Field(
         default_factory=list, description="Child memory IDs"
     )
     created_at: datetime = Field(
         default_factory=_utcnow, description="Creation timestamp"
     )
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         default=None, description="Last update timestamp"
     )
-    accessed_at: Optional[datetime] = Field(
+    accessed_at: datetime | None = Field(
         default=None, description="Last access timestamp"
     )
     archived: bool = Field(default=False, description="Whether entry is archived")
-    archived_at: Optional[datetime] = Field(
+    archived_at: datetime | None = Field(
         default=None, description="When entry was archived"
     )
-    retention_policy: Optional[RetentionPolicy] = Field(
+    retention_policy: RetentionPolicy | None = Field(
         default=None, description="Per-entry retention override"
     )
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata"
     )
-    embedding: Optional[List[float]] = Field(
+    embedding: list[float] | None = Field(
         default=None, description="Vector embedding for semantic search"
     )
 
     model_config = {"extra": "forbid"}
 
     @field_serializer("created_at", "updated_at", "accessed_at", "archived_at")
-    def serialize_dt(self, value: Optional[datetime]) -> Optional[str]:
+    def serialize_dt(self, value: datetime | None) -> str | None:
         if value is None:
             return None
         return value.isoformat()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict for JSONL storage."""
         return self.model_dump(mode="json")
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MemoryEntry":
+    def from_dict(cls, data: dict[str, Any]) -> MemoryEntry:
         """Create entry from dict (for JSONL loading)."""
         if "memory_type" in data and isinstance(data["memory_type"], str):
             data["memory_type"] = MemoryType(data["memory_type"])
@@ -185,18 +185,18 @@ class MemoryEntry(BaseModel):
 
     def touch(self) -> None:
         """Update access timestamp."""
-        self.accessed_at = datetime.now(timezone.utc)
+        self.accessed_at = datetime.now(UTC)
 
     def is_expired(self, max_age_days: int) -> bool:
         """Check if entry is older than max_age_days."""
-        return (datetime.now(timezone.utc) - self.created_at).days > max_age_days
+        return (datetime.now(UTC) - self.created_at).days > max_age_days
 
 
 class MemoryHierarchyNode(BaseModel):
     """Node in the memory hierarchy tree."""
 
     entry: MemoryEntry
-    children: List["MemoryHierarchyNode"] = Field(default_factory=list)
+    children: list[MemoryHierarchyNode] = Field(default_factory=list)
     level: int = Field(default=0, ge=0)
     path: str = Field(default="")
 
@@ -212,8 +212,8 @@ class SnapshotMetadata(BaseModel):
     created_at: datetime = Field(default_factory=_utcnow)
     entry_count: int = 0
     total_size_bytes: int = 0
-    tags: List[str] = Field(default_factory=list)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
 
@@ -222,27 +222,25 @@ class SearchQuery(BaseModel):
     """Structured search query for the memory engine."""
 
     query: str = Field(default="", description="Search text")
-    memory_type: Optional[MemoryType] = Field(
-        default=None, description="Filter by type"
-    )
-    namespace: Optional[MemoryNamespace] = Field(
+    memory_type: MemoryType | None = Field(default=None, description="Filter by type")
+    namespace: MemoryNamespace | None = Field(
         default=None, description="Filter by namespace"
     )
-    tags: List[str] = Field(default_factory=list, description="Filter by tags")
-    source: Optional[str] = Field(default=None, description="Filter by source")
+    tags: list[str] = Field(default_factory=list, description="Filter by tags")
+    source: str | None = Field(default=None, description="Filter by source")
     min_importance: float = Field(default=0.0, ge=0.0, le=1.0)
     max_results: int = Field(default=20, ge=1, le=1000)
     include_archived: bool = Field(default=False)
     include_embeddings: bool = Field(default=False)
-    start_date: Optional[datetime] = Field(default=None)
-    end_date: Optional[datetime] = Field(default=None)
+    start_date: datetime | None = Field(default=None)
+    end_date: datetime | None = Field(default=None)
     sort_by: str = Field(
         default="importance",
         description="Sort field: importance, created_at, accessed_at",
     )
     sort_descending: bool = Field(default=True)
-    parent_id: Optional[str] = Field(default=None, description="Filter by parent ID")
-    metadata_filter: Dict[str, Any] = Field(
+    parent_id: str | None = Field(default=None, description="Filter by parent ID")
+    metadata_filter: dict[str, Any] = Field(
         default_factory=dict, description="Filter by metadata fields"
     )
 
@@ -254,7 +252,7 @@ class SearchResult(BaseModel):
 
     entry: MemoryEntry
     score: float = Field(default=0.0, ge=0.0, le=1.0, description="Relevance score")
-    matched_fields: List[str] = Field(
+    matched_fields: list[str] = Field(
         default_factory=list, description="Fields that matched"
     )
     snippet: str = Field(default="", description="Context snippet")
@@ -266,14 +264,14 @@ class MemoryStats(BaseModel):
     """Memory engine statistics."""
 
     total_entries: int = 0
-    by_type: Dict[str, int] = Field(default_factory=dict)
-    by_namespace: Dict[str, int] = Field(default_factory=dict)
+    by_type: dict[str, int] = Field(default_factory=dict)
+    by_namespace: dict[str, int] = Field(default_factory=dict)
     total_archived: int = 0
     total_snapshots: int = 0
     average_importance: float = 0.0
     total_size_bytes: int = 0
-    oldest_entry: Optional[datetime] = None
-    newest_entry: Optional[datetime] = None
+    oldest_entry: datetime | None = None
+    newest_entry: datetime | None = None
     retention_policies_applied: int = 0
     embedding_count: int = 0
 
@@ -285,21 +283,21 @@ class KnowledgeEntry(BaseModel):
 
     id: str = Field(default_factory=lambda: f"know_{uuid4().hex[:12]}")
     title: str
-    content: Dict[str, Any] = Field(default_factory=dict)
+    content: dict[str, Any] = Field(default_factory=dict)
     summary: str = ""
     domain: str = "general"
-    tags: List[str] = Field(default_factory=list)
-    relationships: List[str] = Field(
+    tags: list[str] = Field(default_factory=list)
+    relationships: list[str] = Field(
         default_factory=list, description="Related knowledge entry IDs"
     )
-    source_memory_ids: List[str] = Field(
+    source_memory_ids: list[str] = Field(
         default_factory=list, description="Source memory entry IDs"
     )
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     version: int = 1
     created_at: datetime = Field(default_factory=_utcnow)
-    updated_at: Optional[datetime] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    updated_at: datetime | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     model_config = {"extra": "forbid"}
 

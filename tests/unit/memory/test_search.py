@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
 
 from ai_company.memory.models import (
     MemoryEntry,
-    MemoryType,
     MemoryNamespace,
+    MemoryType,
     SearchQuery,
     SearchResult,
 )
-from ai_company.memory.store import MemoryStore
 from ai_company.memory.search import MemorySearch
+from ai_company.memory.store import MemoryStore
 
 
 @pytest.fixture
@@ -117,10 +119,10 @@ class TestMemorySearch:
         assert all(e.importance >= 0.4 for e in results)
 
     def test_search_by_date_range(self, searcher) -> None:
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta
 
-        start = datetime.now(timezone.utc) - timedelta(days=1)
-        end = datetime.now(timezone.utc) + timedelta(days=1)
+        start = datetime.now(UTC) - timedelta(days=1)
+        end = datetime.now(UTC) + timedelta(days=1)
         results = searcher.search_by_date_range(start, end)
         assert len(results) >= 1
 

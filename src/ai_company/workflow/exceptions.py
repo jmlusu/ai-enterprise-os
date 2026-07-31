@@ -22,43 +22,29 @@ class WorkflowError(Exception):
 class WorkflowNotFoundError(WorkflowError):
     """Workflow definition not found."""
 
-    pass
-
 
 class WorkflowValidationError(WorkflowError):
     """Workflow definition validation failed."""
-
-    pass
 
 
 class InvalidStateError(WorkflowError):
     """Invalid state transition attempted."""
 
-    pass
-
 
 class StateNotFoundError(WorkflowError):
     """State not found in workflow definition."""
-
-    pass
 
 
 class TransitionError(WorkflowError):
     """State transition failed."""
 
-    pass
-
 
 class ApprovalRequiredError(WorkflowError):
     """Approval required but not provided."""
 
-    pass
-
 
 class ApprovalTimeoutError(WorkflowError):
     """Approval request timed out."""
-
-    pass
 
 
 class ApprovalRejectedError(WorkflowError):
@@ -72,91 +58,61 @@ class ApprovalRejectedError(WorkflowError):
 class ExecutionNotFoundError(WorkflowError):
     """Workflow execution not found."""
 
-    pass
-
 
 class ExecutionNotRunningError(WorkflowError):
     """Execution is not in running state."""
-
-    pass
 
 
 class ExecutionAlreadyCompletedError(WorkflowError):
     """Execution already completed."""
 
-    pass
-
 
 class ContextError(WorkflowError):
     """Workflow context error."""
-
-    pass
 
 
 class ContextNotFoundError(WorkflowError):
     """Execution context not found."""
 
-    pass
-
 
 class ActionError(WorkflowError):
     """Action execution error."""
-
-    pass
 
 
 class ActionTimeoutError(ActionError):
     """Action execution timed out."""
 
-    pass
-
 
 class ActionNotFoundError(ActionError):
     """Action handler not found."""
-
-    pass
 
 
 class WaitError(WorkflowError):
     """Wait state error."""
 
-    pass
-
 
 class WaitTimeoutError(WaitError):
     """Wait condition timed out."""
-
-    pass
 
 
 class ConditionEvaluationError(WorkflowError):
     """Condition evaluation failed."""
 
-    pass
-
 
 class DataValidationError(WorkflowError):
     """Workflow data validation failed."""
-
-    pass
 
 
 class SchedulerError(WorkflowError):
     """Scheduler error."""
 
-    pass
-
 
 class RegistryError(WorkflowError):
     """Workflow registry error."""
 
-    pass
-
 
 class HandlerError(WorkflowError):
     """Handler execution error."""
-
-    pass
 
 
 class RetryExhaustedError(WorkflowError):
@@ -169,5 +125,3 @@ class RetryExhaustedError(WorkflowError):
 
 class ConcurrentModificationError(WorkflowError):
     """Concurrent modification of execution context."""
-
-    pass

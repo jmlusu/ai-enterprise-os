@@ -10,8 +10,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any
 
 from ai_company.events.metrics import EventMetrics
 from ai_company.events.models import (
@@ -40,22 +41,22 @@ class Dispatcher:
 
     def __init__(
         self,
-        metrics: Optional[EventMetrics] = None,
+        metrics: EventMetrics | None = None,
         max_workers: int = 4,
     ) -> None:
         self.metrics = metrics or EventMetrics()
         self.max_workers = max_workers
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
-        self._processed_ids: Set[str] = set()
+        self._processed_ids: set[str] = set()
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def dispatch(
         self,
         event: Event,
-        subscribers: List[Subscriber],
+        subscribers: list[Subscriber],
         delivery_mode: str = "AT_LEAST_ONCE",
-        callback: Optional[DeliveryCallback] = None,
-    ) -> List[DeliveryResult]:
+        callback: DeliveryCallback | None = None,
+    ) -> list[DeliveryResult]:
         """Dispatch an event to multiple subscribers.
 
         Args:
@@ -73,7 +74,7 @@ class Dispatcher:
                 f"Must be one of {self.DELIVERY_MODES}"
             )
 
-        results: List[DeliveryResult] = []
+        results: list[DeliveryResult] = []
         for subscriber in subscribers:
             result = self._deliver_to_subscriber(event, subscriber, delivery_mode)
             if callback:
@@ -85,9 +86,9 @@ class Dispatcher:
     def dispatch_async(
         self,
         event: Event,
-        subscribers: List[Subscriber],
+        subscribers: list[Subscriber],
         delivery_mode: str = "AT_LEAST_ONCE",
-        callback: Optional[DeliveryCallback] = None,
+        callback: DeliveryCallback | None = None,
     ) -> asyncio.Task[Any]:
         """Dispatch an event asynchronously.
 
@@ -114,9 +115,9 @@ class Dispatcher:
     def broadcast(
         self,
         event: Event,
-        subscribers: List[Subscriber],
+        subscribers: list[Subscriber],
         delivery_mode: str = "AT_LEAST_ONCE",
-    ) -> Dict[str, DeliveryResult]:
+    ) -> dict[str, DeliveryResult]:
         """Broadcast an event, delivering to all subscribers in parallel.
 
         Args:
@@ -129,7 +130,7 @@ class Dispatcher:
         """
         import concurrent.futures
 
-        results: Dict[str, DeliveryResult] = {}
+        results: dict[str, DeliveryResult] = {}
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=min(len(subscribers), self.max_workers)
         ) as executor:

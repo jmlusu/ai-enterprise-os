@@ -6,9 +6,9 @@ schema generation. Supports YAML, JSON, and dict formats.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 def _utcnow() -> datetime:
     """Return current UTC timestamp (timezone-aware)."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _new_id(prefix: str = "evt") -> str:
@@ -146,24 +146,20 @@ class EventMetadata(BaseModel):
     event_type: EventType
     source: str = Field(default="", description="Component that emitted the event")
     version: str = Field(default="1.0")
-    correlation_id: Optional[str] = Field(
-        default=None, description="Links related events"
-    )
-    causation_id: Optional[str] = Field(
+    correlation_id: str | None = Field(default=None, description="Links related events")
+    causation_id: str | None = Field(
         default=None, description="ID of event that caused this one"
     )
-    tenant_id: Optional[str] = Field(default=None, description="Multi-tenant support")
-    user_id: Optional[str] = Field(
+    tenant_id: str | None = Field(default=None, description="Multi-tenant support")
+    user_id: str | None = Field(
         default=None, description="User who triggered the event"
     )
     priority: EventPriority = Field(default=EventPriority.NORMAL)
     status: EventStatus = Field(default=EventStatus.PENDING)
-    ttl_seconds: Optional[int] = Field(
-        default=None, description="Time-to-live in seconds"
-    )
+    ttl_seconds: int | None = Field(default=None, description="Time-to-live in seconds")
     retry_count: int = Field(default=0, ge=0)
     max_retries: int = Field(default=3, ge=0)
-    tags: List[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
 
     model_config = {"extra": "forbid"}
 
@@ -172,7 +168,7 @@ class Event(BaseModel):
     """An event with metadata and payload."""
 
     metadata: EventMetadata
-    payload: Dict[str, Any] = Field(
+    payload: dict[str, Any] = Field(
         default_factory=dict, description="Event data payload"
     )
 
@@ -184,11 +180,11 @@ class EventEnvelope(BaseModel):
 
     event: Event
     routing_key: str = Field(default="", description="Routing key for the event")
-    delivered_to: List[str] = Field(default_factory=list)
-    failed_at: Optional[datetime] = Field(None)
-    error_message: Optional[str] = Field(None)
-    delivered_at: Optional[datetime] = Field(None)
-    processing_time_ms: Optional[float] = Field(None)
+    delivered_to: list[str] = Field(default_factory=list)
+    failed_at: datetime | None = Field(None)
+    error_message: str | None = Field(None)
+    delivered_at: datetime | None = Field(None)
+    processing_time_ms: float | None = Field(None)
 
     model_config = {"extra": "forbid"}
 
@@ -211,7 +207,7 @@ class SubscriberInfo(BaseModel):
 
     subscriber_id: str = Field(default_factory=lambda: _new_id("sub"))
     name: str
-    event_types: List[EventType]
+    event_types: list[EventType]
     description: str = ""
     is_active: bool = True
     created_at: datetime = Field(default_factory=_utcnow)
@@ -225,29 +221,29 @@ class ReplayRequest(BaseModel):
     """Request to replay historical events."""
 
     replay_id: str = Field(default_factory=lambda: _new_id("rpl"))
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         default=None, description="Session identifier for tracking"
     )
-    since: Optional[datetime] = Field(
+    since: datetime | None = Field(
         default=None, description="Replay events after this timestamp"
     )
-    until: Optional[datetime] = Field(
+    until: datetime | None = Field(
         default=None, description="Replay events before this timestamp"
     )
-    event_types: List[EventType] = Field(
+    event_types: list[EventType] = Field(
         default_factory=list, description="Filter by event types"
     )
-    source_filter: Optional[str] = Field(
+    source_filter: str | None = Field(
         default=None, description="Filter by source component"
     )
     max_events: int = Field(default=1000, ge=1, le=100000)
-    limit: Optional[int] = Field(
+    limit: int | None = Field(
         default=None, description="Max events to replay (overrides max_events)"
     )
-    max_events_per_second: Optional[int] = Field(
+    max_events_per_second: int | None = Field(
         default=None, description="Rate-limit for replay (events/second)"
     )
-    target_subscribers: List[str] = Field(
+    target_subscribers: list[str] = Field(
         default_factory=list, description="Only deliver to these subscribers"
     )
 

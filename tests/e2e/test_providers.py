@@ -1,6 +1,7 @@
 """Provider integration tests — validates all provider backends."""
 
 import pytest
+
 from ai_company.providers.base import (
     BaseProvider,
     ChatMessage,

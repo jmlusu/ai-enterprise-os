@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 from ai_company.workflow.models import (
+    WorkflowContext,
     WorkflowDefinition,
     WorkflowState,
     WorkflowStateType,
-    WorkflowContext,
     WorkflowTerminalStatus,
 )
 
@@ -21,8 +21,8 @@ class WorkflowValidator:
     """Validates workflow definitions for correctness."""
 
     def __init__(self) -> None:
-        self.errors: List[str] = []
-        self.warnings: List[str] = []
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
 
     def validate_definition(self, definition: WorkflowDefinition) -> bool:
         """Validate a complete workflow definition."""
@@ -177,7 +177,7 @@ class WorkflowValidator:
             if config.retry_policy["backoff_seconds"] < 0:
                 self.warnings.append("backoff_seconds should be non-negative")
 
-    def get_report(self) -> Dict[str, Any]:
+    def get_report(self) -> dict[str, Any]:
         return {
             "valid": len(self.errors) == 0,
             "errors": self.errors,
@@ -191,8 +191,8 @@ class ExecutionValidator:
     """Validates workflow execution state."""
 
     def __init__(self) -> None:
-        self.errors: List[str] = []
-        self.warnings: List[str] = []
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
 
     def validate_context(
         self,
@@ -217,8 +217,8 @@ class ExecutionValidator:
 
     def _validate_data(
         self,
-        data: Dict[str, Any],
-        schema: Dict[str, Any],
+        data: dict[str, Any],
+        schema: dict[str, Any],
     ) -> None:
         for field_name, field_schema in schema.items():
             required = field_schema.get("required", False)
@@ -251,7 +251,7 @@ class ExecutionValidator:
                         f"Field '{field_name}' value '{value}' not in enum: {field_schema['enum']}"
                     )
 
-    def get_report(self) -> Dict[str, Any]:
+    def get_report(self) -> dict[str, Any]:
         return {
             "valid": len(self.errors) == 0,
             "errors": self.errors,
@@ -259,9 +259,10 @@ class ExecutionValidator:
         }
 
 
-def validate_workflow_yaml(yaml_content: str) -> Dict[str, Any]:
+def validate_workflow_yaml(yaml_content: str) -> dict[str, Any]:
     """Validate workflow YAML content."""
     import yaml
+
     from ai_company.workflow.models import WorkflowDefinition
 
     try:

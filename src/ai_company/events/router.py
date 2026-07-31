@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ai_company.events.filters import FilterChain
 from ai_company.events.models import Event, EventType
@@ -45,7 +45,7 @@ class Router:
     """
 
     def __init__(self) -> None:
-        self._routes: List[Route] = []
+        self._routes: list[Route] = []
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def add_route(self, route: Route) -> None:
@@ -62,7 +62,7 @@ class Router:
         self,
         name: str,
         subscriber: Subscriber,
-        event_types: Optional[List[EventType]] = None,
+        event_types: list[EventType] | None = None,
         priority: int = 100,
         description: str = "",
     ) -> Route:
@@ -113,7 +113,7 @@ class Router:
                 return True
         return False
 
-    def route_event(self, event: Event) -> List[Subscriber]:
+    def route_event(self, event: Event) -> list[Subscriber]:
         """Find all subscribers that should receive an event.
 
         Evaluates all routes in priority order and returns the
@@ -125,7 +125,7 @@ class Router:
         Returns:
             List of subscribers that match the event
         """
-        subscribers: List[Subscriber] = []
+        subscribers: list[Subscriber] = []
         for route in self._routes:
             if route.subscriber in subscribers:
                 continue
@@ -137,14 +137,14 @@ class Router:
         """Check if a route exists."""
         return any(r.name == name for r in self._routes)
 
-    def get_route(self, name: str) -> Optional[Route]:
+    def get_route(self, name: str) -> Route | None:
         """Get a route by name."""
         for r in self._routes:
             if r.name == name:
                 return r
         return None
 
-    def list_routes(self) -> List[Dict[str, Any]]:
+    def list_routes(self) -> list[dict[str, Any]]:
         """List all registered routes."""
         return [
             {

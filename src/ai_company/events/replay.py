@@ -10,9 +10,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, Optional, Set
+from datetime import UTC, datetime
+from typing import Any
 
 from ai_company.events.models import Event, ReplayRequest
 from ai_company.events.persistence import EventPersistence
@@ -47,8 +48,8 @@ class ReplaySession:
     processed: int = 0
     succeeded: int = 0
     failed: int = 0
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
 
 class ReplayEngine:
@@ -67,19 +68,19 @@ class ReplayEngine:
     def __init__(
         self,
         persistence: EventPersistence,
-        handler: Optional[ReplayHandler] = None,
+        handler: ReplayHandler | None = None,
     ) -> None:
         self.persistence = persistence
         self.handler = handler
-        self._sessions: Dict[str, ReplaySession] = {}
-        self._cancel_flags: Set[str] = set()
+        self._sessions: dict[str, ReplaySession] = {}
+        self._cancel_flags: set[str] = set()
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def replay(
         self,
         request: ReplayRequest,
-        handler: Optional[ReplayHandler] = None,
-        progress_callback: Optional[ProgressCallback] = None,
+        handler: ReplayHandler | None = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> ReplaySession:
         """Execute a replay operation.
 
@@ -93,7 +94,7 @@ class ReplayEngine:
         """
         session_id = request.session_id or f"replay_{int(time.time())}"
         session = ReplaySession(request=request, state="running")
-        session.started_at = datetime.now(timezone.utc)
+        session.started_at = datetime.now(UTC)
         self._sessions[session_id] = session
 
         handler_fn = handler or self.handler
@@ -149,15 +150,15 @@ class ReplayEngine:
             session.state = "failed"
             self.logger.error(f"Replay session {session_id} failed: {e}")
         finally:
-            session.completed_at = datetime.now(timezone.utc)
+            session.completed_at = datetime.now(UTC)
 
         return session
 
     async def replay_async(
         self,
         request: ReplayRequest,
-        handler: Optional[ReplayHandler] = None,
-        progress_callback: Optional[ProgressCallback] = None,
+        handler: ReplayHandler | None = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> ReplaySession:
         """Execute a replay operation asynchronously.
 
@@ -185,15 +186,15 @@ class ReplayEngine:
             return True
         return False
 
-    def get_session(self, session_id: str) -> Optional[ReplaySession]:
+    def get_session(self, session_id: str) -> ReplaySession | None:
         """Get replay session status."""
         return self._sessions.get(session_id)
 
-    def get_sessions(self) -> Dict[str, ReplaySession]:
+    def get_sessions(self) -> dict[str, ReplaySession]:
         """Get all replay sessions."""
         return dict(self._sessions)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get replay engine statistics."""
         total = len(self._sessions)
         completed = sum(1 for s in self._sessions.values() if s.state == "completed")

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import yaml
 
@@ -18,7 +17,7 @@ class WorkflowLoader:
 
     def __init__(self, workflows_dir: str | Path = "config/workflows"):
         self.workflows_dir = Path(workflows_dir)
-        self._cache: Dict[str, WorkflowDefinition] = {}
+        self._cache: dict[str, WorkflowDefinition] = {}
 
     def load_workflow(self, workflow_id: str) -> WorkflowDefinition:
         """Load a single workflow definition by ID."""
@@ -34,7 +33,7 @@ class WorkflowLoader:
         self._cache[workflow_id] = definition
         return definition
 
-    def load_all_workflows(self) -> List[WorkflowDefinition]:
+    def load_all_workflows(self) -> list[WorkflowDefinition]:
         """Load all workflow definitions from the workflows directory."""
         workflows = []
         for file_path in self.workflows_dir.glob("*.yaml"):
@@ -50,7 +49,7 @@ class WorkflowLoader:
                 logger.warning(f"Failed to load workflow from {file_path}: {e}")
         return workflows
 
-    def load_registry(self) -> List[WorkflowRegistryEntry]:
+    def load_registry(self) -> list[WorkflowRegistryEntry]:
         """Load the workflow registry."""
         registry_path = self.workflows_dir / "workflow_registry.yaml"
         if not registry_path.exists():
@@ -66,7 +65,7 @@ class WorkflowLoader:
             entries.append(entry)
         return entries
 
-    def _find_workflow_file(self, workflow_id: str) -> Optional[Path]:
+    def _find_workflow_file(self, workflow_id: str) -> Path | None:
         """Find the YAML file for a workflow ID."""
         # Direct match
         direct_path = self.workflows_dir / f"{workflow_id}.yaml"
@@ -91,6 +90,7 @@ class WorkflowLoader:
                 if data.get("name") == workflow_id:
                     return file_path
             except Exception:
+                logger.debug("Could not read %s for workflow lookup", file_path)
                 continue
 
         return None
@@ -109,7 +109,7 @@ class WorkflowLoader:
 
         return WorkflowDefinition(**data)
 
-    def _build_registry_from_definitions(self) -> List[WorkflowRegistryEntry]:
+    def _build_registry_from_definitions(self) -> list[WorkflowRegistryEntry]:
         """Build registry entries from loaded definitions."""
         entries = []
         for file_path in self.workflows_dir.glob("*.yaml"):

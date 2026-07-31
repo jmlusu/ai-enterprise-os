@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 import tempfile
+from datetime import UTC
 from pathlib import Path
 
 import yaml
 
-from ai_company.memory.models import (
-    MemoryType,
-    MemoryNamespace,
-    MemoryConfig,
-)
 from ai_company.memory.engine import MemoryEngine
+from ai_company.memory.models import (
+    MemoryConfig,
+    MemoryNamespace,
+    MemoryType,
+)
 
 
 class TestMemoryEngine:
@@ -110,11 +111,11 @@ class TestMemoryEngine:
         assert engine.retrieve(entry.id).archived is False
 
     def test_archive_older_than(self) -> None:
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta
 
         engine = MemoryEngine()
         entry = engine.save({"old": True}, memory_type="system")
-        entry.created_at = datetime.now(timezone.utc) - timedelta(days=100)
+        entry.created_at = datetime.now(UTC) - timedelta(days=100)
         engine.store.save(entry)
         assert engine.archive_older_than(days=30) >= 1
 
@@ -223,13 +224,14 @@ class TestMemoryEngine:
     def test_from_config_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "memory.yaml"
-            yaml.dump(
-                {
-                    "version": "1.0",
-                    "storage_path": str(Path(tmpdir) / "store.jsonl"),
-                    "default_importance": 0.6,
-                },
-                open(config_path, "w"),
-            )
+            with open(config_path, "w") as f:
+                yaml.dump(
+                    {
+                        "version": "1.0",
+                        "storage_path": str(Path(tmpdir) / "store.jsonl"),
+                        "default_importance": 0.6,
+                    },
+                    f,
+                )
             engine = MemoryEngine.from_config(config_path)
             assert engine is not None

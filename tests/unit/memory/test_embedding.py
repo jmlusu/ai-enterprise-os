@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-
-from ai_company.memory.embedding import TfidfEmbedder, EmbeddingManager
+from ai_company.memory.embedding import EmbeddingManager, TfidfEmbedder
 from ai_company.memory.models import MemoryEntry
 
 

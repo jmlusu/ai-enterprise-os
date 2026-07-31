@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ai_company.workflow.models import (
+    Transition,
+    WorkflowContext,
     WorkflowDefinition,
     WorkflowState,
     WorkflowStateType,
-    Transition,
-    WorkflowContext,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,8 +21,8 @@ class TransitionValidator:
 
     def __init__(self, definition: WorkflowDefinition):
         self.definition = definition
-        self.errors: List[str] = []
-        self.warnings: List[str] = []
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
 
     def validate(self) -> bool:
         """Run all validations, return True if valid."""
@@ -148,7 +148,7 @@ class TransitionValidator:
 
         while changed:
             changed = False
-            for state_id in list(reachable):
+            for state_id in reachable:
                 if state_id in self.definition.states:
                     state = self.definition.states[state_id]
                     for transition in state.transitions:
@@ -166,7 +166,7 @@ class TransitionValidator:
                         f"Non-terminal state '{state_id}' has no outgoing transitions"
                     )
 
-    def get_validation_report(self) -> Dict[str, Any]:
+    def get_validation_report(self) -> dict[str, Any]:
         """Get a full validation report."""
         return {
             "valid": len(self.errors) == 0,
@@ -187,7 +187,7 @@ class TransitionEvaluator:
         self,
         condition: str,
         context: WorkflowContext,
-        additional_vars: Optional[Dict[str, Any]] = None,
+        additional_vars: dict[str, Any] | None = None,
     ) -> bool:
         """Evaluate a transition condition."""
         if not condition or condition == "auto":
@@ -216,7 +216,7 @@ class TransitionEvaluator:
         self,
         state: WorkflowState,
         context: WorkflowContext,
-    ) -> List[Transition]:
+    ) -> list[Transition]:
         """Evaluate all transitions from a state, return matching ones."""
         matching = []
         for transition in state.transitions:
@@ -225,7 +225,7 @@ class TransitionEvaluator:
         return matching
 
 
-def validate_workflow_definition(definition: WorkflowDefinition) -> Dict[str, Any]:
+def validate_workflow_definition(definition: WorkflowDefinition) -> dict[str, Any]:
     """Validate a workflow definition and return report."""
     validator = TransitionValidator(definition)
     validator.validate()
@@ -235,8 +235,8 @@ def validate_workflow_definition(definition: WorkflowDefinition) -> Dict[str, An
 def create_transition(
     to: str,
     condition: str = "auto",
-    action: Optional[str] = None,
-    description: Optional[str] = None,
+    action: str | None = None,
+    description: str | None = None,
 ) -> Transition:
     """Factory function to create a transition."""
     return Transition(

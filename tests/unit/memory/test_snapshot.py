@@ -7,8 +7,8 @@ import tempfile
 import pytest
 
 from ai_company.memory.models import MemoryEntry, MemoryType
-from ai_company.memory.store import MemoryStore
 from ai_company.memory.snapshot import MemorySnapshot
+from ai_company.memory.store import MemoryStore
 
 
 @pytest.fixture

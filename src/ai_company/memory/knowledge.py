@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from ai_company.memory.models import KnowledgeEntry, MemoryEntry, MemoryType
 
@@ -16,11 +16,11 @@ logger = logging.getLogger(__name__)
 class KnowledgeBase:
     """Knowledge base for extracting, storing, and retrieving structured knowledge."""
 
-    def __init__(self, storage_path: Optional[str | Path] = None):
+    def __init__(self, storage_path: str | Path | None = None):
         self.storage_path = Path(storage_path) if storage_path else None
-        self._entries: Dict[str, KnowledgeEntry] = {}
-        self._domain_index: Dict[str, Set[str]] = {}
-        self._tag_index: Dict[str, Set[str]] = {}
+        self._entries: dict[str, KnowledgeEntry] = {}
+        self._domain_index: dict[str, set[str]] = {}
+        self._tag_index: dict[str, set[str]] = {}
         self.logger = logging.getLogger(self.__class__.__name__)
 
         if self.storage_path:
@@ -30,11 +30,11 @@ class KnowledgeBase:
     def add_knowledge(
         self,
         title: str,
-        content: Dict[str, Any],
+        content: dict[str, Any],
         summary: str = "",
         domain: str = "general",
-        tags: Optional[List[str]] = None,
-        source_memory_ids: Optional[List[str]] = None,
+        tags: list[str] | None = None,
+        source_memory_ids: list[str] | None = None,
         confidence: float = 1.0,
     ) -> KnowledgeEntry:
         """Add a knowledge entry."""
@@ -53,19 +53,19 @@ class KnowledgeBase:
         logger.info(f"Knowledge added: {entry.id} - {title}")
         return entry
 
-    def get(self, knowledge_id: str) -> Optional[KnowledgeEntry]:
+    def get(self, knowledge_id: str) -> KnowledgeEntry | None:
         """Get knowledge entry by ID."""
         return self._entries.get(knowledge_id)
 
     def update(
         self,
         knowledge_id: str,
-        title: Optional[str] = None,
-        content: Optional[Dict[str, Any]] = None,
-        summary: Optional[str] = None,
-        tags: Optional[List[str]] = None,
-        confidence: Optional[float] = None,
-    ) -> Optional[KnowledgeEntry]:
+        title: str | None = None,
+        content: dict[str, Any] | None = None,
+        summary: str | None = None,
+        tags: list[str] | None = None,
+        confidence: float | None = None,
+    ) -> KnowledgeEntry | None:
         """Update a knowledge entry."""
         entry = self._entries.get(knowledge_id)
         if not entry:
@@ -92,7 +92,7 @@ class KnowledgeBase:
             entry.confidence = confidence
 
         entry.version += 1
-        entry.updated_at = datetime.now(timezone.utc)
+        entry.updated_at = datetime.now(UTC)
         self._save()
         return entry
 
@@ -116,11 +116,11 @@ class KnowledgeBase:
     def search(
         self,
         query: str = "",
-        domain: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        domain: str | None = None,
+        tags: list[str] | None = None,
         min_confidence: float = 0.0,
         limit: int = 20,
-    ) -> List[KnowledgeEntry]:
+    ) -> list[KnowledgeEntry]:
         """Search knowledge entries."""
         results = list(self._entries.values())
 
@@ -131,7 +131,7 @@ class KnowledgeBase:
 
         # Filter by tags
         if tags:
-            matching_ids: Optional[Set[str]] = None
+            matching_ids: set[str] | None = None
             for tag in tags:
                 tag_ids = self._tag_index.get(tag, set())
                 if matching_ids is None:
@@ -159,12 +159,12 @@ class KnowledgeBase:
         results.sort(key=lambda e: (e.confidence, e.created_at), reverse=True)
         return results[:limit]
 
-    def get_by_domain(self, domain: str) -> List[KnowledgeEntry]:
+    def get_by_domain(self, domain: str) -> list[KnowledgeEntry]:
         """Get all knowledge entries in a domain."""
         ids = self._domain_index.get(domain, set())
         return [self._entries[eid] for eid in ids if eid in self._entries]
 
-    def get_by_tag(self, tag: str) -> List[KnowledgeEntry]:
+    def get_by_tag(self, tag: str) -> list[KnowledgeEntry]:
         """Get all knowledge entries with a tag."""
         ids = self._tag_index.get(tag, set())
         return [self._entries[eid] for eid in ids if eid in self._entries]
@@ -173,7 +173,7 @@ class KnowledgeBase:
         self,
         entry: MemoryEntry,
         domain: str = "general",
-    ) -> Optional[KnowledgeEntry]:
+    ) -> KnowledgeEntry | None:
         """Extract a knowledge entry from a memory entry."""
         # Only extract from certain memory types
         if entry.memory_type not in (
@@ -222,7 +222,7 @@ class KnowledgeBase:
         self._save()
         return True
 
-    def get_related(self, knowledge_id: str) -> List[KnowledgeEntry]:
+    def get_related(self, knowledge_id: str) -> list[KnowledgeEntry]:
         """Get knowledge entries related to a given entry."""
         entry = self._entries.get(knowledge_id)
         if not entry:
@@ -254,7 +254,7 @@ class KnowledgeBase:
             json.dump(data, f, indent=2)
         return path
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get knowledge base statistics."""
         return {
             "total_entries": len(self._entries),

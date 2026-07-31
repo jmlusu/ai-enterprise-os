@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-
 from ai_company.generator.context import GeneratorContext
 from ai_company.generator.prompt_generator import PromptGenerator as PromptGen
 from ai_company.models.company import CompanyManifest, CompanyRegistry

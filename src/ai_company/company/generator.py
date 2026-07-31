@@ -15,13 +15,13 @@ import yaml
 
 from ai_company.company.board_generator import BoardGenerator, BoardResult
 from ai_company.company.department_generator import DepartmentGenerator
-from ai_company.company.executive_generator import ExecutiveGenerator
-from ai_company.company.specialist_generator import SpecialistGenerator
-from ai_company.company.workflow_generator import WorkflowGenerator
-from ai_company.company.prompt_generator import PromptLibraryGenerator
 from ai_company.company.doc_generator import DocGenerator
+from ai_company.company.executive_generator import ExecutiveGenerator
 from ai_company.company.graph_exporter import GraphExporter
 from ai_company.company.organization import OrganizationGenerator, OrganizationResult
+from ai_company.company.prompt_generator import PromptLibraryGenerator
+from ai_company.company.specialist_generator import SpecialistGenerator
+from ai_company.company.workflow_generator import WorkflowGenerator
 from ai_company.models.company import CompanyManifest, CompanyRegistry
 from ai_company.registry.registry import RegistryEngine
 

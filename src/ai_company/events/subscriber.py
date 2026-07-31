@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from ai_company.events.models import Event, EventType, SubscriberInfo
 
@@ -25,7 +26,7 @@ class Subscriber:
         subscriber_id: str,
         name: str,
         handler: EventHandler,
-        event_types: Optional[List[EventType]] = None,
+        event_types: list[EventType] | None = None,
         description: str = "",
         is_active: bool = True,
         max_retries: int = 3,

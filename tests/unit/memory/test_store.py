@@ -5,8 +5,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-
-from ai_company.memory.models import MemoryEntry, MemoryType, MemoryNamespace
+from ai_company.memory.models import MemoryEntry, MemoryNamespace, MemoryType
 from ai_company.memory.store import MemoryStore
 
 
