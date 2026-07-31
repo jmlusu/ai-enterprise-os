@@ -1,0 +1,201 @@
+# Incident Response Workflow
+# Security/operational incident response workflow
+
+version: "1.0"
+name: "incident_response"
+display_name: "Incident Response"
+description: "Security and operational incident response workflow"
+category: "operational"
+tags:
+  - "security"
+  - "incident"
+  - "response"
+  - "escalation"
+
+config:
+  timeout_hours: 24
+  priority_based_routing: true
+  notifications:
+    on_start: true
+    on_escalation: true
+    on_complete: true
+
+states:
+  detected:
+    name: "Detected"
+    description: "Incident detected and reported"
+    type: "initial"
+    transitions:
+      - to: "triage"
+        action: "create_incident"
+
+  triage:
+    name: "Triage"
+    description: "Initial assessment and classification"
+    type: "action"
+    action:
+      type: "classify_incident"
+      handler: "classify_incident_severity"
+    transitions:
+      - to: "investigating"
+        condition: "severity in ['low', 'medium']"
+      - to: "escalated"
+        condition: "severity in ['high', 'critical']"
+
+  investigating:
+    name: "Investigating"
+    description: "Active investigation of the incident"
+    type: "action"
+    action:
+      type: "investigate"
+      handler: "investigate_incident"
+    transitions:
+      - to: "contained"
+        condition: "containment_achieved == true"
+      - to: "escalated"
+        condition: "escalation_needed == true"
+      - to: "investigating"
+        condition: "more_time_needed == true"
+
+  escalated:
+    name: "Escalated"
+    description: "Incident escalated to senior team"
+    type: "approval"
+    approval:
+      required: true
+      approver_role: "ciso"
+      escalation_role: "ceo"
+      timeout_hours: 2
+    transitions:
+      - to: "investigating"
+        condition: "approved == true"
+      - to: "executive_review"
+        condition: "requires_executive_review == true"
+
+  executive_review:
+    name: "Executive Review"
+    description: "Executive leadership review required"
+    type: "approval"
+    approval:
+      required: true
+      approver_role: "ceo"
+      timeout_hours: 1
+    transitions:
+      - to: "investigating"
+        condition: "approved == true"
+      - to: "contained"
+        condition: "emergency_containment == true"
+
+  contained:
+    name: "Contained"
+    description: "Incident contained, no further spread"
+    type: "action"
+    action:
+      type: "verify_containment"
+      handler: "verify_containment"
+    transitions:
+      - to: "eradicating"
+        condition: "verified == true"
+      - to: "investigating"
+        condition: "verified != true"
+
+  eradicating:
+    name: "Eradicating"
+    description: "Removing root cause"
+    type: "action"
+    action:
+      type: "eradicate_root_cause"
+      handler: "eradicate_incident"
+    transitions:
+      - to: "recovering"
+        condition: "eradicated == true"
+      - to: "investigating"
+        condition: "eradicated != true"
+
+  recovering:
+    name: "Recovering"
+    description: "Restoring affected systems"
+    type: "action"
+    action:
+      type: "restore_systems"
+      handler: "restore_affected_systems"
+    transitions:
+      - to: "post_incident"
+        condition: "restored == true"
+      - to: "eradicating"
+        condition: "restored != true"
+
+  post_incident:
+    name: "Post-Incident Review"
+    description: "Post-incident analysis and documentation"
+    type: "action"
+    action:
+      type: "create_postmortem"
+      handler: "create_postmortem"
+    transitions:
+      - to: "completed"
+        condition: "postmortem_complete == true"
+
+  completed:
+    name: "Completed"
+    description: "Incident response completed"
+    type: "terminal"
+    terminal_status: "success"
+
+  cancelled:
+    name: "Cancelled"
+    description: "Incident response cancelled (false positive)"
+    type: "terminal"
+    terminal_status: "cancelled"
+
+data_schema:
+  incident_id:
+    type: "string"
+    required: true
+  title:
+    type: "string"
+    required: true
+  description:
+    type: "string"
+    required: true
+  severity:
+    type: "string"
+    required: true
+    enum: ["low", "medium", "high", "critical"]
+  source:
+    type: "string"
+    required: true
+    enum: ["monitoring", "user_report", "external", "automated"]
+  affected_systems:
+    type: "array"
+    items:
+      type: "string"
+  assigned_team:
+    type: "string"
+  containment_achieved:
+    type: "boolean"
+    default: false
+  escalation_needed:
+    type: "boolean"
+    default: false
+  requires_executive_review:
+    type: "boolean"
+    default: false
+  emergency_containment:
+    type: "boolean"
+    default: false
+  eradicated:
+    type: "boolean"
+    default: false
+  restored:
+    type: "boolean"
+    default: false
+  postmortem_complete:
+    type: "boolean"
+    default: false
+  cancelled:
+    type: "boolean"
+    default: false
+  more_time_needed:
+    type: "boolean"
+    default: false

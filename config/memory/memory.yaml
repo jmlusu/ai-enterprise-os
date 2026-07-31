@@ -1,0 +1,174 @@
+# Memory Engine Configuration
+# All memory engine settings come from YAML - no hardcoded logic
+
+version: "1.0"
+description: "Memory engine configuration for AI Enterprise OS"
+
+# Storage paths
+storage:
+  store_path: "memory/store.jsonl"
+  snapshot_path: "memory/snapshots"
+  archive_path: "memory/archive"
+  knowledge_path: "memory/knowledge"
+
+# Namespace definitions
+namespaces:
+  global:
+    description: "Global memory accessible to all"
+    max_entries: 100000
+    retention_days: 365
+
+  company:
+    description: "Company-level strategic memory"
+    max_entries: 50000
+    retention_days: 730  # 2 years
+
+  executive:
+    description: "Executive-level memory"
+    max_entries: 25000
+    retention_days: 730
+
+  department:
+    description: "Department-level operational memory"
+    max_entries: 25000
+    retention_days: 365
+
+  project:
+    description: "Project-specific memory"
+    max_entries: 10000
+    retention_days: 180
+
+  agent:
+    description: "Agent-specific working memory"
+    max_entries: 5000
+    retention_days: 90
+
+  workflow:
+    description: "Workflow execution memory"
+    max_entries: 5000
+    retention_days: 90
+
+  user:
+    description: "User-specific memory"
+    max_entries: 10000
+    retention_days: 365
+
+# Memory type configurations
+memory_types:
+  company:
+    importance_default: 0.8
+    retention_days: 730
+    auto_summarize: true
+    max_versions: 10
+
+  executive:
+    importance_default: 0.7
+    retention_days: 730
+    auto_summarize: true
+    max_versions: 10
+
+  department:
+    importance_default: 0.6
+    retention_days: 365
+    auto_summarize: true
+    max_versions: 5
+
+  project:
+    importance_default: 0.5
+    retention_days: 180
+    auto_summarize: false
+    max_versions: 5
+
+  task:
+    importance_default: 0.3
+    retention_days: 90
+    auto_summarize: false
+    max_versions: 3
+
+  decision:
+    importance_default: 0.7
+    retention_days: 730
+    auto_summarize: true
+    max_versions: 3
+
+  meeting:
+    importance_default: 0.5
+    retention_days: 365
+    auto_summarize: true
+    max_versions: 3
+
+  conversation:
+    importance_default: 0.3
+    retention_days: 90
+    auto_summarize: false
+    max_versions: 3
+
+  workflow:
+    importance_default: 0.5
+    retention_days: 90
+    auto_summarize: true
+    max_versions: 5
+
+  agent:
+    importance_default: 0.4
+    retention_days: 90
+    auto_summarize: false
+    max_versions: 5
+
+  system:
+    importance_default: 0.2
+    retention_days: 30
+    auto_summarize: false
+    max_versions: 1
+
+  knowledge:
+    importance_default: 0.8
+    retention_days: 730
+    auto_summarize: true
+    max_versions: 10
+
+# Retention policies (global defaults)
+retention:
+  enabled: true
+  default_max_age_days: 365
+  default_max_versions: 5
+  min_importance_threshold: 0.1
+  auto_archive: true
+  auto_purge_archived: false
+  archive_after_days: 180
+  purge_after_days: 730
+  check_interval_hours: 24
+
+# Embedding configuration
+embeddings:
+  enabled: false
+  provider: "tfidf"
+  model: null
+  dimension: 384
+  similarity_function: "cosine"
+  auto_embed_on_save: false
+  batch_size: 100
+
+# Search defaults
+search:
+  default_max_results: 20
+  max_results_limit: 1000
+  min_query_length: 1
+  fuzzy_matching: true
+  case_sensitive: false
+  highlight_matches: true
+
+# Snapshot defaults
+snapshots:
+  auto_snapshot_interval_hours: 168  # 1 week
+  max_snapshots: 50
+  compress_snapshots: false
+  include_archived_in_snapshot: false
+
+# Hierarchy defaults
+hierarchy:
+  max_depth: 10
+  default_parent_type:
+    task: "project"
+    meeting: "project"
+    decision: "project"

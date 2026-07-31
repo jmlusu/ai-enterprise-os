@@ -1,0 +1,166 @@
+# Workflow Registry
+# Central registry of all available workflows in the AI Enterprise OS
+# All workflows are defined declaratively in YAML - no hardcoded logic
+
+version: "1.0"
+description: "Registry of all company workflows"
+
+# Workflow definitions
+workflows:
+  # HR Workflows
+  hire_employee:
+    name: "Hire Employee"
+    description: "Complete hiring workflow from requisition to onboarding"
+    category: "hr"
+    version: "1.0"
+    enabled: true
+    definition_file: "hire_employee.yaml"
+
+  onboard_employee:
+    name: "Onboard Employee"
+    description: "Employee onboarding process"
+    category: "hr"
+    version: "1.0"
+    enabled: true
+    definition_file: "onboard_employee.yaml"
+
+  offboard_employee:
+    name: "Offboard Employee"
+    description: "Employee offboarding and exit process"
+    category: "hr"
+    version: "1.0"
+    enabled: true
+    definition_file: "offboard_employee.yaml"
+
+  promote_employee:
+    name: "Promote Employee"
+    description: "Employee promotion workflow with approval chain"
+    category: "hr"
+    version: "1.0"
+    enabled: true
+    definition_file: "promote_employee.yaml"
+
+  # Financial Workflows
+  budget_approval:
+    name: "Budget Approval"
+    description: "Budget request approval workflow"
+    category: "financial"
+    version: "1.0"
+    enabled: true
+    definition_file: "budget_approval.yaml"
+
+  expense_approval:
+    name: "Expense Approval"
+    description: "Expense report approval workflow"
+    category: "financial"
+    version: "1.0"
+    enabled: true
+    definition_file: "expense_approval.yaml"
+
+  procurement:
+    name: "Procurement"
+    description: "Procurement and vendor selection workflow"
+    category: "financial"
+    version: "1.0"
+    enabled: true
+    definition_file: "procurement.yaml"
+
+  # Project Workflows
+  project_initiation:
+    name: "Project Initiation"
+    description: "New project kickoff and planning workflow"
+    category: "project"
+    version: "1.0"
+    enabled: true
+    definition_file: "project_initiation.yaml"
+
+  sprint_planning:
+    name: "Sprint Planning"
+    description: "Agile sprint planning workflow"
+    category: "project"
+    version: "1.0"
+    enabled: true
+    definition_file: "sprint_planning.yaml"
+
+  project_closure:
+    name: "Project Closure"
+    description: "Project completion and retrospective workflow"
+    category: "project"
+    version: "1.0"
+    enabled: true
+    definition_file: "project_closure.yaml"
+
+  # Operational Workflows
+  incident_response:
+    name: "Incident Response"
+    description: "Security/operational incident response workflow"
+    category: "operational"
+    version: "1.0"
+    enabled: true
+    definition_file: "incident_response.yaml"
+
+  change_management:
+    name: "Change Management"
+    description: "IT change management workflow"
+    category: "operational"
+    version: "1.0"
+    enabled: true
+    definition_file: "change_management.yaml"
+
+  vendor_onboarding:
+    name: "Vendor Onboarding"
+    description: "New vendor onboarding and compliance workflow"
+    category: "operational"
+    version: "1.0"
+    enabled: true
+    definition_file: "vendor_onboarding.yaml"
+
+  # Governance Workflows
+  board_meeting:
+    name: "Board Meeting"
+    description: "Board meeting preparation and follow-up workflow"
+    category: "governance"
+    version: "1.0"
+    enabled: true
+    definition_file: "board_meeting.yaml"
+
+  policy_review:
+    name: "Policy Review"
+    description: "Policy review and approval workflow"
+    category: "governance"
+    version: "1.0"
+    enabled: true
+    definition_file: "policy_review.yaml"
+
+  compliance_audit:
+    name: "Compliance Audit"
+    description: "Compliance audit preparation and response workflow"
+    category: "governance"
+    version: "1.0"
+    enabled: true
+    definition_file: "compliance_audit.yaml"
+
+  # Strategy Workflows
+  quarterly_planning:
+    name: "Quarterly Planning"
+    description: "Quarterly strategic planning workflow"
+    category: "strategy"
+    version: "1.0"
+    enabled: true
+    definition_file: "quarterly_planning.yaml"
+
+  annual_planning:
+    name: "Annual Planning"
+    description: "Annual strategic planning workflow"
+    category: "strategy"
+    version: "1.0"
+    enabled: true
+    definition_file: "annual_planning.yaml"
+
+  market_entry:
+    name: "Market Entry"
+    description: "New market entry evaluation and approval workflow"
+    category: "strategy"
+    version: "1.0"
+    enabled: true
+    definition_file: "market_entry.yaml"

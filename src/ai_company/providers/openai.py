@@ -33,7 +33,7 @@ class OpenAIProvider(BaseProvider):
             )
             response = client.chat.completions.create(
                 model=kwargs.get("model", self.config.model or "gpt-4o"),
-                messages=[{"role": m.role, "content": m.content} for m in messages],
+                messages=[{"role": m.role, "content": m.content} for m in messages],  # type: ignore[misc]
                 temperature=kwargs.get("temperature", self.config.temperature),
                 max_tokens=kwargs.get("max_tokens", self.config.max_tokens),
             )

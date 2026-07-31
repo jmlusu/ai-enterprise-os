@@ -1,0 +1,320 @@
+# Hire Employee Workflow
+# Complete hiring workflow from requisition to onboarding
+# Integrates with Decision Engine for approvals
+
+version: "1.0"
+name: "hire_employee"
+display_name: "Hire Employee"
+description: "Complete hiring workflow from requisition to onboarding"
+category: "hr"
+tags:
+  - "hr"
+  - "hiring"
+  - "onboarding"
+  - "approval"
+
+config:
+  timeout_hours: 168
+  retry_policy:
+    max_retries: 3
+    backoff_seconds: 300
+  notifications:
+    on_start: true
+    on_complete: true
+    on_failure: true
+    on_approval_required: true
+
+states:
+  requisition_created:
+    name: "Requisition Created"
+    description: "Job requisition created and submitted"
+    type: "initial"
+    transitions:
+      - to: "requisition_validation"
+        condition: "true"
+
+  requisition_validation:
+    name: "Requisition Validation"
+    description: "Validate requisition data and check budget"
+    type: "action"
+    action:
+      type: "validate_requisition"
+      handler: "validate_job_requisition"
+    transitions:
+      - to: "auto_approved"
+        condition: "budget_approved == true and role_level != 'executive'"
+      - to: "approval_required"
+        condition: "budget_approved != true or role_level == 'executive'"
+
+  auto_approved:
+    name: "Auto-Approved"
+    description: "Requisition auto-approved within budget"
+    type: "action"
+    action:
+      type: "approve_requisition"
+      handler: "auto_approve_requisition"
+    transitions:
+      - to: "job_posted"
+
+  approval_required:
+    name: "Approval Required"
+    description: "Requisition requires approval per matrix"
+    type: "approval"
+    approval:
+      required: true
+      decision_engine_integration: true
+      approval_matrix: "hiring"
+      context_fields:
+        - "role_level"
+        - "department"
+        - "salary_band"
+        - "budget_approved"
+      timeout_hours: 48
+    transitions:
+      - to: "requisition_approved"
+        condition: "approved == true"
+      - to: "requisition_rejected"
+        condition: "approved == false"
+      - to: "approval_escalated"
+        condition: "timeout == true"
+
+  approval_escalated:
+    name: "Approval Escalated"
+    description: "Approval escalated to department head"
+    type: "approval"
+    approval:
+      required: true
+      decision_engine_integration: true
+      approval_matrix: "hiring"
+      escalation_level: 1
+      timeout_hours: 24
+    transitions:
+      - to: "requisition_approved"
+        condition: "approved == true"
+      - to: "requisition_rejected"
+        condition: "approved == false"
+
+  requisition_approved:
+    name: "Requisition Approved"
+    description: "Job requisition approved"
+    type: "action"
+    action:
+      type: "approve_requisition"
+      handler: "record_requisition_approval"
+    transitions:
+      - to: "job_posted"
+
+  requisition_rejected:
+    name: "Requisition Rejected"
+    description: "Job requisition rejected"
+    type: "terminal"
+    terminal_status: "rejected"
+
+  job_posted:
+    name: "Job Posted"
+    description: "Job posted to job boards and internal"
+    type: "action"
+    action:
+      type: "post_job"
+      handler: "post_job_listing"
+    transitions:
+      - to: "candidates_sourced"
+
+  candidates_sourced:
+    name: "Candidates Sourced"
+    description: "Candidates sourced and initial screening"
+    type: "action"
+    action:
+      type: "source_candidates"
+      handler: "source_and_screen_candidates"
+    transitions:
+      - to: "interviews_scheduled"
+        condition: "qualified_candidates > 0"
+      - to: "job_posted"
+        condition: "qualified_candidates == 0 and repost_count < 2"
+      - to: "requisition_cancelled"
+        condition: "repost_count >= 2"
+
+  requisition_cancelled:
+    name: "Requisition Cancelled"
+    description: "Requisition cancelled after failed sourcing"
+    type: "terminal"
+    terminal_status: "cancelled"
+
+  interviews_scheduled:
+    name: "Interviews Scheduled"
+    description: "Interviews scheduled with candidates"
+    type: "action"
+    action:
+      type: "schedule_interviews"
+      handler: "schedule_interviews"
+    transitions:
+      - to: "interviews_conducted"
+
+  interviews_conducted:
+    name: "Interviews Conducted"
+    description: "Interviews completed and feedback collected"
+    type: "action"
+    action:
+      type: "conduct_interviews"
+      handler: "conduct_interviews"
+    transitions:
+      - to: "candidate_selected"
+        condition: "selected_candidate != null"
+      - to: "interviews_scheduled"
+        condition: "selected_candidate == null and more_candidates_available == true"
+      - to: "candidates_sourced"
+        condition: "selected_candidate == null and more_candidates_available == false"
+
+  candidate_selected:
+    name: "Candidate Selected"
+    description: "Candidate selected, extending offer"
+    type: "action"
+    action:
+      type: "extend_offer"
+      handler: "extend_job_offer"
+    transitions:
+      - to: "offer_accepted"
+        condition: "offer_accepted == true"
+      - to: "candidate_selected"
+        condition: "offer_accepted == false and backup_candidates > 0"
+      - to: "candidates_sourced"
+        condition: "offer_accepted == false and backup_candidates == 0"
+
+  offer_accepted:
+    name: "Offer Accepted"
+    description: "Candidate accepted offer"
+    type: "action"
+    action:
+      type: "record_acceptance"
+      handler: "record_offer_acceptance"
+    transitions:
+      - to: "background_check"
+
+  background_check:
+    name: "Background Check"
+    description: "Background check in progress"
+    type: "action"
+    action:
+      type: "run_background_check"
+      handler: "initiate_background_check"
+    transitions:
+      - to: "background_check_passed"
+        condition: "background_clear == true"
+      - to: "offer_withdrawn"
+        condition: "background_clear == false"
+
+  background_check_passed:
+    name: "Background Check Passed"
+    description: "Background check cleared"
+    type: "action"
+    action:
+      type: "clear_background"
+      handler: "record_background_clearance"
+    transitions:
+      - to: "onboarding_initiated"
+
+  offer_withdrawn:
+    name: "Offer Withdrawn"
+    description: "Offer withdrawn due to background check"
+    type: "terminal"
+    terminal_status: "rejected"
+
+  onboarding_initiated:
+    name: "Onboarding Initiated"
+    description: "Onboarding process started"
+    type: "action"
+    action:
+      type: "initiate_onboarding"
+      handler: "start_onboarding"
+    transitions:
+      - to: "onboarding_completed"
+
+  onboarding_completed:
+    name: "Onboarding Completed"
+    description: "Employee fully onboarded"
+    type: "action"
+    action:
+      type: "complete_onboarding"
+      handler: "complete_onboarding"
+    transitions:
+      - to: "completed"
+
+  completed:
+    name: "Completed"
+    description: "Hiring workflow completed successfully"
+    type: "terminal"
+    terminal_status: "success"
+
+data_schema:
+  requisition_id:
+    type: "string"
+    required: true
+  title:
+    type: "string"
+    required: true
+  department:
+    type: "string"
+    required: true
+  hiring_manager:
+    type: "string"
+    required: true
+  role_level:
+    type: "string"
+    enum: ["individual_contributor", "manager", "director", "vp", "executive"]
+    required: true
+  salary_band_min:
+    type: "number"
+    required: true
+  salary_band_max:
+    type: "number"
+    required: true
+  employment_type:
+    type: "string"
+    enum: ["full_time", "part_time", "contract", "intern"]
+    required: true
+  location:
+    type: "string"
+    required: true
+  remote_eligible:
+    type: "boolean"
+    default: false
+  budget_approved:
+    type: "boolean"
+    default: false
+  budget_amount:
+    type: "number"
+  requisition_approved:
+    type: "boolean"
+    default: false
+  approver:
+    type: "string"
+  qualified_candidates:
+    type: "integer"
+    default: 0
+  selected_candidate:
+    type: "string"
+  offer_extended:
+    type: "boolean"
+    default: false
+  offer_accepted:
+    type: "boolean"
+    default: false
+  background_clear:
+    type: "boolean"
+    default: false
+  start_date:
+    type: "string"
+    format: "date"
+  onboarding_completed:
+    type: "boolean"
+    default: false
+  repost_count:
+    type: "integer"
+    default: 0
+  more_candidates_available:
+    type: "boolean"
+    default: false
+  backup_candidates:
+    type: "integer"
+    default: 0

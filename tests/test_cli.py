@@ -96,9 +96,9 @@ def test_memory_show() -> None:
 
 
 def test_memory_clear() -> None:
-    result = runner.invoke(app, ["memory", "clear"])
+    result = runner.invoke(app, ["memory", "clear"], input="y\n")
     assert result.exit_code == 0
-    assert "Clearing" in result.stdout
+    assert "All memories cleared" in result.stdout
 
 
 def test_graph_show() -> None:

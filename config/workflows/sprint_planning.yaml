@@ -1,0 +1,166 @@
+# Sprint Planning Workflow
+# Agile sprint planning workflow for engineering teams
+
+version: "1.0"
+name: "sprint_planning"
+display_name: "Sprint Planning"
+description: "Agile sprint planning workflow for engineering teams"
+category: "operational"
+
+config:
+  sprint_duration_days: 14
+  default_capacity_hours: 320
+  planning_meeting_hours: 4
+  retrospective_hours: 2
+
+states:
+  backlog_refinement:
+    name: "Backlog Refinement"
+    description: "Product backlog grooming and prioritization"
+    type: "action"
+    action:
+      type: "refine_backlog"
+      handler: "groom_product_backlog"
+    transitions:
+      - to: "sprint_planning_scheduled"
+
+  sprint_planning_scheduled:
+    name: "Sprint Planning Scheduled"
+    description: "Sprint planning meeting scheduled"
+    type: "action"
+    action:
+      type: "schedule_meeting"
+      handler: "schedule_sprint_planning"
+    transitions:
+      - to: "sprint_planning_in_progress"
+
+  sprint_planning_in_progress:
+    name: "Sprint Planning In Progress"
+    description: "Active sprint planning session"
+    type: "action"
+    action:
+      type: "conduct_planning"
+      handler: "run_sprint_planning"
+    transitions:
+      - to: "sprint_committed"
+        condition: "commitment_made == true"
+      - to: "sprint_planning_scheduled"
+        condition: "needs_reschedule == true"
+
+  sprint_committed:
+    name: "Sprint Committed"
+    description: "Team committed to sprint backlog"
+    type: "action"
+    action:
+      type: "create_sprint"
+      handler: "create_sprint"
+    transitions:
+      - to: "sprint_active"
+
+  sprint_active:
+    name: "Sprint Active"
+    description: "Sprint is in progress"
+    type: "wait"
+    wait_for: "sprint_end"
+    timeout_days: 14
+    transitions:
+      - to: "sprint_review"
+        condition: "auto"
+      - to: "sprint_extended"
+        condition: "extension_approved == true"
+
+  sprint_extended:
+    name: "Sprint Extended"
+    description: "Sprint extended by mutual agreement"
+    type: "action"
+    action:
+      type: "extend_sprint"
+      handler: "extend_sprint"
+    transitions:
+      - to: "sprint_active"
+
+  sprint_review:
+    name: "Sprint Review"
+    description: "Sprint review and demo"
+    type: "action"
+    action:
+      type: "conduct_review"
+      handler: "run_sprint_review"
+    transitions:
+      - to: "sprint_retrospective"
+
+  sprint_retrospective:
+    name: "Sprint Retrospective"
+    description: "Team retrospective for process improvement"
+    type: "action"
+    action:
+      type: "conduct_retrospective"
+      handler: "run_sprint_retrospective"
+    transitions:
+      - to: "sprint_completed"
+
+  sprint_completed:
+    name: "Sprint Completed"
+    description: "Sprint completed and closed"
+    type: "action"
+    action:
+      type: "close_sprint"
+      handler: "close_sprint"
+    transitions:
+      - to: "completed"
+
+  completed:
+    name: "Completed"
+    description: "Sprint planning cycle completed"
+    type: "terminal"
+    terminal_status: "success"
+
+  cancelled:
+    name: "Cancelled"
+    description: "Sprint cancelled"
+    type: "terminal"
+    terminal_status: "cancelled"
+
+data_schema:
+  sprint_id:
+    type: "string"
+    required: true
+  sprint_name:
+    type: "string"
+    required: true
+  team_id:
+    type: "string"
+    required: true
+  start_date:
+    type: "string"
+    format: "date"
+    required: true
+  end_date:
+    type: "string"
+    format: "date"
+    required: true
+  capacity_hours:
+    type: "integer"
+    default: 320
+  committed_story_points:
+    type: "integer"
+    default: 0
+  commitment_made:
+    type: "boolean"
+    default: false
+  needs_reschedule:
+    type: "boolean"
+    default: false
+  extension_approved:
+    type: "boolean"
+    default: false
+  sprint_goal:
+    type: "string"
+  demo_ready:
+    type: "boolean"
+    default: false
+  retrospective_notes:
+    type: "string"
+  completed_story_points:
+    type: "integer"
+    default: 0

@@ -1,0 +1,330 @@
+# Approval Matrix Configuration
+# Defines approval requirements and routing rules for decisions
+# All decision rules come from YAML - no hardcoded logic
+
+version: "1.0"
+description: "Approval matrix for AI Enterprise OS Decision Engine"
+
+# Default approvers by role
+default_approvers:
+  budget: "CFO"
+  hire_engineer: "CTO"
+  hire_executive: "CEO"
+  hire_board: "Board"
+  strategic: "CEO"
+  technical: "CTO"
+  compliance: "CLO"
+  operational: "COO"
+  security: "CISO"
+  data: "CDO"
+  legal: "CLO"
+  marketing: "CMO"
+  sales: "CRO"
+  product: "CPO"
+  hr: "CHRO"
+  it: "CIO"
+
+# Approval rules matrix
+rules:
+  - rule_id: "budget_small"
+    name: "Small Budget Approval"
+    description: "Budgets under $10,000 require CFO approval only"
+    category: "financial"
+    decision_type: "budget"
+    conditions:
+      budget_amount:
+        operator: "lt"
+        value: 10000
+    requires_approval: true
+    approver: "CFO"
+    escalation: "CEO"
+    auto_approve: false
+    minimum_approvers: 1
+
+  - rule_id: "budget_medium"
+    name: "Medium Budget Approval"
+    description: "Budgets $10,000-$100,000 require CFO + CEO approval"
+    category: "financial"
+    decision_type: "budget"
+    conditions:
+      budget_amount:
+        operator: "gte"
+        value: 10000
+      budget_amount_2:
+        operator: "lt"
+        value: 100000
+    requires_approval: true
+    approver: "CFO"
+    secondary_approver: "CEO"
+    escalation: "Board"
+    auto_approve: false
+    minimum_approvers: 2
+
+  - rule_id: "budget_large"
+    name: "Large Budget Approval"
+    description: "Budgets $100,000-$1,000,000 require CFO + CEO + Board notification"
+    category: "financial"
+    decision_type: "budget"
+    conditions:
+      budget_amount:
+        operator: "gte"
+        value: 100000
+      budget_amount_2:
+        operator: "lt"
+        value: 1000000
+    requires_approval: true
+    approver: "CFO"
+    secondary_approver: "CEO"
+    tertiary_approver: "Board"
+    escalation: "Board"
+    auto_approve: false
+    minimum_approvers: 3
+    board_notification: true
+
+  - rule_id: "budget_critical"
+    name: "Critical Budget Approval"
+    description: "Budgets over $1,000,000 require full Board approval"
+    category: "financial"
+    decision_type: "budget"
+    conditions:
+      budget_amount:
+        operator: "gte"
+        value: 1000000
+    requires_approval: true
+    approver: "Board"
+    escalation: "Board"
+    auto_approve: false
+    minimum_approvers: 1
+    board_approval_required: true
+
+  - rule_id: "hire_engineer"
+    name: "Engineer Hiring"
+    description: "Engineering hires require CTO approval"
+    category: "hr"
+    decision_type: "hire"
+    conditions:
+      department:
+        operator: "eq"
+        value: "engineering"
+      role_level:
+        operator: "in"
+        value: ["junior", "mid", "senior", "staff", "principal"]
+    requires_approval: true
+    approver: "CTO"
+    escalation: "CEO"
+    auto_approve: false
+    minimum_approvers: 1
+
+  - rule_id: "hire_executive"
+    name: "Executive Hiring"
+    description: "Executive hires (VP+) require CEO + Board approval"
+    category: "hr"
+    decision_type: "hire"
+    conditions:
+      role_level:
+        operator: "in"
+        value: ["vp", "svp", "evp", "cxo"]
+    requires_approval: true
+    approver: "CEO"
+    secondary_approver: "Board"
+    escalation: "Board"
+    auto_approve: false
+    minimum_approvers: 2
+    board_approval_required: true
+
+  - rule_id: "hire_board"
+    name: "Board Member Appointment"
+    description: "Board appointments require full Board approval"
+    category: "governance"
+    decision_type: "hire"
+    conditions:
+      role_level:
+        operator: "eq"
+        value: "board_member"
+    requires_approval: true
+    approver: "Board"
+    escalation: "Board"
+    auto_approve: false
+    minimum_approvers: 1
+    board_approval_required: true
+
+  - rule_id: "strategic_initiative"
+    name: "Strategic Initiative"
+    description: "Strategic initiatives require CEO approval"
+    category: "strategic"
+    decision_type: "initiative"
+    conditions:
+      impact_scope:
+        operator: "in"
+        value: ["company", "market", "industry"]
+    requires_approval: true
+    approver: "CEO"
+    escalation: "Board"
+    auto_approve: false
+    minimum_approvers: 1
+
+  - rule_id: "technical_architecture"
+    name: "Technical Architecture Change"
+    description: "Architecture changes require CTO approval"
+    category: "technical"
+    decision_type: "architecture_change"
+    conditions:
+      change_type:
+        operator: "in"
+        value: ["architecture", "platform", "infrastructure", "security_model"]
+    requires_approval: true
+    approver: "CTO"
+    escalation: "CEO"
+    auto_approve: false
+    minimum_approvers: 1
+
+  - rule_id: "security_policy"
+    name: "Security Policy Change"
+    description: "Security policy changes require CISO approval"
+    category: "security"
+    decision_type: "policy_change"
+    conditions:
+      policy_area:
+        operator: "eq"
+        value: "security"
+    requires_approval: true
+    approver: "CISO"
+    escalation: "CEO"
+    auto_approve: false
+    minimum_approvers: 1
+
+  - rule_id: "compliance_regulatory"
+    name: "Regulatory Compliance"
+    description: "Regulatory decisions require CLO + CEO approval"
+    category: "compliance"
+    decision_type: "regulatory"
+    conditions:
+      regulation_type:
+        operator: "in"
+        value: ["gdpr", "sox", "hipaa", "pci", "iso", "ccpa"]
+    requires_approval: true
+    approver: "CLO"
+    secondary_approver: "CEO"
+    escalation: "Board"
+    auto_approve: false
+    minimum_approvers: 2
+
+  - rule_id: "data_policy"
+    name: "Data Policy Change"
+    description: "Data governance changes require CDO approval"
+    category: "data"
+    decision_type: "policy_change"
+    conditions:
+      policy_area:
+        operator: "eq"
+        value: "data"
+    requires_approval: true
+    approver: "CDO"
+    escalation: "CTO"
+    auto_approve: false
+    minimum_approvers: 1
+
+  - rule_id: "marketing_campaign"
+    name: "Major Marketing Campaign"
+    description: "Campaigns over $50k require CMO + CFO approval"
+    category: "marketing"
+    decision_type: "campaign"
+    conditions:
+      budget_amount:
+        operator: "gte"
+        value: 50000
+    requires_approval: true
+    approver: "CMO"
+    secondary_approver: "CFO"
+    escalation: "CEO"
+    auto_approve: false
+    minimum_approvers: 2
+
+  - rule_id: "sales_contract"
+    name: "Large Sales Contract"
+    description: "Contracts over $100k require CRO + CFO approval"
+    category: "sales"
+    decision_type: "contract"
+    conditions:
+      contract_value:
+        operator: "gte"
+        value: 100000
+    requires_approval: true
+    approver: "CRO"
+    secondary_approver: "CFO"
+    escalation: "CEO"
+    auto_approve: false
+    minimum_approvers: 2
+
+  - rule_id: "product_launch"
+    name: "Product Launch"
+    description: "New product launches require CPO + CEO approval"
+    category: "product"
+    decision_type: "launch"
+    conditions:
+      launch_type:
+        operator: "in"
+        value: ["new_product", "major_version", "new_market"]
+    requires_approval: true
+    approver: "CPO"
+    secondary_approver: "CEO"
+    escalation: "Board"
+    auto_approve: false
+    minimum_approvers: 2
+
+  - rule_id: "operational_process"
+    name: "Operational Process Change"
+    description: "Cross-departmental process changes require COO approval"
+    category: "operational"
+    decision_type: "process_change"
+    conditions:
+      scope:
+        operator: "eq"
+        value: "cross_departmental"
+    requires_approval: true
+    approver: "COO"
+    escalation: "CEO"
+    auto_approve: false
+    minimum_approvers: 1
+
+  - rule_id: "auto_approve_low_risk"
+    name: "Auto-Approve Low Risk"
+    description: "Low risk, low impact decisions can auto-approve"
+    category: "any"
+    decision_type: "any"
+    conditions:
+      risk_score:
+        operator: "lt"
+        value: 0.2
+      priority:
+        operator: "lte"
+        value: 2
+    requires_approval: false
+    auto_approve: true
+    approver: "system"
+    escalation: "Department Head"
+    minimum_approvers: 0
+
+# Approval hierarchy for escalation
+approval_hierarchy:
+  "requester": "team_lead"
+  "team_lead": "department_head"
+  "department_head": "executive"
+  "executive": "ceo"
+  "ceo": "board"
+  "board": "board"
+
+# Role hierarchy for determining escalation path
+role_hierarchy:
+  - level: 1
+    roles: ["requester", "team_member"]
+  - level: 2
+    roles: ["team_lead", "manager"]
+  - level: 3
+    roles: ["department_head", "director", "vp"]
+  - level: 4
+    roles: ["executive", "svp", "evp", "cxo", "cto", "cfo", "coo", "ceo", "ciso", "cdio", "clo", "cmo", "cro", "cpo", "chro", "cio"]
+  - level: 5
+    roles: ["ceo"]
+  - level: 6
+    roles: ["board"]

@@ -1,0 +1,232 @@
+# Decision Tree Configuration
+# Defines decision flow logic and routing for the Decision Engine
+# All decision logic comes from YAML - no hardcoded rules
+
+version: "1.0"
+description: "Decision tree definitions for AI Enterprise OS Decision Engine"
+
+# Decision categories and their processing flows
+decision_flows:
+  financial:
+    name: "Financial Decisions"
+    description: "Budget approvals, expenditures, financial commitments"
+    initial_risk_assessment: true
+    requires_approval: true
+    approval_levels:
+      - level: 1
+        role: "Department Head"
+        condition: "budget < 10000"
+      - level: 2
+        role: "CFO"
+        condition: "budget >= 10000 and budget < 100000"
+      - level: 3
+        role: "CEO"
+        condition: "budget >= 100000 and budget < 1000000"
+      - level: 4
+        role: "Board"
+        condition: "budget >= 1000000"
+    escalation_path:
+      - "Department Head"
+      - "CFO"
+      - "CEO"
+      - "Board"
+    required_fields:
+      - "budget"
+      - "cost_center"
+      - "roi_estimate"
+    optional_fields:
+      - "payment_schedule"
+      - "vendor_comparison"
+      - "budget_impact_analysis"
+
+  hr:
+    name: "HR Decisions"
+    description: "Hiring, promotions, terminations, policy changes"
+    initial_risk_assessment: true
+    requires_approval: true
+    approval_levels:
+      - level: 1
+        role: "Hiring Manager"
+        condition: "role_level == 'individual_contributor'"
+      - level: 2
+        role: "Department Head"
+        condition: "role_level == 'manager'"
+      - level: 3
+        role: "CHRO"
+        condition: "role_level == 'director'"
+      - level: 4
+        role: "CEO"
+        condition: "role_level == 'vp'"
+      - level: 5
+        role: "Board"
+        condition: "role_level == 'executive'"
+    escalation_path:
+      - "Hiring Manager"
+      - "Department Head"
+      - "CHRO"
+      - "CEO"
+      - "Board"
+    required_fields:
+      - "role_title"
+      - "role_level"
+      - "department"
+      - "salary_band"
+    optional_fields:
+      - "candidate_profile"
+      - "interview_feedback"
+      - "background_check_status"
+
+  strategic:
+    name: "Strategic Decisions"
+    description: "Market entry, partnerships, acquisitions, major initiatives"
+    initial_risk_assessment: true
+    requires_approval: true
+    approval_levels:
+      - level: 1
+        role: "Department Head"
+        condition: "scope == 'departmental'"
+      - level: 2
+        role: "CTO/CMO/CFO"
+        condition: "scope == 'cross_functional'"
+      - level: 3
+        role: "CEO"
+        condition: "scope == 'company_wide'"
+      - level: 4
+        role: "Board"
+        condition: "scope == 'transformational'"
+    escalation_path:
+      - "Department Head"
+      - "Executive"
+      - "CEO"
+      - "Board"
+    required_fields:
+      - "strategic_objective"
+      - "market_analysis"
+      - "competitive_landscape"
+      - "financial_projections"
+    optional_fields:
+      - "risk_mitigation_plan"
+      - "timeline"
+      - "success_metrics"
+
+  technical:
+    name: "Technical Decisions"
+    description: "Architecture, technology choices, security, infrastructure"
+    initial_risk_assessment: true
+    requires_approval: true
+    approval_levels:
+      - level: 1
+        role: "Tech Lead"
+        condition: "impact == 'team'"
+      - level: 2
+        role: "VP Engineering"
+        condition: "impact == 'department'"
+      - level: 3
+        role: "CTO"
+        condition: "impact == 'company' or decision_type == 'architecture_change'"
+      - level 4:
+        role: "CISO"
+        condition: "decision_type == 'security_policy'"
+    escalation_path:
+      - "Tech Lead"
+      - "VP Engineering"
+      - "CTO"
+      - "CISO"
+      - "CEO"
+    required_fields:
+      - "technical_scope"
+      - "affected_systems"
+      - "implementation_plan"
+    optional_fields:
+      - "performance_impact"
+      - "security_review"
+      - "rollback_plan"
+
+  compliance:
+    name: "Compliance Decisions"
+    description: "Regulatory, legal, policy, governance decisions"
+    initial_risk_assessment: true
+    requires_approval: true
+    approval_levels:
+      - level: 1
+        role: "Compliance Officer"
+        condition: "risk_level <= 'medium'"
+      - level: 2
+        role: "CLO"
+        condition: "risk_level == 'high'"
+      - level: 3
+        role: "CEO"
+        condition: "risk_level == 'critical'"
+      - level: 4
+        role: "Board"
+        condition: "regulatory_filing_required == true"
+    escalation_path:
+      - "Compliance Officer"
+      - "CLO"
+      - "CEO"
+      - "Board"
+    required_fields:
+      - "regulation_reference"
+      - "compliance_impact"
+      - "remediation_plan"
+    optional_fields:
+      - "external_counsel_opinion"
+      - "timeline"
+      - "cost_estimate"
+
+  operational:
+    name: "Operational Decisions"
+    description: "Day-to-day operations, process changes, vendor selection"
+    initial_risk_assessment: false
+    requires_approval: false
+    approval_levels:
+      - level: 1
+        role: "Team Lead"
+        condition: "scope == 'team'"
+      - level: 2
+        role: "Department Head"
+        condition: "scope == 'department'"
+      - level: 3
+        role: "COO"
+        condition: "scope == 'cross_departmental'"
+    escalation_path:
+      - "Team Lead"
+      - "Department Head"
+      - "COO"
+      - "CEO"
+    required_fields:
+      - "operational_impact"
+      - "affected_processes"
+    optional_fields:
+      - "efficiency_gain"
+      - "cost_savings"
+      - "vendor_evaluation"
+
+# Default flow for uncategorized decisions
+default:
+  name: "Default Decision Flow"
+  description: "Fallback flow for decisions without explicit category"
+  initial_risk_assessment: true
+  requires_approval: true
+  approval_levels:
+    - level: 1
+      role: "Requester"
+      condition: "always"
+    - level: 2
+      role: "Department Head"
+      condition: "risk_score > 0.3"
+    - level: 3
+      role: "CEO"
+      condition: "risk_score > 0.6"
+  escalation_path:
+    - "Requester"
+    - "Department Head"
+    - "CEO"
+    - "Board"
+  required_fields:
+    - "title"
+    - "description"
+  optional_fields:
+    - "context"
+    - "options"
+    - "constraints"

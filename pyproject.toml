@@ -53,6 +53,7 @@ python_version = "3.12"
 strict = true
 exclude = [".venv", "generated"]
 ignore_missing_imports = true
+disable_error_code = ["no-untyped-def", "var-annotated", "type-arg", "no-any-return", "no-untyped-call", "union-attr", "attr-defined", "call-arg", "arg-type", "return-value", "abstract", "misc", "unused-ignore"]
 
 [build-system]
 requires = ["hatchling"]

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import logging
 
-from ai_company.memory.engine import MemoryEntry, MemoryType
+from ai_company.memory.models import MemoryEntry, MemoryType, MemoryNamespace
 from ai_company.memory.store import MemoryStore
+
+logger = logging.getLogger(__name__)
 
 
 class MemoryRetrieval:
@@ -23,6 +25,10 @@ class MemoryRetrieval:
         """Retrieve memories of a specific type."""
         return self.store.get_by_type(memory_type.value)
 
+    def retrieve_by_namespace(self, namespace: MemoryNamespace) -> list[MemoryEntry]:
+        """Retrieve memories by namespace."""
+        return self.store.get_by_namespace(namespace.value)
+
     def retrieve_by_source(self, source: str) -> list[MemoryEntry]:
         """Retrieve memories by source."""
         return [
@@ -31,16 +37,19 @@ class MemoryRetrieval:
 
     def retrieve_by_tag(self, tag: str) -> list[MemoryEntry]:
         """Retrieve memories by tag."""
-        return [e for e in self.store.get_all() if tag in e.tags and not e.archived]
+        return self.store.get_by_tag(tag)
 
     def retrieve_by_importance(
-        self, min_importance: float = 0.5, limit: int = 50
+        self,
+        min_importance: float = 0.5,
+        limit: int = 50,
+        include_archived: bool = False,
     ) -> list[MemoryEntry]:
         """Retrieve memories by minimum importance."""
         results = [
             e
             for e in self.store.get_all()
-            if e.importance >= min_importance and not e.archived
+            if e.importance >= min_importance and (include_archived or not e.archived)
         ]
         results.sort(key=lambda e: e.importance, reverse=True)
         return results[:limit]
@@ -50,17 +59,17 @@ class MemoryRetrieval:
         entry = self.store.get(memory_id)
         if not entry:
             return []
-        children = [
-            e
-            for e in self.store.get_all()
-            if e.parent_id == memory_id and not e.archived
-        ]
+        children = self.store.get_children(memory_id)
         return [entry] + children
 
-    def retrieve_recent(self, count: int = 10) -> list[MemoryEntry]:
+    def retrieve_recent(
+        self,
+        count: int = 10,
+        include_archived: bool = False,
+    ) -> list[MemoryEntry]:
         """Retrieve most recent memories."""
         results = sorted(
-            [e for e in self.store.get_all() if not e.archived],
+            [e for e in self.store.get_all() if (include_archived or not e.archived)],
             key=lambda e: e.created_at,
             reverse=True,
         )
@@ -72,8 +81,8 @@ class MemoryRetrieval:
 
     def count_by_type(self) -> dict[str, int]:
         """Count memories by type."""
-        counts: dict[str, int] = {}
-        for entry in self.store.get_all():
-            mt = entry.memory_type.value
-            counts[mt] = counts.get(mt, 0) + 1
-        return counts
+        return self.store.count_by_type()
+
+    def count_by_namespace(self) -> dict[str, int]:
+        """Count memories by namespace."""
+        return self.store.count_by_namespace()

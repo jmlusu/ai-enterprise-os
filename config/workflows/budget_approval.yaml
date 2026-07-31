@@ -1,0 +1,204 @@
+# Budget Approval Workflow
+# Budget request approval workflow with tiered approval matrix
+# Integrates with Decision Engine for approval routing
+
+version: "1.0"
+name: "budget_approval"
+display_name: "Budget Approval"
+description: "Budget request approval workflow with tiered approval matrix"
+category: "financial"
+tags:
+  - "financial"
+  - "budget"
+  - "approval"
+  - "decision_engine"
+
+config:
+  timeout_hours: 72
+  retry_policy:
+    max_retries: 3
+    backoff_seconds: 600
+  notifications:
+    on_start: true
+    on_complete: true
+    on_failure: true
+    on_approval_required: true
+
+states:
+  request_submitted:
+    name: "Request Submitted"
+    description: "Budget request submitted by requester"
+    type: "initial"
+    transitions:
+      - to: "validation"
+        condition: "true"
+
+  validation:
+    name: "Validation"
+    description: "Validate budget request data and completeness"
+    type: "action"
+    action:
+      type: "validate_request"
+      handler: "validate_budget_request"
+    transitions:
+      - to: "auto_approved"
+        condition: "amount < 10000 and risk_score < 0.3"
+      - to: "approval_required"
+        condition: "amount >= 10000 or risk_score >= 0.3"
+
+  auto_approved:
+    name: "Auto-Approved"
+    description: "Low-risk budget auto-approved"
+    type: "action"
+    action:
+      type: "record_approval"
+      handler: "record_auto_approval"
+    transitions:
+      - to: "funding_allocated"
+
+  approval_required:
+    name: "Approval Required"
+    description: "Budget requires approval per approval matrix"
+    type: "approval"
+    approval:
+      required: true
+      decision_engine_integration: true
+      approval_matrix: "budget"
+      context_fields:
+        - "amount"
+        - "cost_center"
+        - "requester_role"
+        - "risk_score"
+      timeout_hours: 48
+    transitions:
+      - to: "approved"
+        condition: "approved == true"
+      - to: "rejected"
+        condition: "approved == false"
+      - to: "escalated"
+        condition: "timeout == true"
+
+  escalated:
+    name: "Escalated"
+    description: "Approval escalated to next level"
+    type: "approval"
+    approval:
+      required: true
+      decision_engine_integration: true
+      approval_matrix: "budget"
+      escalation_level: 1
+      timeout_hours: 24
+    transitions:
+      - to: "approved"
+        condition: "approved == true"
+      - to: "rejected"
+        condition: "approved == false"
+      - to: "board_review"
+        condition: "escalation_level >= 2"
+
+  board_review:
+    name: "Board Review"
+    description: "Budget requires board-level review"
+    type: "approval"
+    approval:
+      required: true
+      approver_role: "board"
+      decision_engine_integration: true
+      approval_matrix: "budget"
+      timeout_hours: 168
+    transitions:
+      - to: "approved"
+        condition: "approved == true"
+      - to: "rejected"
+        condition: "approved == false"
+
+  approved:
+    name: "Approved"
+    description: "Budget request approved"
+    type: "action"
+    action:
+      type: "record_approval"
+      handler: "record_budget_approval"
+    transitions:
+      - to: "funding_allocated"
+
+  rejected:
+    name: "Rejected"
+    description: "Budget request rejected"
+    type: "terminal"
+    terminal_status: "rejected"
+
+  funding_allocated:
+    name: "Funding Allocated"
+    description: "Funding allocated to cost center"
+    type: "action"
+    action:
+      type: "allocate_funds"
+      handler: "allocate_budget_funds"
+    transitions:
+      - to: "completed"
+
+  completed:
+    name: "Completed"
+    description: "Budget approval workflow completed"
+    type: "terminal"
+    terminal_status: "success"
+
+data_schema:
+  request_id:
+    type: "string"
+    required: true
+  requester:
+    type: "string"
+    required: true
+  requester_role:
+    type: "string"
+    required: true
+  department:
+    type: "string"
+    required: true
+  cost_center:
+    type: "string"
+    required: true
+  amount:
+    type: "number"
+    required: true
+    minimum: 0
+  currency:
+    type: "string"
+    default: "USD"
+  fiscal_year:
+    type: "string"
+    required: true
+  quarter:
+    type: "string"
+    enum: ["Q1", "Q2", "Q3", "Q4"]
+    required: true
+  category:
+    type: "string"
+    enum: ["operating", "capital", "project", "emergency"]
+    required: true
+  justification:
+    type: "string"
+    required: true
+  expected_roi:
+    type: "string"
+  risk_score:
+    type: "number"
+    minimum: 0
+    maximum: 1
+    default: 0.0
+  supporting_documents:
+    type: "array"
+    items:
+      type: "string"
+  approval_notes:
+    type: "string"
+  approver:
+    type: "string"
+  approved_at:
+    type: "string"
+    format: "date-time"
+  allocated_at:
+    type: "string"
+    format: "date-time"

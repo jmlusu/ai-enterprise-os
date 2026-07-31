@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from ai_company.decision.engine import Decision
+from ai_company.decision.models import Decision
 
 
 class DecisionHistory:
