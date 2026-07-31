@@ -1,0 +1,29 @@
+# Orchestration Notification Configuration
+# Controls where lifecycle notifications are delivered. The Event Bus is
+# the primary channel; Memory and Audit provide durable traces.
+
+version: "1.0"
+description: "Notification settings for the Enterprise Orchestration Engine"
+
+notifications:
+  enabled: true
+  channels:
+    event_bus: true                # publish pipeline.* / task.* events
+    memory: true                   # persist lifecycle records to memory
+    audit: true                    # write audit records
+  source: "orchestrator"
+  correlation_enabled: true        # link all events of a run by correlation_id
+
+  # Lifecycle events to publish (all enabled by default)
+  pipeline_events:
+    - "pipeline.started"
+    - "pipeline.completed"
+    - "pipeline.failed"
+    - "pipeline.cancelled"
+    - "pipeline.recovered"
+
+  task_events:
+    - "task.started"
+    - "task.completed"
+    - "task.failed"
+    - "task.skipped"

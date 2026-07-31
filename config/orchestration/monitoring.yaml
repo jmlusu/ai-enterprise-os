@@ -1,0 +1,21 @@
+# Orchestration Monitoring Configuration
+# Controls observability of the orchestration engine: metrics collection,
+# event publishing, and execution history recording.
+
+version: "1.0"
+description: "Monitoring settings for the Enterprise Orchestration Engine"
+
+monitoring:
+  enabled: true
+  metrics_interval_seconds: 10.0
+  publish_events: true             # emit pipeline.* / task.* bus events
+  record_history: true             # keep execution records for `history`
+  track_durations: true            # time every task and pipeline
+  track_retries: true              # count retry attempts
+  track_rollbacks: true            # count rollback executions
+  track_checkpoints: true          # count checkpoints created
+
+  # History retention
+  history_max_records: 1000        # 0 = unlimited
+  history_memory_type: "system"
+  history_namespace: "orchestration"

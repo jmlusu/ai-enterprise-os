@@ -57,6 +57,7 @@ class MemoryNamespace(str, Enum):
     AGENT = "agent"
     WORKFLOW = "workflow"
     USER = "user"
+    ORCHESTRATION = "orchestration"
 
 
 class RetentionPolicy(BaseModel):

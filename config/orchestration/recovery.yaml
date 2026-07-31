@@ -1,0 +1,23 @@
+# Orchestration Recovery Configuration
+# Controls how failed or interrupted pipelines are recovered. Recovery
+# runs: restore latest checkpoint -> execute rollback -> retry failed tasks.
+
+version: "1.0"
+description: "Recovery settings for the Enterprise Orchestration Engine"
+
+recovery:
+  enabled: true
+  auto_recover: false              # auto-recover on failure (or wait for CLI)
+  strategy: "checkpoint_first"     # checkpoint_first | rollback_then_retry | retry_only
+  max_recovery_attempts: 3
+  restore_latest_checkpoint: true
+  rollback_on_unrecoverable: true  # rollback when retries are exhausted
+  retry_failed_tasks: true         # re-run failed tasks after recovery
+  keep_recovered_tasks: true       # preserve successful task outputs
+
+  # Allowed recovery actions, tried in order:
+  # checkpoint_restore, rollback, retry, fail
+  action_sequence:
+    - "checkpoint_restore"
+    - "rollback"
+    - "retry"

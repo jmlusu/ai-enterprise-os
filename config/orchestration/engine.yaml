@@ -1,0 +1,160 @@
+# Orchestration Engine Configuration
+# Core settings for the Enterprise Orchestration Engine (COO layer).
+# Controls engine identity, concurrency, history persistence, and the
+# declarative pipeline catalog.
+
+version: "1.0"
+description: "Core settings for the Enterprise Orchestration Engine"
+
+engine:
+  name: "Enterprise Orchestration Engine"
+  version: "1.0"
+  max_workers: 4
+  default_timeout_seconds: 3600
+  dry_run: false
+  persist_history: true
+  history_memory_type: "system"
+  history_namespace: "orchestration"
+
+# ── Declarative pipeline catalog ─────────────────────────────────
+# Built-in pipelines that the engine can execute by name.
+# Each pipeline is a list of stages; each stage declares a mode
+# (sequential | parallel | conditional) and its tasks.
+pipelines:
+
+  bootstrap:
+    description: "Bootstrap a company from scratch: registry -> generation -> validation -> memory -> audit"
+    version: "1.0"
+    stages:
+      - id: "registry"
+        name: "Load Registry"
+        mode: "sequential"
+        tasks:
+          - id: "load_registry"
+            name: "Load registry data"
+            task_type: "load_registry"
+            engine: "registry"
+            params: { action: "load" }
+
+      - id: "generation"
+        name: "Generate Company"
+        mode: "sequential"
+        tasks:
+          - id: "generate_all"
+            name: "Generate all company artifacts"
+            task_type: "generate"
+            engine: "generator"
+            params: { target: "all" }
+
+      - id: "validation"
+        name: "Validate Output"
+        mode: "sequential"
+        tasks:
+          - id: "validate"
+            name: "Validate generated artifacts"
+            task_type: "validate"
+            engine: "validator"
+            params: { action: "all" }
+
+      - id: "persistence"
+        name: "Persist & Audit"
+        mode: "parallel"
+        tasks:
+          - id: "save_memory"
+            name: "Record bootstrap in memory"
+            task_type: "memory_save"
+            engine: "memory"
+            params: { memory_type: "company", source: "orchestration" }
+          - id: "audit_bootstrap"
+            name: "Record audit trail"
+            task_type: "audit_record"
+            engine: "audit"
+            params: { event_type: "bootstrap", engine: "orchestration" }
+
+  generation:
+    description: "Regenerate company artifacts with parallel prompt/docs/graph generation"
+    version: "1.0"
+    stages:
+      - id: "registry"
+        name: "Load Registry"
+        mode: "sequential"
+        tasks:
+          - id: "load_registry"
+            name: "Load registry data"
+            task_type: "load_registry"
+            engine: "registry"
+            params: { action: "load" }
+
+      - id: "generation"
+        name: "Generate Artifacts"
+        mode: "parallel"
+        tasks:
+          - id: "generate_prompts"
+            name: "Generate prompts"
+            task_type: "generate"
+            engine: "generator"
+            params: { target: "prompts" }
+          - id: "generate_docs"
+            name: "Generate docs"
+            task_type: "generate"
+            engine: "generator"
+            params: { target: "docs" }
+          - id: "generate_graph"
+            name: "Generate graph export"
+            task_type: "generate"
+            engine: "generator"
+            params: { target: "graph" }
+
+      - id: "persistence"
+        name: "Persist & Audit"
+        mode: "sequential"
+        tasks:
+          - id: "save_memory"
+            name: "Record generation in memory"
+            task_type: "memory_save"
+            engine: "memory"
+            params: { memory_type: "company", source: "orchestration" }
+          - id: "audit_generation"
+            name: "Record audit trail"
+            task_type: "audit_record"
+            engine: "audit"
+            params: { event_type: "generation", engine: "orchestration" }
+
+  report:
+    description: "Analyse reporting structure and record the audit trail"
+    version: "1.0"
+    stages:
+      - id: "registry"
+        name: "Load Registry"
+        mode: "sequential"
+        tasks:
+          - id: "load_registry"
+            name: "Load registry data"
+            task_type: "load_registry"
+            engine: "registry"
+            params: { action: "load" }
+
+      - id: "analysis"
+        name: "Analyse Structure"
+        mode: "sequential"
+        tasks:
+          - id: "graph_build"
+            name: "Build organization graph"
+            task_type: "graph_build"
+            engine: "graph"
+            params: { action: "build" }
+          - id: "report"
+            name: "Analyse reporting structure"
+            task_type: "report"
+            engine: "reporting"
+            params: { action: "analyse" }
+
+      - id: "audit"
+        name: "Record Audit"
+        mode: "sequential"
+        tasks:
+          - id: "audit_report"
+            name: "Record audit trail"
+            task_type: "audit_record"
+            engine: "audit"
+            params: { event_type: "report", engine: "orchestration" }

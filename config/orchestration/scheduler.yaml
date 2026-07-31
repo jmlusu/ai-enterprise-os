@@ -1,0 +1,27 @@
+# Orchestration Scheduler Configuration
+# Controls how orchestration plans are scheduled and executed:
+# immediate (default), scheduled (absolute time), recurring (interval),
+# and dependency (after other plans complete).
+
+version: "1.0"
+description: "Scheduler settings for the Enterprise Orchestration Engine"
+
+scheduler:
+  default_mode: "immediate"        # immediate | scheduled | recurring | dependency
+  worker_interval_seconds: 5.0     # poll interval for due plans
+  max_scheduled_plans: 1000        # safety cap on pending scheduled plans
+  max_workers: 4                   # concurrent task workers
+  timezone: "UTC"
+
+  # Default schedule for 'scheduled' mode when no time is given
+  default_delay_seconds: 0
+
+  # Defaults for 'recurring' mode
+  recurring:
+    default_interval_seconds: 3600
+    default_max_runs: 10           # 0 = unlimited
+
+  # Defaults for 'dependency' mode
+  dependency:
+    default_timeout_seconds: 300   # max wait for upstream plans
+    fail_on_missing_dependency: true

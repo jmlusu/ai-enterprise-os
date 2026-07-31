@@ -226,7 +226,7 @@ def test_pipeline_file_not_found() -> None:
 def test_real_registry_file() -> None:
     """Test loading the actual event_registry.yaml from config/."""
     cfg = load_event_registry("config/events/event_registry.yaml")
-    assert len(cfg.event_types) == 45  # All EventType enum values
+    assert len(cfg.event_types) == 54  # All EventType enum values
     assert (
         cfg.get_event_config("system.startup")["default_priority"]
         == EventPriority.CRITICAL
@@ -237,11 +237,14 @@ def test_real_registry_file() -> None:
     )
     assert cfg.get_event_config("system.error")["ttl_seconds"] is None  # Never expires
     assert cfg.get_event_config("audit.recorded")["persistent"] is True
+    assert cfg.get_event_config("pipeline.started")["owner"] == "orchestrator"
+    assert cfg.get_event_config("task.failed")["default_priority"] == EventPriority.HIGH
 
-    # All 16 domains present, in order
+    # All 18 domains present, in order
     domains = cfg.list_domains()
-    assert len(domains) == 16
+    assert len(domains) == 18
     assert list(domains.keys())[0] == "company"
+    assert list(domains.keys())[-1] == "task"
 
 
 def test_real_pipeline_file() -> None:

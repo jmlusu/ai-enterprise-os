@@ -1,0 +1,20 @@
+# Orchestration Dependency Resolution Configuration
+# Controls how task dependencies are resolved when planning and executing
+# pipelines. Applies to sequential, parallel, and conditional execution.
+
+version: "1.0"
+description: "Dependency resolution settings for the Enterprise Orchestration Engine"
+
+dependencies:
+  resolver: "topological"          # topological | layered
+  allow_parallel: true             # allow parallel-ready task groups
+  max_parallel_tasks: 4            # concurrency cap for parallel groups
+  detect_cycles: true              # raise on cyclic dependency graphs
+  missing_dependency_policy: "raise"   # raise | warn | skip
+  self_dependency_policy: "raise"      # raise | warn | ignore
+
+  # Conditions evaluated against execution context/results.
+  # 'condition' is a dotted path expression resolved against the
+  # task results map, e.g. "load_registry.success == true".
+  condition_engine: "simple"       # simple | python
+  simple_conditions: true          # support the simple expression subset

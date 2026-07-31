@@ -1,0 +1,19 @@
+# Orchestration Checkpoint Configuration
+# Checkpoints snapshot pipeline execution state so a run can be resumed
+# after interruption, and are the primary input to recovery.
+
+version: "1.0"
+description: "Checkpoint settings for the Enterprise Orchestration Engine"
+
+checkpoints:
+  enabled: true
+  auto_checkpoint_on_task_completed: true
+  auto_checkpoint_on_stage_completed: true
+  interval_tasks: 1                # checkpoint every N completed tasks
+  persist_to_memory: true          # store checkpoints in the Memory Engine
+  persist_to_disk: false           # also write JSON files (checkpoints/)
+  disk_path: "checkpoints"
+  max_checkpoints_per_pipeline: 10 # 0 = unlimited
+  include_task_results: true       # snapshot task outputs too
+  include_context: true            # snapshot execution context
+  version: "1"

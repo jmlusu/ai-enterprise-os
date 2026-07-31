@@ -11,6 +11,7 @@ from ai_company.cli.groups import company_cli as company_group
 from ai_company.cli.groups import executive as executive_group
 from ai_company.cli.groups import graph as graph_group
 from ai_company.cli.groups import memory as memory_group
+from ai_company.cli.groups import orchestration as orchestration_group
 from ai_company.cli.groups import registry as registry_group
 from ai_company.cli.groups import report as report_group
 from ai_company.cli.render import render_prompt
@@ -29,6 +30,7 @@ app.add_typer(registry_group.app, name="registry")
 app.add_typer(memory_group.app, name="memory")
 app.add_typer(graph_group.app, name="graph")
 app.add_typer(report_group.app, name="report")
+app.add_typer(orchestration_group.app, name="orchestrate")
 
 
 @app.command()

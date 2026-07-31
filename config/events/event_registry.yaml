@@ -328,6 +328,62 @@ event_types:
     owner: "system"
     tags: ["integration", "error"]
 
+  # ── Pipeline Lifecycle (Orchestration Engine) ──────────────────
+  pipeline.started:
+    description: "An orchestration pipeline has started"
+    default_priority: "normal"
+    owner: "orchestrator"
+    tags: ["orchestration", "execution"]
+
+  pipeline.completed:
+    description: "An orchestration pipeline completed successfully"
+    default_priority: "normal"
+    owner: "orchestrator"
+    tags: ["orchestration", "execution"]
+
+  pipeline.failed:
+    description: "An orchestration pipeline has failed"
+    default_priority: "high"
+    owner: "orchestrator"
+    tags: ["orchestration", "error"]
+
+  pipeline.cancelled:
+    description: "An orchestration pipeline was cancelled"
+    default_priority: "normal"
+    owner: "orchestrator"
+    tags: ["orchestration", "execution"]
+
+  pipeline.recovered:
+    description: "An orchestration pipeline recovered from a failure"
+    default_priority: "high"
+    owner: "orchestrator"
+    tags: ["orchestration", "recovery"]
+
+  # ── Task Lifecycle (Orchestration Engine) ──────────────────────
+  task.started:
+    description: "An orchestration task has started"
+    default_priority: "normal"
+    owner: "orchestrator"
+    tags: ["orchestration", "execution"]
+
+  task.completed:
+    description: "An orchestration task completed successfully"
+    default_priority: "normal"
+    owner: "orchestrator"
+    tags: ["orchestration", "execution"]
+
+  task.failed:
+    description: "An orchestration task has failed"
+    default_priority: "high"
+    owner: "orchestrator"
+    tags: ["orchestration", "error"]
+
+  task.skipped:
+    description: "An orchestration task was skipped"
+    default_priority: "normal"
+    owner: "orchestrator"
+    tags: ["orchestration", "execution"]
+
 # ── Domain metadata ──────────────────────────────────────────────
 domains:
   company:     { label: "Company Lifecycle",     order: 1 }
@@ -346,6 +402,8 @@ domains:
   audit:       { label: "Audit Engine",          order: 14 }
   event:       { label: "Event Bus",             order: 15 }
   integration: { label: "Integration Events",    order: 16 }
+  pipeline:    { label: "Pipeline Orchestration", order: 17 }
+  task:        { label: "Task Execution",        order: 18 }
 
 # ── Owner-to-engine mapping ──────────────────────────────────────
 # Maps logical owner name → actual engine class/component name

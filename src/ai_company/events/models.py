@@ -137,6 +137,19 @@ class EventType(str, Enum):
     INTEGRATION_COMPLETED = "integration.completed"
     INTEGRATION_FAILED = "integration.failed"
 
+    # Pipeline lifecycle (Enterprise Orchestration Engine)
+    PIPELINE_STARTED = "pipeline.started"
+    PIPELINE_COMPLETED = "pipeline.completed"
+    PIPELINE_FAILED = "pipeline.failed"
+    PIPELINE_CANCELLED = "pipeline.cancelled"
+    PIPELINE_RECOVERED = "pipeline.recovered"
+
+    # Task lifecycle (Enterprise Orchestration Engine)
+    TASK_STARTED = "task.started"
+    TASK_COMPLETED = "task.completed"
+    TASK_FAILED = "task.failed"
+    TASK_SKIPPED = "task.skipped"
+
 
 class EventMetadata(BaseModel):
     """Metadata attached to every event."""

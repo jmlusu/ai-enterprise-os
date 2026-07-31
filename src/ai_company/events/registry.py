@@ -35,6 +35,8 @@ class EventTypeRegistry:
         "audit": "Audit Engine",
         "event": "Event Bus",
         "integration": "Integration Events",
+        "pipeline": "Pipeline Orchestration",
+        "task": "Task Execution",
     }
 
     def __init__(self) -> None:
