@@ -11,6 +11,7 @@ middleware pipelines.
 from __future__ import annotations
 
 from .bus import EventBus
+from .config import EventRegistryConfig, load_event_pipeline_config, load_event_registry
 from .dead_letter import DeadLetterQueue, DeadLetterRecord
 from .dispatcher import Dispatcher
 from .exceptions import (
@@ -66,6 +67,7 @@ from .subscriber import Subscriber
 
 __all__ = [
     "AndFilter",
+    "EventRegistryConfig",
     "DeadLetterError",
     "DeadLetterQueue",
     "DeadLetterRecord",
@@ -92,6 +94,8 @@ __all__ = [
     "EventValidationError",
     "FilterChain",
     "HistoryEntry",
+    "load_event_pipeline_config",
+    "load_event_registry",
     "LoggingMiddleware",
     "MetricsMiddleware",
     "Middleware",

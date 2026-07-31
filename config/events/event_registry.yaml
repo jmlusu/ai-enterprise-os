@@ -1,0 +1,362 @@
+# Event Type Registry
+# Central catalog of all enterprise event types in AI Enterprise OS
+# Maps event types → domain, priority, TTL, ownership, routing
+
+version: "1.0"
+description: "Registry of all standardized enterprise event types"
+
+# ── Defaults applied to all event types unless overridden ────────
+defaults:
+  domain_label: "Unknown"
+  priority: "normal"
+  ttl_seconds: 3600       # 1 hour default
+  max_retries: 3
+  delivery_mode: "AT_LEAST_ONCE"
+
+# ── Event type definitions ──────────────────────────────────────
+#   Each entry under the domain maps event_type → metadata
+#
+#   Fields:
+#     description:    Human-readable description
+#     default_priority: critical|high|normal|low|background
+#     ttl_seconds:    Time-to-live before auto-expiry (null = never)
+#     max_retries:    Max delivery attempts before dead letter
+#     owner:          Engine/component that owns this event type
+#     delivery_mode:  AT_MOST_ONCE|AT_LEAST_ONCE|EXACTLY_ONCE
+#     persistent:     Whether to persist to disk
+#     tags:           Optional classification tags
+
+event_types:
+
+  # ── Company Lifecycle ──────────────────────────────────────────
+  company.created:
+    description: "A new company has been created"
+    default_priority: "high"
+    ttl_seconds: 7200
+    owner: "bootstrap"
+    tags: ["lifecycle", "core"]
+
+  company.updated:
+    description: "Company profile has been updated"
+    default_priority: "normal"
+    ttl_seconds: 7200
+    owner: "bootstrap"
+    tags: ["lifecycle"]
+
+  # ── Department Lifecycle ───────────────────────────────────────
+  department.created:
+    description: "A new department has been created"
+    default_priority: "high"
+    owner: "bootstrap"
+    tags: ["lifecycle", "org"]
+
+  department.updated:
+    description: "Department details have been updated"
+    default_priority: "normal"
+    owner: "bootstrap"
+    tags: ["lifecycle"]
+
+  # ── Executive Lifecycle ────────────────────────────────────────
+  executive.hired:
+    description: "An executive has been hired into a department"
+    default_priority: "high"
+    ttl_seconds: 7200
+    owner: "bootstrap"
+    tags: ["lifecycle", "org"]
+
+  executive.updated:
+    description: "Executive profile has been updated"
+    default_priority: "normal"
+    owner: "bootstrap"
+    tags: ["lifecycle"]
+
+  # ── Workflow Engine ────────────────────────────────────────────
+  workflow.started:
+    description: "A workflow execution has started"
+    default_priority: "normal"
+    owner: "workflow"
+    tags: ["lifecycle", "execution"]
+
+  workflow.completed:
+    description: "A workflow execution completed successfully"
+    default_priority: "normal"
+    owner: "workflow"
+    tags: ["lifecycle", "execution"]
+
+  workflow.failed:
+    description: "A workflow execution has failed"
+    default_priority: "high"
+    owner: "workflow"
+    tags: ["lifecycle", "error"]
+
+  workflow.cancelled:
+    description: "A workflow execution was cancelled"
+    default_priority: "normal"
+    owner: "workflow"
+    tags: ["lifecycle", "execution"]
+
+  # ── Decision Engine ────────────────────────────────────────────
+  decision.requested:
+    description: "A decision has been requested for approval"
+    default_priority: "high"
+    ttl_seconds: 86400    # 24 hours — decisions have business deadlines
+    owner: "decision"
+    tags: ["governance", "approval"]
+
+  decision.approved:
+    description: "A decision has been approved"
+    default_priority: "high"
+    owner: "decision"
+    tags: ["governance", "approval"]
+
+  decision.rejected:
+    description: "A decision has been rejected"
+    default_priority: "normal"
+    owner: "decision"
+    tags: ["governance", "approval"]
+
+  decision.escalated:
+    description: "A decision has been escalated to higher authority"
+    default_priority: "critical"
+    ttl_seconds: 43200    # 12 hours
+    owner: "decision"
+    tags: ["governance", "escalation"]
+
+  decision.deferred:
+    description: "A decision has been deferred"
+    default_priority: "low"
+    owner: "decision"
+    tags: ["governance"]
+
+  # ── Memory Engine ──────────────────────────────────────────────
+  memory.saved:
+    description: "A memory entry has been saved"
+    default_priority: "normal"
+    owner: "memory"
+    tags: ["persistence"]
+
+  memory.updated:
+    description: "A memory entry has been updated"
+    default_priority: "normal"
+    owner: "memory"
+    tags: ["persistence"]
+
+  memory.archived:
+    description: "A memory entry has been archived"
+    default_priority: "low"
+    owner: "memory"
+    tags: ["persistence", "lifecycle"]
+
+  memory.restored:
+    description: "A memory entry has been restored from archive"
+    default_priority: "normal"
+    owner: "memory"
+    tags: ["persistence", "lifecycle"]
+
+  # ── Project Management ─────────────────────────────────────────
+  project.started:
+    description: "A project has been initiated"
+    default_priority: "high"
+    owner: "workflow"
+    tags: ["lifecycle", "planning"]
+
+  project.completed:
+    description: "A project has been completed"
+    default_priority: "normal"
+    owner: "workflow"
+    tags: ["lifecycle"]
+
+  project.milestone:
+    description: "A project milestone has been reached"
+    default_priority: "normal"
+    owner: "workflow"
+    tags: ["lifecycle", "tracking"]
+
+  # ── Meeting Management ─────────────────────────────────────────
+  meeting.scheduled:
+    description: "A meeting has been scheduled"
+    default_priority: "normal"
+    ttl_seconds: 604800   # 7 days
+    owner: "workflow"
+    tags: ["scheduling"]
+
+  meeting.completed:
+    description: "A meeting has been completed"
+    default_priority: "normal"
+    owner: "workflow"
+    tags: ["lifecycle"]
+
+  # ── Agent Lifecycle ────────────────────────────────────────────
+  agent.started:
+    description: "An AI agent has started execution"
+    default_priority: "normal"
+    owner: "orchestrator"
+    tags: ["lifecycle", "execution"]
+
+  agent.completed:
+    description: "An AI agent has completed execution"
+    default_priority: "normal"
+    owner: "orchestrator"
+    tags: ["lifecycle", "execution"]
+
+  agent.failed:
+    description: "An AI agent has failed during execution"
+    default_priority: "high"
+    owner: "orchestrator"
+    tags: ["lifecycle", "error"]
+
+  # ── Bootstrap Engine ───────────────────────────────────────────
+  bootstrap.started:
+    description: "Bootstrap process has started"
+    default_priority: "critical"
+    ttl_seconds: 14400    # 4 hours — should not exceed bootstrap window
+    owner: "bootstrap"
+    tags: ["lifecycle", "startup"]
+
+  bootstrap.finished:
+    description: "Bootstrap process has finished"
+    default_priority: "high"
+    owner: "bootstrap"
+    tags: ["lifecycle"]
+
+  # ── Generator Engine ───────────────────────────────────────────
+  generation.started:
+    description: "Content generation has started"
+    default_priority: "normal"
+    owner: "generator"
+    tags: ["lifecycle"]
+
+  generation.finished:
+    description: "Content generation has completed"
+    default_priority: "normal"
+    owner: "generator"
+    tags: ["lifecycle"]
+
+  generation.failed:
+    description: "Content generation has failed"
+    default_priority: "high"
+    owner: "generator"
+    tags: ["lifecycle", "error"]
+
+  # ── Registry Engine ────────────────────────────────────────────
+  registry.loaded:
+    description: "Registry data has been loaded"
+    default_priority: "normal"
+    owner: "registry"
+    tags: ["lifecycle", "startup"]
+
+  registry.reloaded:
+    description: "Registry data has been reloaded"
+    default_priority: "normal"
+    owner: "registry"
+    tags: ["lifecycle"]
+
+  # ── System Events ──────────────────────────────────────────────
+  system.startup:
+    description: "System startup sequence initiated"
+    default_priority: "critical"
+    ttl_seconds: 300      # 5 minutes — startup events are urgent
+    owner: "system"
+    tags: ["lifecycle", "infra"]
+
+  system.shutdown:
+    description: "System shutdown sequence initiated"
+    default_priority: "critical"
+    ttl_seconds: 300
+    owner: "system"
+    tags: ["lifecycle", "infra"]
+
+  system.error:
+    description: "An unrecoverable system error occurred"
+    default_priority: "critical"
+    ttl_seconds: null     # never expire — errors must always be investigated
+    owner: "system"
+    tags: ["error", "infra"]
+
+  system.health_check:
+    description: "Scheduled health check event"
+    default_priority: "low"
+    ttl_seconds: 60       # stale health checks are useless
+    owner: "system"
+    tags: ["monitoring"]
+
+  # ── Audit Engine ───────────────────────────────────────────────
+  audit.recorded:
+    description: "An audit record has been created"
+    default_priority: "normal"
+    ttl_seconds: null     # audit records must persist
+    owner: "audit"
+    persistent: true
+    tags: ["compliance", "audit"]
+
+  # ── Event Bus — Internal ───────────────────────────────────────
+  event.published:
+    description: "An event was published (internal bus event)"
+    default_priority: "low"
+    owner: "event_bus"
+    persistent: false
+    tags: ["internal", "monitoring"]
+
+  event.replayed:
+    description: "Historical events were replayed"
+    default_priority: "normal"
+    owner: "event_bus"
+    tags: ["internal", "lifecycle"]
+
+  event.dead_letter:
+    description: "An event was moved to the dead letter queue"
+    default_priority: "high"
+    owner: "event_bus"
+    tags: ["internal", "error"]
+
+  # ── Integration Events ─────────────────────────────────────────
+  integration.triggered:
+    description: "An external integration has been triggered"
+    default_priority: "normal"
+    owner: "system"
+    tags: ["integration"]
+
+  integration.completed:
+    description: "An external integration completed successfully"
+    default_priority: "normal"
+    owner: "system"
+    tags: ["integration"]
+
+  integration.failed:
+    description: "An external integration has failed"
+    default_priority: "high"
+    owner: "system"
+    tags: ["integration", "error"]
+
+# ── Domain metadata ──────────────────────────────────────────────
+domains:
+  company:     { label: "Company Lifecycle",     order: 1 }
+  department:  { label: "Department Lifecycle",  order: 2 }
+  executive:   { label: "Executive Lifecycle",   order: 3 }
+  workflow:    { label: "Workflow Engine",       order: 4 }
+  decision:    { label: "Decision Engine",       order: 5 }
+  memory:      { label: "Memory Engine",         order: 6 }
+  project:     { label: "Project Management",    order: 7 }
+  meeting:     { label: "Meeting Management",    order: 8 }
+  agent:       { label: "Agent Lifecycle",       order: 9 }
+  bootstrap:   { label: "Bootstrap Engine",      order: 10 }
+  generation:  { label: "Generator Engine",      order: 11 }
+  registry:    { label: "Registry Engine",       order: 12 }
+  system:      { label: "System Events",         order: 13 }
+  audit:       { label: "Audit Engine",          order: 14 }
+  event:       { label: "Event Bus",             order: 15 }
+  integration: { label: "Integration Events",    order: 16 }
+
+# ── Owner-to-engine mapping ──────────────────────────────────────
+# Maps logical owner name → actual engine class/component name
+owners:
+  bootstrap:    { engine: "BootstrapEngine",     publisher: "bootstrap" }
+  decision:     { engine: "DecisionEngine",      publisher: "decision" }
+  generator:    { engine: "GeneratorEngine",     publisher: "generator" }
+  memory:       { engine: "MemoryEngine",        publisher: "memory" }
+  orchestrator: { engine: "Orchestrator",        publisher: "orchestrator" }
+  registry:     { engine: "RegistryEngine",      publisher: "registry" }
+  system:       { engine: "SystemEngine",        publisher: "system" }
+  audit:        { engine: "AuditEngine",         publisher: "audit" }
+  workflow:     { engine: "WorkflowEngine",      publisher: "workflow" }
+  event_bus:    { engine: "EventBus",            publisher: "event_bus" }

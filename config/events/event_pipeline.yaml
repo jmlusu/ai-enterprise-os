@@ -1,0 +1,116 @@
+# Event Pipeline Configuration
+# Controls middleware chain, persistence, retry, TTL, dead letter, and worker pool
+# All settings are declarative — no hardcoded pipeline logic
+
+version: "1.0"
+description: "Event pipeline configuration for AI Enterprise OS"
+
+# ── Event Bus Core Settings ──────────────────────────────────────
+core:
+  max_history: 10000
+  max_workers: 4
+  enable_persistence: true
+  auto_start: false
+
+# ── Storage Paths ────────────────────────────────────────────────
+storage:
+  store_path: "events/store.jsonl"
+  dead_letter_path: "events/dead_letter.jsonl"
+
+# ── Middleware Pipeline ──────────────────────────────────────────
+# Ordered list of middleware to apply to every event
+# Each entry: { name, enabled, config }
+middleware:
+  - name: "logging"
+    enabled: true
+    config:
+      log_level: "INFO"
+      log_payload: false          # Don't log payloads by default (PII safety)
+      log_full_event_id: false    # Truncate event IDs in logs
+
+  - name: "validation"
+    enabled: true
+    config:
+      require_source: true
+      validate_event_type: true
+      max_payload_size_bytes: 1048576  # 1 MB max payload
+
+  - name: "metrics"
+    enabled: true
+    config:
+      track_processing_time: true
+      track_by_type: true
+      track_by_source: true
+      track_by_priority: true
+
+  - name: "rate_limiter"
+    enabled: false                 # Opt-in: enable for production throttling
+    config:
+      max_events_per_second: 1000
+      burst_size: 100
+
+  - name: "auth"
+    enabled: false                 # Opt-in: enable for multi-tenant auth
+    config:
+      require_tenant: false
+      allowed_sources: []
+
+# ── Retry Policy ─────────────────────────────────────────────────
+retry:
+  default_max_retries: 3
+  backoff_base_seconds: 1.0
+  backoff_multiplier: 2.0         # Exponential backoff: 1s, 2s, 4s...
+  max_backoff_seconds: 60.0
+  jitter: true                    # Add ±50% jitter to avoid thundering herd
+  retry_on_timeout: true
+  retry_on_error: true
+
+# ── Dead Letter Queue ────────────────────────────────────────────
+dead_letter:
+  max_entries: 10000               # Max DLQ entries before oldest are purged
+  ttl_days: 30                     # Auto-purge entries older than this
+  persistence_path: "events/dead_letter.jsonl"
+
+# ── Delivery Modes ───────────────────────────────────────────────
+delivery:
+  default_mode: "AT_LEAST_ONCE"    # at_most_once | at_least_once | exactly_once
+  subscriber_timeout_seconds: 30
+
+# ── TTL & Expiry ─────────────────────────────────────────────────
+ttl:
+  default_seconds: 3600            # 1 hour default
+  check_interval_seconds: 300      # Check for expired events every 5 min
+  auto_expire: true                # Automatically drop expired events
+
+# ── Replay Engine ────────────────────────────────────────────────
+replay:
+  max_events_per_session: 100000
+  default_max_events: 1000
+  max_events_per_second: 0         # 0 = unlimited
+  session_ttl_minutes: 60          # Sessions auto-expire after 1 hour
+
+# ── Priority Queue ───────────────────────────────────────────────
+priority:
+  concurrency_per_level: true      # High-priority events can bypass low-priority
+  starvation_prevention: true      # Ensure low-priority events eventually run
+  max_events_per_tick: 100         # Events processed per dispatch tick
+
+# ── Monitoring & Observability ───────────────────────────────────
+observability:
+  metrics_enabled: true
+  history_enabled: true
+  history_max_entries: 10000
+  track_publish_latency: true
+  track_dispatch_latency: true
+  track_dead_letter_rate: true
+  emit_bus_internal_events: false  # Events about events (for debugging)
+
+# ── Feature Toggles ──────────────────────────────────────────────
+features:
+  persistence: true
+  middleware: true
+  replay: true
+  dead_letter: true
+  priority_processing: true
+  request_reply: true
+  event_chaining: true             # Allow causation_id tracking across events
