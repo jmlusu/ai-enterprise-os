@@ -57,6 +57,7 @@ uv.lock
 /reports/
 /scripts/
 /slides/
+/dashboards/
 
 # Backup bundles (created by python -m ai_company.backup)
 /backups/
