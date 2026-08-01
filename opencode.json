@@ -18,7 +18,7 @@
     "plan": {
       "model": "ollama/qwen2.5-coder:7b",
       "mode": "primary",
-      "description": "Planning agent using Qwen 2.5 Coder 14B for complex reasoning"
+      "description": "Planning agent using Qwen 2.5 Coder 7B for complex reasoning"
     },
     "explore": {
       "model": "ollama/mistral:7b",
@@ -29,6 +29,11 @@
       "model": "ollama/llama3.1:8b",
       "mode": "primary",
       "description": "General-purpose agent using Llama 3.1 8B"
+    },
+    "architect": {
+      "model": "opencode/north-mini-code-free",
+      "mode": "primary",
+      "description": "Architecture agent used by ai-company generate targets for repo-level design and artifact generation (reconciled 2026-08-01, Phase 0 WS-0.3)"
     }
   },
   "default_agent": "build"

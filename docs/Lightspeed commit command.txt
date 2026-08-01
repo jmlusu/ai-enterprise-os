@@ -1,0 +1,1 @@
+Commit all changes the monito CI job until it is successful, otherwise fix issue and commit again.

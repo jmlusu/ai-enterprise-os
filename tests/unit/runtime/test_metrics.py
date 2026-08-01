@@ -26,10 +26,12 @@ def test_gauge_float_and_dict() -> None:
 
 def test_timed_context_manager() -> None:
     registry = MetricsRegistry()
+    # Windows monotonic clock resolution can coarsen short measurements;
+    # use a 50ms sleep and a tolerant lower bound to avoid flakes (Phase 0).
     with registry.timed("op"):
-        time.sleep(0.01)
-    assert registry.timer("op") >= 0.01
-    assert registry.timers()["op"] >= 0.01
+        time.sleep(0.05)
+    assert registry.timer("op") >= 0.04
+    assert registry.timers()["op"] >= 0.04
 
 
 def test_record_timer_accumulates() -> None:

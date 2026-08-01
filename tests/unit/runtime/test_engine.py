@@ -7,6 +7,7 @@ import pytest
 from ai_company.runtime import RuntimeEngine, create_runtime
 from ai_company.runtime.models import (
     EngineNotRegisteredError,
+    EngineStateStatus,
     HealthStatus,
     RuntimePhase,
 )
@@ -90,3 +91,35 @@ def test_metrics_on_stopped_runtime(runtime: RuntimeEngine) -> None:
     metrics = runtime.metrics()
     assert metrics.active_engines == 0
     assert metrics.uptime_seconds >= 0
+
+
+def test_engine_policy_applies_to_registered_engine(runtime: RuntimeEngine) -> None:
+    # P0-3: engines must resolve the "engine" category recovery policy even
+    # though no exact-name policy exists for "probe".
+    runtime.register_engine("probe", object())
+    policy = runtime.recovery.policy_for("probe")
+    assert policy is not None
+    assert policy.name == "engine"
+    assert "restart" in policy.actions
+
+
+def test_engine_failure_recovers_via_factory(runtime: RuntimeEngine) -> None:
+    # P0-3: a heartbeat failure must restart the engine through its
+    # registered factory instead of being isolated on the first failure.
+    class _Restartable:
+        def __init__(self) -> None:
+            self.restarts = 0
+
+        def restart(self) -> None:
+            self.restarts += 1
+
+    instance = _Restartable()
+    runtime.register_engine("probe", instance)
+    runtime.supervisor.on_failure("probe", "heartbeat_timeout")
+    assert instance.restarts == 1
+    assert runtime.recovery.attempts("probe") == 1
+    assert "probe" not in runtime.supervisor.isolated()
+    state = runtime.engine_state("probe")
+    assert state is not None
+    assert state.status is EngineStateStatus.RUNNING
+    assert state.health is HealthStatus.HEALTHY

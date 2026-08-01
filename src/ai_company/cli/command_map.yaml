@@ -2,64 +2,82 @@ bootstrap:
   prompt_file: prompts/opencode/01_bootstrap_generator.md
   agent: architect
   model: opencode/north-mini-code-free
-  description: Scaffold the initial repository structure
+  description: Scaffold the initial repository structure (Bootstrap Generator)
 
 registry:
   prompt_file: prompts/opencode/02_registry_engine.md
   agent: architect
   model: opencode/north-mini-code-free
-  description: Load and validate company YAML into an in-memory graph
+  description: Load and validate company YAML into an in-memory graph (Registry Engine)
 
 company:
-  prompt_file: prompts/opencode/03_company_generator.md
+  prompt_file: prompts/opencode/03_generator_engine.md
   agent: architect
   model: opencode/north-mini-code-free
-  description: Generate the full organization hierarchy and artifacts
+  description: Generate the organization hierarchy and artifacts (Generator Engine)
 
 board:
-  prompt_file: prompts/opencode/04_board_generator.md
+  prompt_file: prompts/opencode/06_opencode_agent_generator.md
   agent: architect
   model: opencode/north-mini-code-free
-  description: Generate board governance artifacts
+  description: Generate board governance artifacts (OpenCode agent generator)
 
 exec:
-  prompt_file: prompts/opencode/05_executive_generator.md
+  prompt_file: prompts/opencode/06_opencode_agent_generator.md
   agent: architect
   model: opencode/north-mini-code-free
-  description: Generate executive artifact packages
+  description: Generate executive artifact packages (OpenCode agent generator)
 
 dept:
-  prompt_file: prompts/opencode/06_department_generator.md
+  prompt_file: prompts/opencode/06_opencode_agent_generator.md
   agent: architect
   model: opencode/north-mini-code-free
-  description: Generate department artifacts
+  description: Generate department artifacts (OpenCode agent generator)
 
 specialist:
-  prompt_file: prompts/opencode/07_specialist_generator.md
+  prompt_file: prompts/opencode/06_opencode_agent_generator.md
   agent: architect
   model: opencode/north-mini-code-free
-  description: Generate specialist agent artifacts
+  description: Generate specialist agent artifacts (OpenCode agent generator)
 
 workflow:
-  prompt_file: prompts/opencode/08_workflow_generator.md
+  prompt_file: prompts/opencode/03_generator_engine.md
   agent: architect
   model: opencode/north-mini-code-free
-  description: Generate workflow artifacts
+  description: Generate workflow artifacts (Generator Engine)
 
 prompt:
-  prompt_file: prompts/opencode/09_prompt_generator.md
+  prompt_file: prompts/opencode/03_generator_engine.md
   agent: architect
   model: opencode/north-mini-code-free
-  description: Generate prompt library artifacts
+  description: Generate prompt library artifacts (Generator Engine)
 
 docs:
-  prompt_file: prompts/opencode/10_docs_generator.md
+  prompt_file: prompts/opencode/05_document_generator.md
   agent: architect
   model: opencode/north-mini-code-free
-  description: Generate documentation artifacts
+  description: Generate documentation artifacts (Documentation Engine)
 
 graph:
-  prompt_file: prompts/opencode/11_graph_export.md
+  prompt_file: prompts/opencode/02_registry_engine.md
   agent: architect
   model: opencode/north-mini-code-free
-  description: Export organizational graphs
+  description: Export organizational graphs (built by the Registry Engine)
+
+dashboard:
+  prompt_file: prompts/opencode/07_dashboard_generator.md
+  agent: architect
+  model: opencode/north-mini-code-free
+  description: Generate the executive dashboard (Dashboard Generator)
+
+cli:
+  prompt_file: prompts/opencode/04_cli.md
+  agent: architect
+  model: opencode/north-mini-code-free
+  description: Build the AI Enterprise CLI (frozen dispatcher — render only)
+
+constitution:
+  prompt_file: prompts/opencode/08_constitution_loader.md
+  agent: architect
+  model: opencode/north-mini-code-free
+  description: Load the .ai-company constitution and session state

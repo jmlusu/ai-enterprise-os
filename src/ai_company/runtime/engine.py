@@ -37,6 +37,7 @@ from ai_company.runtime.models import (
     EngineStateStatus,
     HealthStatus,
     JobKind,
+    RecoveryError,
     RecoveryResult,
     RuntimeMetrics,
     RuntimePhase,
@@ -115,6 +116,7 @@ class RuntimeEngine:
             config=self._section("recovery"),
             process_manager=self.process_manager,
             event_bus=self.event_bus,
+            is_engine=lambda name: name in self.engines,
         )
         self.supervisor = Supervisor(
             config=self._section("monitoring"),
@@ -178,6 +180,11 @@ class RuntimeEngine:
         self.dependency_graph.add_component(name)
         self.health_monitor.register(name, instance)
         self.heartbeats.register(name)
+        # Register a restart factory so the supervisor can self-heal this
+        # engine via the "restart" recovery action instead of isolating it.
+        self.recovery.register_factory(
+            name, lambda name=name: self._restart_engine(name)
+        )
         self.state_store.set_engine(state)
         logger.info("Engine registered: %s", name)
         return state
@@ -620,6 +627,27 @@ class RuntimeEngine:
     def recover_engine(self, name: str, reason: str = "manual") -> RecoveryResult:
         """Manually trigger recovery for a component."""
         return self.recovery.recover(name, reason)
+
+    def _restart_engine(self, name: str) -> None:
+        """Restart a registered engine (used by the recovery manager).
+
+        Tries ``instance.restart()`` when the engine exposes one, then
+        re-admits the engine to supervision with a fresh liveness window so
+        the supervisor gives it another chance before isolating it.
+        """
+        instance = self.engines.get(name)
+        if instance is None:
+            raise RecoveryError(f"Engine not registered: {name}")
+        restart = getattr(instance, "restart", None)
+        if callable(restart):
+            try:
+                restart()
+            except Exception as exc:
+                logger.warning("Engine %s restart() raised: %s", name, exc)
+        # Reset the heartbeat so the engine gets a fresh window after
+        # restart instead of being declared stale immediately.
+        self.heartbeats.beat(name)
+        logger.info("Engine %s restarted via recovery factory", name)
 
     def unisolate(self, name: str) -> None:
         """Re-admit an isolated component to supervision."""

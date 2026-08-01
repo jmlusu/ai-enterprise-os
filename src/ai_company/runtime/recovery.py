@@ -53,12 +53,16 @@ class RecoveryManager:
         process_manager: Any | None = None,
         component_factory: Callable[[str], Any] | None = None,
         event_bus: Any | None = None,
+        is_engine: Callable[[str], bool] | None = None,
     ) -> None:
         self.config = config or {}
         self.default_max_attempts = int(self.config.get("default_max_attempts", 3))
         self.process_manager = process_manager
         self.component_factory = component_factory
         self.event_bus = event_bus
+        # Optional predicate used to fall back to the "engine"/"process"
+        # category policies for components without an exact-name policy.
+        self.is_engine = is_engine
         self._policies: dict[str, RecoveryPolicy] = {}
         self._attempts: dict[str, int] = {}
         self._results: dict[str, list[RecoveryResult]] = {}
@@ -81,12 +85,24 @@ class RecoveryManager:
             self._factories[name] = factory
 
     def policy_for(self, component: str) -> RecoveryPolicy | None:
-        """Return the recovery policy matching a component name."""
+        """Return the recovery policy matching a component name.
+
+        Resolution order:
+        1. Exact component-name match.
+        2. Suffix wildcard (``name*``) match.
+        3. Category fallback: the ``engine`` policy for registered
+           engines, and the ``process`` policy for managed processes.
+        """
         if component in self._policies:
             return self._policies[component]
         for pattern, policy in self._policies.items():
             if pattern.endswith("*") and component.startswith(pattern[:-1]):
                 return policy
+        if self.is_engine is not None and self.is_engine(component):
+            return self._policies.get("engine")
+        if self.process_manager is not None:
+            if self.process_manager.get_optional(component) is not None:
+                return self._policies.get("process")
         return None
 
     def attempts(self, component: str) -> int:
@@ -232,7 +248,15 @@ class RecoveryManager:
             optional = self.process_manager.get_optional(component)
             if optional is not None:
                 self.process_manager.stop(component)
-        logger.warning("Component %s isolated from runtime", component)
+                logger.warning("Component %s isolated from runtime", component)
+                return
+        # Nothing was actually isolated — report failure so the supervisor
+        # performs its own isolation (unregister monitoring) and the engine
+        # is marked failed instead of falsely "recovered via isolate".
+        raise RecoveryError(
+            f"No process record for {component}; nothing to isolate "
+            "(supervisor isolation not wired to RecoveryManager)"
+        )
 
     def _escalate(self, component: str, policy: RecoveryPolicy, reason: str) -> None:
         if self.event_bus is None:

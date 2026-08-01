@@ -26,6 +26,40 @@ def test_exact_match_policy_wins() -> None:
     assert manager.policy_for("engine-b").name == "engine-*"
 
 
+def test_category_fallback_engine_policy() -> None:
+    manager = RecoveryManager(
+        config={"policies": {"engine": {"actions": ["restart"], "max_attempts": 3}}},
+        is_engine=lambda name: name == "memory",
+    )
+    policy = manager.policy_for("memory")
+    assert policy is not None
+    assert policy.name == "engine"
+    assert "restart" in policy.actions
+    # Unknown components without a category still get no policy.
+    assert manager.policy_for("unknown") is None
+
+
+def test_category_fallback_process_policy() -> None:
+    from ai_company.runtime.process_manager import ProcessManager
+
+    process_manager = ProcessManager()
+    process_manager.register("worker-1")
+    manager = RecoveryManager(
+        config={"policies": {"process": {"actions": ["restart", "isolate"]}}},
+        process_manager=process_manager,
+    )
+    assert manager.policy_for("worker-1").name == "process"
+
+
+def test_isolate_without_process_fails_honestly() -> None:
+    manager = RecoveryManager(
+        config={"policies": {"engine-a": {"actions": ["isolate"]}}}
+    )
+    result = manager.recover("engine-a")
+    assert result.success is False
+    assert "All recovery actions failed" in result.message
+
+
 def test_restart_via_factory() -> None:
     calls: list[str] = []
 

@@ -102,6 +102,10 @@ class Supervisor:
         result = self.recovery.recover(component, reason)
         if not result.success:
             self.isolate(component, reason=f"recovery failed: {reason}")
+        elif "isolate" in result.actions_taken:
+            # Recovery stopped the process via an isolate action — the
+            # component is dead, so stop monitoring it as well.
+            self.isolate(component, reason=f"isolated during recovery: {reason}")
         return result
 
     def _notify(self, component: str, reason: str, result: RecoveryResult) -> None:

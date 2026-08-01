@@ -1,6 +1,7 @@
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import typer
@@ -17,6 +18,7 @@ from ai_company.cli.groups import report as report_group
 from ai_company.cli.groups import runtime as runtime_group
 from ai_company.cli.render import render_prompt
 from ai_company.company.generator import CompanyGenerator
+from ai_company.telemetry.cli import record_cli_invocation
 from ai_company.utils.console import configure_console, console_print
 from ai_company.validator.engine import ValidatorEngine
 
@@ -33,6 +35,29 @@ app.add_typer(graph_group.app, name="graph")
 app.add_typer(report_group.app, name="report")
 app.add_typer(orchestration_group.app, name="orchestrate")
 app.add_typer(runtime_group.app, name="runtime")
+
+
+@app.callback()
+def _telemetry_start(ctx: typer.Context) -> None:
+    """Record the invocation start time and register a finish hook.
+
+    Baseline CLI telemetry (Phase 0 WS-0.4): every invocation is recorded as
+    one JSONL event in runtime/cli_telemetry.jsonl (fail-open, never breaks
+    the CLI). The finish hook uses the click-supported ``Context.call_on_close``
+    API -- ``typer.Typer.result_callback`` does not exist in typer 0.27.0 --
+    so the record fires after the command completes, including sub-commands
+    and failed invocations.
+    """
+    started_at = time.monotonic()
+    ctx.meta["telemetry_started_at"] = started_at
+
+    def _finish() -> None:
+        record_cli_invocation(
+            argv=list(sys.argv[1:]),
+            duration_seconds=round(time.monotonic() - started_at, 4),
+        )
+
+    ctx.call_on_close(_finish)
 
 
 @app.command()

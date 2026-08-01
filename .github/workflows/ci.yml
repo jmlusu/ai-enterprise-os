@@ -31,6 +31,10 @@ jobs:
         run: uv run --group dev ruff format --check
       - name: Lockfile check
         run: uv lock --check
+      - name: uv audit
+        run: uv audit
+      - name: Command map integrity
+        run: uv run python -m ai_company.integrity.check_command_map
 
   type-check:
     runs-on: ubuntu-latest
