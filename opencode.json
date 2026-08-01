@@ -53,6 +53,12 @@
 
     "general": {
       "model": "ollama/qwen2.5-coder:7b"
+    },
+
+    "architect": {
+      "model": "opencode/north-mini-code-free",
+      "mode": "primary",
+      "description": "Architecture agent used by ai-company generate targets for repo-level design and artifact generation (reconciled 2026-08-01, Phase 0 WS-0.3)"
     }
   },
 
