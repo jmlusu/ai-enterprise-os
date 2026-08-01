@@ -25,6 +25,9 @@ cp -r templates/opencode/. .opencode/
 - `package.json` — the OpenCode plugin dependency (`@opencode-ai/plugin`),
   required for plugin-based tooling. Run `opencode` once after copying to
   install `node_modules`.
+- `.gitignore` — mirrors the real `.opencode/.gitignore` so the copied
+  directory stays untracked (node_modules + lockfiles + the local config
+  files themselves remain machine-local).
 
 ## Keeping agents in sync
 

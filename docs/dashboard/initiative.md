@@ -29,11 +29,11 @@ against this repository before tracking began. Evidence paths are as found.
 | # | Finding | Evidence (verified) | Severity | Status |
 |---|---------|---------------------|----------|--------|
 | 1 | Generation dispatch map broken: `command_map.yaml` maps 11 targets to 9 prompt files that don't exist; only `bootstrap` + `registry` resolve. Real `prompts/opencode/` has **8 files, differently named** (01–08: bootstrap, registry, generator_engine, cli, document_generator, opencode_agent_generator, dashboard_generator, constitution_loader). | `src/ai_company/cli/command_map.yaml` vs `prompts/opencode/*.md` | **P0** | **[DONE]** — reconciled 2026-08-01; CI integrity test added (see §7.1) |
-| 2 | Self-healing doesn't work: all 5 engines `failed` / `heartbeat_timeout`, `restart_count: 0`. Watchdog isolates; supervisor never recovers. Active pipeline `p_recovery_test` ended fully failed. | `runtime/runtime_state.json` | **P0** | **[DONE]** — recovery fix landed (ADR 0007); `test_engine_failure_recovers_via_factory` + `test_restart_via_factory` green; end-to-end drill run as final verification |
+| 2 | Self-healing doesn't work: all 5 engines `failed` / `heartbeat_timeout`, `restart_count: 0`. Watchdog isolates; supervisor never recovers. Active pipeline `p_recovery_test` ended fully failed. | `runtime/runtime_state.json` | **P0** | **[DONE]** — recovery fix landed (ADR 0007); drill tests green; **end-to-end live drill PASSED 2026-08-01** (§7.6) |
 | 3 | "Dashboard" is a 16-line static stub; `docs/architecture.md` lists a "Dashboard Engine" with no source; prompt `07_dashboard_generator.md` is aspirational ("Update automatically"). GUI is greenfield. | `dashboards/sprint_dashboard.html` (16 lines); `docs/architecture.md` line 14; `prompts/opencode/07_dashboard_generator.md` | **P0** | **[NOT STARTED]** — Phases 1–2 |
 | 4 | ~60% of telemetry is generated then discarded: metrics/heartbeats/health are in-memory dicts lost on restart; provider token usage is computed (`CompletionResult.usage`) and never persisted. "Model Usage" / "Agent Health" have zero upstream data. | `src/ai_company/runtime/metrics.py` (`MetricsRegistry` = plain dicts, no persistence); `src/ai_company/providers/base.py` (`usage: dict` field, unused) | **P0** | **[IN PROGRESS]** — CLI invocation telemetry LIVE (`runtime/cli_telemetry.jsonl`, fail-open, WS-0.4); runtime metrics persistence + provider usage instrumentation remain (Phase 2 telemetry workstream) |
 | 5 | Two sources of truth drifting: `command_map.yaml` pins `opencode/north-mini-code-free` + an `architect` agent that is **not defined** in `opencode.json`; `opencode.json` uses `ollama/llama3.1:8b` with agents `build/plan/explore/general`. | `src/ai_company/cli/command_map.yaml` vs `opencode.json` | **P1** | **[DONE]** — `architect` agent added to `opencode.json` 2026-08-01 (see §7.2); command map now an **enforced contract** (ADR 0006, CI integrity gates); model variance documented as decision D4 |
-| 6 | All state gitignored, no backup: `memory/`, `events/`, `generated/`, `.ai-company/`, `runtime/`, `reports/`, `scripts/`, `slides/` excluded from git; a dead laptop = full data loss. | `.gitignore` lines 35–58 | **P1** | **[IN PROGRESS]** — WS-0.5: `ai_company/backup/` + `nightly-backup.yml` + `.env.example` landed; restore drill + `.opencode/` template commit pending |
+| 6 | All state gitignored, no backup: `memory/`, `events/`, `generated/`, `.ai-company/`, `runtime/`, `reports/`, `scripts/`, `slides/` excluded from git; a dead laptop = full data loss. | `.gitignore` lines 35–58 | **P1** | **[DONE]** — WS-0.5 complete 2026-08-01: nightly bundle + `restore_backup()` + live restore drill (397/397 files) + `.opencode/` template committed |
 
 **Good news (also verified):** the runtime is a mature control plane —
 `RuntimeEngine` (status/health/metrics/diagnostics/recover/unisolate),
@@ -78,17 +78,18 @@ decision/approval/risk engine, memory engine — all Pydantic-typed and JSON-rea
 
 ### Phase 0 — Foundation repair (2–3 wks, zero dashboard code) — MANDATORY GATE
 
-CIO refuses to approve the build without this phase. `[IN PROGRESS]` — near-complete; remaining: WS-0.5 drill + WS-0.7 windows CI
+CIO refuses to approve the build without this phase. **[DONE]** 2026-08-01 — all 7 workstreams
+complete; drills run live (restore 397/397 files, recovery restart-before-isolate); Phase 1 opened same day.
 
 | WS | Workstream | Status | Exit criterion |
 |----|-----------|--------|----------------|
 | 0.1 | Fix `command_map.yaml` ↔ `prompts/opencode/` drift; CI integrity check (every target resolves) | **[DONE]** 2026-08-01 | **Two gates:** `tests/test_command_map_integrity.py` (5 tests) + `python -m ai_company.integrity.check_command_map` (module), both wired into CI; all 8 prompts dispatchable, all 14 targets resolve |
-| 0.2 | Fix supervisor/recovery: failures recover or escalate (scripted failure drill ends *recovered*) | **[DONE]** (ADR 0007) | Fix landed in `runtime/recovery.py` + `supervisor.py` + `engine.py` (restart-before-isolate, per-engine factories); drill tests `test_engine_failure_recovers_via_factory` / `test_restart_via_factory` / `test_max_attempts_exhausted` green; final live drill pending §7.6 |
+| 0.2 | Fix supervisor/recovery: failures recover or escalate (scripted failure drill ends *recovered*) | **[DONE]** (ADR 0007) | Fix landed in `runtime/recovery.py` + `supervisor.py` + `engine.py` (restart-before-isolate, per-engine factories); drill tests `test_engine_failure_recovers_via_factory` / `test_restart_via_factory` / `test_max_attempts_exhausted` green; **live drill run 2026-08-01 (§7.6)** — heartbeat_timeout → 1 restart via factory, not isolated, RUNNING/HEALTHY |
 | 0.3 | Reconcile `opencode.json` vs `command_map.yaml` models/agents (add missing `architect` agent) | **[DONE]** 2026-08-01 | `--agent architect` resolves; integrity test asserts agent defined (guards recurrence) |
 | 0.4 | Ship opt-in baseline telemetry (CLI invocation events) — *before* the dashboard, so the pivot is provable | **[DONE]** 2026-08-01 | `ai_company/telemetry/cli.py` (fail-open, JSONL); **verified live**: every `ai-company` invocation appends to `runtime/cli_telemetry.jsonl` via `ctx.call_on_close` hook (see §7.4) |
-| 0.5 | Nightly backup bundle of gitignored state + restore drill; `uv audit` in CI; `.env.example`; commit `.opencode/` config template | **[IN PROGRESS]** | `ai_company/backup/` + `nightly-backup.yml` + `.env.example` + `uv audit` in CI landed; **pending:** restore drill + `.opencode/` template commit |
+| 0.5 | Nightly backup bundle of gitignored state + restore drill; `uv audit` in CI; `.env.example`; commit `.opencode/` config template | **[DONE]** 2026-08-01 | `ai_company/backup/` + `nightly-backup.yml` + `.env.example` + `uv audit` in CI landed; `restore_backup()` (safe extraction) + `--restore` flag + 8 unit tests; **live restore drill PASSED** (397/397 files byte-for-byte, SHA-256, §7.5); `.opencode/` template completed (agents + package.json + `.gitignore`) |
 | 0.6 | ADRs (stack D1, topology D2, API contract D3); parity matrix v0 | **[DONE]** | ADR 0001–0009 merged (0008 = frontend stack proposed, 0009 = API contract proposed); `docs/dashboard/parity-matrix-v0.md` (capability + command-exhaustive, 70 commands) |
-| 0.7 | windows-latest CI job (currently Ubuntu-only — real gap for a Windows-first project) | **[NOT STARTED]** | CI matrix includes `windows-latest` |
+| 0.7 | windows-latest CI job (currently Ubuntu-only — real gap for a Windows-first project) | **[DONE]** 2026-08-01 | `test-windows` job on `windows-latest` added (full pytest suite, bash rc-5 guard); 1054 tests pass on Windows locally |
 
 ### Phase 1 — Read-only Dashboard v1 (4–6 wks) — 80% of demo/exec value for ~30% effort
 
@@ -132,15 +133,15 @@ CIO refuses to approve the build without this phase. `[IN PROGRESS]` — near-co
 | # | Risk | Severity | Mitigation | Status |
 |---|------|----------|-----------|--------|
 | R1 | Broken generate dispatch (phantom targets) | Critical, certain | Phase 0 fix + CI integrity check | **[MITIGATED]** — 0.1 done |
-| R2 | System doesn't self-heal (watchdog isolates, no recovery) | Critical | Recovery policies in Phase 0; recovery-success metric; alert on isolation | **[MITIGATED]** — ADR 0007 + drill tests green; live end-to-end drill pending §7.6; recovery-success metric + isolation alerting to add |
+| R2 | System doesn't self-heal (watchdog isolates, no recovery) | Critical | Recovery policies in Phase 0; recovery-success metric; alert on isolation | **[MITIGATED]** — ADR 0007 + drill tests green; **live end-to-end drill PASSED (§7.6)**; recovery-success metric + isolation alerting moved to Phase 2 backlog |
 | R3 | Dual-interface drift (CLI vs dashboard re-implementing logic) | High | Single `services/` layer; contract tests (golden CLI output == API JSON); parity test suite in CI | **[OPEN]** — ADR 0003 accepted; services layer is Phase 1 |
 | R4 | OpenCode vendor lock-in / version churn | High | Provider abstraction at dispatcher; portable Markdown prompts; pinned version + doctor probe; headless generate fallback; never fork/re-skin desktop app | **[OPEN]** |
 | R5 | Dashboard ships with no data (Model Usage/Agent Health empty) | High | Capture-first ordering: telemetry (Phases 0–1) precedes panels (Phase 2); stub honestly with "data pending," never fake | **[PARTIALLY MITIGATED]** — CLI telemetry capture now live (WS-0.4); runtime metrics persistence + provider usage instrumentation pending; panels must stay honest until then |
-| R6 | Data loss (all state gitignored, single machine) | High | Nightly backup bundle + quarterly restore drill + backup tile with alerting | **[OPEN]** |
+| R6 | Data loss (all state gitignored, single machine) | High | Nightly backup bundle + quarterly restore drill + backup tile with alerting | **[PARTIALLY MITIGATED]** — nightly bundle + restore drill done 2026-08-01; backup tile with alerting is Phase 2 dashboard work |
 | R7 | Scope creep (console becomes mini-ERP) | Medium | CEO's NOT-do list: no SaaS/multi-tenant, no visual pipeline-builder v1, no own agent runtime, ≤30% effort on UI, no new metrics until serving layer lands | **[OPEN]** |
 | R8 | Breaking 500+ tests / CI regression | High | Additive-only refactor; engines untouched; CLI surface frozen; full suite green each sprint; parity is a release blocker | **[OPEN]** — guardrails confirmed: engines unchanged in 0.1 |
 | R9 | Localhost security (web server = new attack surface) | Medium-High | Bind 127.0.0.1 only; Host-header + CORS checks; token mode when non-loopback; keys in OS keyring, never rendered; CSP; DOMPurify on all Markdown | **[OPEN]** |
-| R10 | Windows/uvicorn issues | Medium | Plain uvicorn (no uvloop), explicit port + friendly errors, `proc.terminate()` not `os.kill`, add windows-latest CI job | **[OPEN]** — confirmed CI is Ubuntu-only |
+| R10 | Windows/uvicorn issues | Medium | Plain uvicorn (no uvloop), explicit port + friendly errors, `proc.terminate()` not `os.kill`, add windows-latest CI job | **[MITIGATED]** — windows-latest CI job added 2026-08-01; plain uvicorn + `proc.terminate()` enforced; explicit port + friendly errors land with `ai-company serve` (Phase 1) |
 | R11 | User confusion during transition | High | Category rule: read = dashboard, safe write = both, destructive/bulk = CLI-only; "Equivalent CLI command" tooltips; persona onboarding (View/Operate/Develop); frozen CLI | **[OPEN]** — codified in parity matrix v0 |
 | R12 | Misleading statuses (four overlapping vocabularies; stopped ≠ broken) | Medium | One canonical four-state system (All good / Watch / Needs action / Unknown); every status time-stamped; color + icon + text, never color alone | **[OPEN]** |
 
@@ -171,13 +172,24 @@ CIO refuses to approve the build without this phase. `[IN PROGRESS]` — near-co
 - Added the missing `architect` agent to `opencode.json` (model `opencode/north-mini-code-free`, primary) so `ai-company generate <target>` → `opencode run --agent architect` resolves.
 - **Concurrency incident (process finding):** a parallel agent session was editing `opencode.json` and `src/ai_company/agents/` at the same time; both writers added `architect`, producing malformed duplicate JSON. The new integrity test (`test_dispatch_agent_defined_in_opencode_json`) caught it in CI. Resolved to a single `architect` entry whose model matches the dispatch map. **Lesson:** parallel writers on the same config files must coordinate (tracking rule §8.7).
 
-### 7.3 WS-0.2 NOT STARTED — recovery
+### 7.3 WS-0.2 DONE — recovery (drill test evidence)
 
-Root cause on record: `runtime_state.json` shows all 5 engines `failed`/`heartbeat_timeout` with `restart_count: 0` and an active `p_recovery_test` pipeline that ended fully failed. Supervisor recovery policy is the fix target; scripted failure drill is the acceptance test.
+Root cause on record: `runtime_state.json` shows all 5 engines `failed`/`heartbeat_timeout` with `restart_count: 0` and an active `p_recovery_test` pipeline that ended fully failed. Supervisor recovery policy is the fix target; scripted failure drill is the acceptance test. Fix landed (ADR 0007, restart-before-isolate, per-engine factories) and the live drill passed 2026-08-01 (see §7.6).
 
 ### 7.4 Phase 0 hygiene — flaky timing test fixed (2026-08-01)
 
 - `tests/unit/runtime/test_metrics.py::test_timed_context_manager` asserted `>= 0.01` after `sleep(0.01)`; on Windows this randomly measured `0.0` (monotonic clock resolution) — a pre-existing CI-breaker under R8. Fixed with a 50ms sleep and tolerant 0.04s bound. Test-only change; engines untouched.
+
+### 7.5 Phase 0 close-out — restore drill + `.opencode/` template (2026-08-01)
+
+- `restore_backup()` added to `ai_company/backup/backup.py`: safe extraction — explicit rejection of absolute paths and `..` traversal plus tarfile `filter="data"` — and a `--restore ARCHIVE` CLI mode; 8 unit tests in `tests/unit/backup/test_backup.py` (round-trip, byte-identical, traversal/absolute rejection, main flows).
+- **Live restore drill PASSED** (`scripts/restore_drill.py`): bundled the five gitignored runtime dirs (238 KB), restored into an isolated temp root, verified **397/397 files byte-for-byte (SHA-256)**, exit 0. Closes finding #6 / R6 restore half.
+- `.opencode/` config template completed: `templates/opencode/` now mirrors the real config — `agents/architect.md`, `agents/builder.md`, `package.json` (`@opencode-ai/plugin@1.18.7`) and `.gitignore` (node_modules + lockfiles stay machine-local).
+
+### 7.6 Phase 0 close-out — live recovery drill + Windows CI (2026-08-01)
+
+- **Live self-healing drill PASSED** (`scripts/runtime_recovery_drill.py`): real `RuntimeEngine` + `RecoveryManager` + `Supervisor` (real runtime config) — `heartbeat_timeout` on a registered engine → **restart via factory (1 restart, 1 attempt), NOT isolated, state RUNNING/HEALTHY**. Closes the last WS-0.2 acceptance item (ADR 0007 proven end-to-end).
+- **Windows CI landed (WS-0.7):** `test-windows` job added to `.github/workflows/ci.yml` on `windows-latest` running the full pytest suite (bash rc-5 guard). 1054 tests pass on Windows locally. Closes risk R10's CI gap.
 
 ---
 

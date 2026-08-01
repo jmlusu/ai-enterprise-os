@@ -71,6 +71,31 @@ jobs:
           fi
           exit $rc
 
+  # Windows-first project (risk R10): the full suite must pass on
+  # windows-latest, not just Ubuntu. Uses bash for the rc-5 guard
+  # (Git Bash ships on GitHub Windows runners).
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: uv sync --group dev
+      - name: pytest
+        shell: bash
+        run: |
+          uv run --group dev pytest --verbose --tb=short -q
+          rc=$?
+          if [ $rc -eq 5 ]; then
+            echo "No tests collected - this is fine, no test files exist yet"
+            exit 0
+          fi
+          exit $rc
+
   validate:
     runs-on: ubuntu-latest
     steps:
