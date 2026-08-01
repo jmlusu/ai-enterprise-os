@@ -1,0 +1,58 @@
+﻿{% extends "base.html" %}
+{% block title %}Reports â€” AI Enterprise OS{% endblock %}
+{% block heading %}Reports{% endblock %}
+{% block subtitle %}Generated read-only reports{% endblock %}
+
+{% block content %}
+<div class="grid cols-2">
+  <div class="card">
+    <h2>Summary</h2>
+    {% if summary %}
+    <dl>
+      <dt>Company</dt><dd>{{ summary.get("company", "â€”") }}</dd>
+      <dt>Vision</dt><dd>{{ summary.get("vision", "â€”") }}</dd>
+      <dt>Departments</dt><dd>{{ summary.get("departments", "â€”") }}</dd>
+      <dt>Roles</dt><dd>{{ summary.get("roles", "â€”") }}</dd>
+      <dt>Board members</dt><dd>{{ summary.get("board", "â€”") }}</dd>
+      <dt>Workflows</dt><dd>{{ summary.get("workflows", "â€”") }}</dd>
+    </dl>
+    {% else %}
+    <p class="pending">Data pending â€” summary report is not available.</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h2>Validation report</h2>
+    {% if validation %}
+    <p>
+      <span class="chip {{ 'ok' if validation.get('passed') else 'action' }}">{{ "passed" if validation.get("passed") else "failed" }}</span>
+      <span class="mono">{{ validation.get("total_checks", 0) }} checks Â· {{ validation.get("total_errors", 0) }} errors Â· {{ validation.get("total_warnings", 0) }} warnings</span>
+    </p>
+    {% if validation.get("reports") %}
+    <table>
+      <thead><tr><th>Check</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for r in validation["reports"][:10] %}
+        <tr>
+          <td class="mono">{{ r.get("name", r.get("check", "â€”")) }}</td>
+          <td><span class="chip {{ 'ok' if r.get('status') == 'passed' or r.get('passed') else 'action' }}">{{ r.get("status", "?") }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    {% else %}
+    <p class="pending">Data pending â€” validation report is not available.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mt-1">
+  <h2>Available report types</h2>
+  {% if report_types %}
+  <p>{% for t in report_types %}<span class="tag">{{ t }}</span>{% endfor %}</p>
+  <p class="subtitle">Detailed report and health report render below (data pending until generated in Phase 2).</p>
+  {% else %}
+  <p class="pending">Data pending â€” no report types known.</p>
+  {% endif %}
+</div>
+{% endblock %}

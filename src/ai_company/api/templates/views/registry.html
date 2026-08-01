@@ -1,0 +1,68 @@
+﻿{% extends "base.html" %}
+{% block title %}Registry â€” AI Enterprise OS{% endblock %}
+{% block heading %}Registry &amp; Org Graph{% endblock %}
+{% block subtitle %}Company registry and knowledge graph{% endblock %}
+
+{% block content %}
+<div class="grid cols-2">
+  <div class="card">
+    <h2>Registry summary</h2>
+    {% if registry and registry.get("registry") %}
+    {% set reg = registry["registry"] %}
+    <dl>
+      <dt>Vision</dt><dd>{{ reg.get("vision", {}).get("name", "â€”") }}</dd>
+      <dt>Departments</dt><dd>{{ reg.get("departments", {}) | length }}</dd>
+      <dt>Executives</dt><dd>{{ reg.get("executives", 0) }}</dd>
+      <dt>Board members</dt><dd>{{ reg.get("board", 0) }}</dd>
+      <dt>Policies</dt><dd>{{ reg.get("policies", 0) }}</dd>
+      <dt>Specialists</dt><dd>{{ reg.get("specialists", 0) }}</dd>
+      <dt>Workflows</dt><dd>{{ reg.get("workflows", 0) }}</dd>
+    </dl>
+    {% else %}
+    <p class="pending">Data pending â€” registry is not loaded.</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h2>Knowledge graph</h2>
+    {% if graph %}
+    <dl>
+      <dt>Nodes</dt><dd>{{ graph.get("nodes", "â€”") }}</dd>
+      <dt>Edges</dt><dd>{{ graph.get("edges", "â€”") }}</dd>
+      <dt>Density</dt><dd>{{ graph.get("density", "â€”") }}</dd>
+      <dt>Unresolved refs</dt><dd>{{ graph.get("unresolved_refs", "â€”") }}</dd>
+    </dl>
+    {% else %}
+    <p class="pending">Data pending â€” graph statistics are not available.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mt-1">
+  <h2>Organization chart (Mermaid)</h2>
+  {% if org_chart and org_chart.get("mermaid") %}
+  <pre class="mermaid-source">{{ org_chart["mermaid"] }}</pre>
+  {% else %}
+  <p class="pending">Data pending â€” org chart source is not available.</p>
+  {% endif %}
+</div>
+
+<div class="card mt-1">
+  <h2>Departments &amp; roles</h2>
+  {% if registry and registry.get("registry") and registry["registry"].get("departments") %}
+  <table>
+    <thead><tr><th>Department</th><th>Roles</th><th>Role titles</th></tr></thead>
+    <tbody>
+      {% for name, dept in registry["registry"]["departments"].items() %}
+      <tr>
+        <td>{{ name }}</td>
+        <td>{{ dept.get("roles", 0) }}</td>
+        <td class="mono">{{ dept.get("role_titles", []) | join(", ") }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="pending">Data pending â€” no departments loaded.</p>
+  {% endif %}
+</div>
+{% endblock %}

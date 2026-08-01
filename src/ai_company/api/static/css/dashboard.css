@@ -1,0 +1,139 @@
+/* AI Enterprise OS — Dashboard (Phase 1, WS-3.0/4.0)
+   Design tokens + layout. No external fonts, no unsafe-inline. */
+
+:root {
+  --bg: #0f1420;
+  --bg-panel: #161d2e;
+  --bg-panel-2: #1b2437;
+  --border: #26314d;
+  --text: #dbe4f5;
+  --text-dim: #8b96ad;
+  --accent: #4f8cff;
+  --accent-soft: #22314f;
+  --ok: #3fbf7f;
+  --watch: #e0a63c;
+  --action: #e05c5c;
+  --unknown: #8b96ad;
+  --mono: "Cascadia Code", "Consolas", "SFMono-Regular", monospace;
+  --radius: 8px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+
+.app-shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+
+.sidebar {
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  padding: 1rem 0.75rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.brand { font-weight: 700; font-size: 1.05rem; padding: 0.25rem 0.5rem 0.9rem; }
+.brand small { display: block; color: var(--text-dim); font-weight: 400; font-size: 0.75rem; }
+
+.nav-group { margin-top: 1rem; }
+.nav-group-title {
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-dim); padding: 0.25rem 0.5rem;
+}
+.nav-item {
+  display: block; padding: 0.4rem 0.5rem; border-radius: 6px;
+  color: var(--text); font-size: 0.9rem;
+}
+.nav-item:hover { background: var(--bg-panel-2); text-decoration: none; }
+.nav-item.active { background: var(--accent-soft); color: #cfe0ff; }
+
+.main { padding: 1.25rem 1.5rem 3rem; max-width: 1400px; }
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.page-head { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.page-head h1 { margin: 0; font-size: 1.35rem; }
+.subtitle { color: var(--text-dim); font-size: 0.85rem; }
+
+.staleness {
+  margin-left: auto; font-size: 0.8rem; color: var(--text-dim);
+  font-family: var(--mono);
+}
+.staleness.late { color: var(--watch); }
+.staleness.stale { color: var(--action); }
+
+/* ── Cards & grids ──────────────────────────────────────────────────────── */
+
+.grid { display: grid; gap: 1rem; }
+.grid.cols-2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.grid.cols-4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+
+.card {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1rem;
+}
+.card h2 { margin: 0 0 0.75rem; font-size: 1rem; }
+.card h3 { margin: 0 0 0.5rem; font-size: 0.9rem; color: var(--text-dim); }
+
+/* ── Status chips ───────────────────────────────────────────────────────── */
+
+.chip {
+  display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
+  font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.chip.ok { background: #123524; color: var(--ok); }
+.chip.watch { background: #3a2d14; color: var(--watch); }
+.chip.action { background: #3a1616; color: var(--action); }
+.chip.unknown { background: #232a3a; color: var(--unknown); }
+
+.big-number { font-size: 1.9rem; font-weight: 700; font-family: var(--mono); }
+.big-number small { font-size: 0.8rem; color: var(--text-dim); display: block; font-family: "Segoe UI", sans-serif; }
+
+/* ── Tables ─────────────────────────────────────────────────────────────── */
+
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+th, td { text-align: left; padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--text-dim); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+tr:last-child td { border-bottom: none; }
+.mono { font-family: var(--mono); font-size: 0.82rem; }
+
+/* ── Event feed ─────────────────────────────────────────────────────────── */
+
+.event-feed { max-height: 420px; overflow-y: auto; }
+.event { padding: 0.4rem 0.5rem; border-left: 3px solid var(--border); margin-bottom: 0.4rem; font-size: 0.85rem; }
+.event .t { color: var(--text-dim); font-family: var(--mono); font-size: 0.72rem; margin-right: 0.5rem; }
+.event.error { border-left-color: var(--action); }
+
+/* ── Misc ───────────────────────────────────────────────────────────────── */
+
+.mermaid-box { background: #fff; border-radius: var(--radius); padding: 0.5rem; overflow-x: auto; }
+.progress { height: 8px; background: var(--bg-panel-2); border-radius: 999px; overflow: hidden; }
+.progress > div { height: 100%; background: var(--accent); }
+.tag { display: inline-block; background: var(--bg-panel-2); border-radius: 4px; padding: 0.1rem 0.45rem; font-size: 0.75rem; font-family: var(--mono); margin-right: 0.3rem; }
+.empty { color: var(--text-dim); font-style: italic; padding: 1rem 0; }
+.pending { color: var(--watch); }
+
+/* ── Spacing utilities (no inline styles: CSP style-src 'self') ───────── */
+
+.mt-1 { margin-top: 1rem; }
+.mb-1 { margin-bottom: 1rem; }
+.mt-2 { margin-top: 2rem; }
+.mb-2 { margin-bottom: 2rem; }
+
+.diag-block { max-height: 320px; overflow: auto; display: block; white-space: pre-wrap; }

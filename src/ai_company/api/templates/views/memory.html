@@ -1,0 +1,79 @@
+﻿{% extends "base.html" %}
+{% block title %}Memory â€” AI Enterprise OS{% endblock %}
+{% block heading %}Memory{% endblock %}
+{% block subtitle %}Read-only memory store{% endblock %}
+
+{% block content %}
+<div class="grid cols-4 mb-1">
+  <div class="card">
+    <h2>Total</h2>
+    <div class="big-number">{{ memory_stats.get("total_memories", "â€”") if memory_stats else "â€”" }}<small>entries</small></div>
+  </div>
+  <div class="card">
+    <h2>Archived</h2>
+    <div class="big-number">{{ memory_stats.get("total_archived", "â€”") if memory_stats else "â€”" }}<small>entries</small></div>
+  </div>
+  <div class="card">
+    <h2>Snapshots</h2>
+    <div class="big-number">{{ memory_stats.get("total_snapshots", "â€”") if memory_stats else "â€”" }}<small>available</small></div>
+  </div>
+  <div class="card">
+    <h2>Importance</h2>
+    <div class="big-number">{{ "%.2f" | format(memory_stats.get("average_importance", 0)) if memory_stats else "â€”" }}<small>average</small></div>
+  </div>
+</div>
+
+<div class="grid cols-2">
+  <div class="card">
+    <h2>Entries by type</h2>
+    {% if memory_stats and memory_stats.get("by_type") %}
+    <table>
+      <thead><tr><th>Type</th><th>Count</th></tr></thead>
+      <tbody>
+        {% for t, c in memory_stats["by_type"].items() %}
+        <tr><td class="mono">{{ t }}</td><td>{{ c }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="pending">Data pending â€” no typed memory entries yet.</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h2>Entries by namespace</h2>
+    {% if memory_stats and memory_stats.get("by_namespace") %}
+    <table>
+      <thead><tr><th>Namespace</th><th>Count</th></tr></thead>
+      <tbody>
+        {% for n, c in memory_stats["by_namespace"].items() %}
+        <tr><td class="mono">{{ n }}</td><td>{{ c }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="pending">Data pending â€” no namespaced memory entries yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mt-1">
+  <h2>Recent entries</h2>
+  {% if entries %}
+  <table>
+    <thead><tr><th>ID</th><th>Type</th><th>Namespace</th><th>Summary</th></tr></thead>
+    <tbody>
+      {% for e in entries %}
+      <tr>
+        <td class="mono">{{ e.get("id", "â€”") }}</td>
+        <td>{{ e.get("memory_type", "â€”") }}</td>
+        <td>{{ e.get("namespace", "â€”") }}</td>
+        <td>{{ e.get("summary") or e.get("content", "â€”") | string | truncate(120) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="pending">Data pending â€” memory store is empty.</p>
+  {% endif %}
+</div>
+{% endblock %}

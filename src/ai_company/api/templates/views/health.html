@@ -1,0 +1,62 @@
+﻿{% extends "base.html" %}
+{% block title %}System Health â€” AI Enterprise OS{% endblock %}
+{% block heading %}System Health{% endblock %}
+{% block subtitle %}Engine checks, metrics, diagnostics{% endblock %}
+
+{% block content %}
+<div class="card mb-1">
+  <h2>Health summary <span class="chip {{ health_overall_class }}">{{ health_overall if health_overall else "unknown" }}</span></h2>
+  <p>runtime phase: <span class="mono">{{ status.get("phase", "unknown") if status else "unknown" }}</span></p>
+</div>
+
+<div class="grid cols-2">
+  <div class="card">
+    <h2>Engine checks</h2>
+    {% if checks %}
+    <table>
+      <thead><tr><th>Engine</th><th>Status</th><th>Message</th></tr></thead>
+      <tbody>
+        {% for check in checks %}
+        <tr>
+          <td>{{ check.get("engine", "system") }}</td>
+          <td><span class="chip {{ check.get('status', 'unknown') }}">{{ check.get("status", "unknown") }}</span></td>
+          <td class="mono">{{ check.get("message", "") }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="pending">Data pending â€” no health checks recorded yet.</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h2>Engine states</h2>
+    {% if engine_states %}
+    <table>
+      <thead><tr><th>Engine</th><th>Phase</th><th>Healthy</th></tr></thead>
+      <tbody>
+        {% for state in engine_states %}
+        <tr>
+          <td>{{ state.get("name", state.get("engine", "?")) }}</td>
+          <td>{{ state.get("phase", "â€”") }}</td>
+          <td>{{ state.get("healthy", "â€”") }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="pending">Data pending â€” engine state table is empty.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mt-1">
+  <h2>Diagnostics</h2>
+  {% if diagnostics %}
+  <p class="subtitle">Generated at {{ diagnostics.get("generated_at", "â€”") }} Â· {{ diagnostics.get("status", "â€”") }}</p>
+  <pre class="mono diag-block">{{ diagnostics | tojson(indent=2) }}</pre>
+  {% else %}
+  <p class="pending">Data pending â€” diagnostic report is not available.</p>
+  {% endif %}
+</div>
+{% endblock %}

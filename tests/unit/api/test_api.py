@@ -52,11 +52,15 @@ def client(facade: RuntimeFacade) -> TestClient:
 
 
 def test_index(client: TestClient) -> None:
+    # WS-3.0: "/" is the HTML dashboard landing page; the JSON index moved
+    # to /api so the API contract stays JSON-only (separate paths).
     resp = client.get("/")
     assert resp.status_code == 200
-    body = resp.json()
-    assert body["read_only"] is True
-    assert body["endpoints"]["websocket"].startswith("/api/ws")
+    assert "text/html" in resp.headers["content-type"]
+
+    api = client.get("/api").json()
+    assert api["read_only"] is True
+    assert api["endpoints"]["websocket"].startswith("/api/ws")
 
 
 def test_health_endpoint(client: TestClient) -> None:

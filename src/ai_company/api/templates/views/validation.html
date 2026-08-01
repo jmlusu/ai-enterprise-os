@@ -1,0 +1,39 @@
+﻿{% extends "base.html" %}
+{% block title %}Validation â€” AI Enterprise OS{% endblock %}
+{% block heading %}Validation{% endblock %}
+{% block subtitle %}Configuration validation gate{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Validation gate</h2>
+  {% if validation %}
+  <p>
+    <span class="chip {{ 'ok' if validation.get('passed') else 'action' }}">{{ "passed" if validation.get("passed") else "failed" }}</span>
+    <span class="mono">{{ validation.get("total_checks", 0) }} checks Â· {{ validation.get("total_errors", 0) }} errors Â· {{ validation.get("total_warnings", 0) }} warnings</span>
+  </p>
+  <p class="subtitle">{{ validation.get("summary", "") }}</p>
+  {% else %}
+  <p class="pending">Data pending â€” validation gate has not run yet.</p>
+  {% endif %}
+</div>
+
+<div class="card mt-1">
+  <h2>Check reports</h2>
+  {% if validation and validation.get("reports") %}
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Message</th></tr></thead>
+    <tbody>
+      {% for r in validation["reports"] %}
+      <tr>
+        <td class="mono">{{ r.get("name", r.get("check", "â€”")) }}</td>
+        <td><span class="chip {{ 'ok' if r.get('status') == 'passed' or r.get('passed') else 'action' }}">{{ r.get("status", "?") }}</span></td>
+        <td class="mono">{{ r.get("message", r.get("details", "")) | string | truncate(160) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="pending">Data pending â€” no validation reports yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

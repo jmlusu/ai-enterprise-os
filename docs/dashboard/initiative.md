@@ -1,6 +1,6 @@
 # Initiative: GUI Dashboard + OpenCode Desktop as Command Centers
 
-Status: **ACTIVE — Phase 1 in progress (wave 1 API shipped; frontend pending)**
+Status: **ACTIVE — Phase 1 DONE (read-only dashboard v1 shipped 2026-08-01); Phase 2 (operational/write) next**
 Owner: Chief Architect (opencode/big-pickle) · Ratified by: CEO / CIO / CTO / CAIO / CDO / SWE
 Last updated: 2026-08-01
 
@@ -30,7 +30,7 @@ against this repository before tracking began. Evidence paths are as found.
 |---|---------|---------------------|----------|--------|
 | 1 | Generation dispatch map broken: `command_map.yaml` maps 11 targets to 9 prompt files that don't exist; only `bootstrap` + `registry` resolve. Real `prompts/opencode/` has **8 files, differently named** (01–08: bootstrap, registry, generator_engine, cli, document_generator, opencode_agent_generator, dashboard_generator, constitution_loader). | `src/ai_company/cli/command_map.yaml` vs `prompts/opencode/*.md` | **P0** | **[DONE]** — reconciled 2026-08-01; CI integrity test added (see §7.1) |
 | 2 | Self-healing doesn't work: all 5 engines `failed` / `heartbeat_timeout`, `restart_count: 0`. Watchdog isolates; supervisor never recovers. Active pipeline `p_recovery_test` ended fully failed. | `runtime/runtime_state.json` | **P0** | **[DONE]** — recovery fix landed (ADR 0007); drill tests green; **end-to-end live drill PASSED 2026-08-01** (§7.6) |
-| 3 | "Dashboard" is a 16-line static stub; `docs/architecture.md` lists a "Dashboard Engine" with no source; prompt `07_dashboard_generator.md` is aspirational ("Update automatically"). GUI is greenfield. | `dashboards/sprint_dashboard.html` (16 lines); `docs/architecture.md` line 14; `prompts/opencode/07_dashboard_generator.md` | **P0** | **[IN PROGRESS]** — Phase 1 wave 1 (API backend) shipped 2026-08-01 (`6d2654b`/`b6d5a26`); frontend is the next sprint |
+| 3 | "Dashboard" is a 16-line static stub; `docs/architecture.md` lists a "Dashboard Engine" with no source; prompt `07_dashboard_generator.md` is aspirational ("Update automatically"). GUI is greenfield. | `dashboards/sprint_dashboard.html` (16 lines); `docs/architecture.md` line 14; `prompts/opencode/07_dashboard_generator.md` | **P0** | **[DONE]** — Phase 1 complete 2026-08-01: read-only dashboard v1 live on `ai-company serve` (wave 1 API `6d2654b`/`b6d5a26` + wave 2 frontend); 8 views render live data; parity P1 rows SHIPPED (§7.7) |
 | 4 | ~60% of telemetry is generated then discarded: metrics/heartbeats/health are in-memory dicts lost on restart; provider token usage is computed (`CompletionResult.usage`) and never persisted. "Model Usage" / "Agent Health" have zero upstream data. | `src/ai_company/runtime/metrics.py` (`MetricsRegistry` = plain dicts, no persistence); `src/ai_company/providers/base.py` (`usage: dict` field, unused) | **P0** | **[IN PROGRESS]** — CLI invocation telemetry LIVE (`runtime/cli_telemetry.jsonl`, fail-open, WS-0.4); runtime metrics persistence + provider usage instrumentation remain (Phase 2 telemetry workstream) |
 | 5 | Two sources of truth drifting: `command_map.yaml` pins `opencode/north-mini-code-free` + an `architect` agent that is **not defined** in `opencode.json`; `opencode.json` uses `ollama/llama3.1:8b` with agents `build/plan/explore/general`. | `src/ai_company/cli/command_map.yaml` vs `opencode.json` | **P1** | **[DONE]** — `architect` agent added to `opencode.json` 2026-08-01 (see §7.2); command map now an **enforced contract** (ADR 0006, CI integrity gates); model variance documented as decision D4 |
 | 6 | All state gitignored, no backup: `memory/`, `events/`, `generated/`, `.ai-company/`, `runtime/`, `reports/`, `scripts/`, `slides/` excluded from git; a dead laptop = full data loss. | `.gitignore` lines 35–58 | **P1** | **[DONE]** — WS-0.5 complete 2026-08-01: nightly bundle + `restore_backup()` + live restore drill (397/397 files) + `.opencode/` template committed |
@@ -93,13 +93,17 @@ complete; drills run live (restore 397/397 files, recovery restart-before-isolat
 
 ### Phase 1 — Read-only Dashboard v1 (4–6 wks) — 80% of demo/exec value for ~30% effort
 
-`[IN PROGRESS]` — **wave 1 (API backend) SHIPPED** (`6d2654b`/`b6d5a26`, live on `ai-company serve`); frontend pending.
+`[DONE]` — **shipped 2026-08-01.** Wave 1 API (`6d2654b`/`b6d5a26`) + wave 2 frontend
+(WS-1.0→WS-6.0) both merged, CI green (1142 tests), live on `ai-company serve`.
 
 - ✅ `ai-company serve` booting FastAPI + WS bridge (read-only contract v1, ADR 0009).
-- ⬜ Views: Overview, System Health, Agents (roster), Runs & History, Memory (read), Reports, Validation gate, Registry/Org graph.
-- ⬜ Reuse the 11 sections of prompt `07_dashboard_generator.md` as the IA; render Markdown + Mermaid reports in-page (marked + DOMPurify + mermaid.js).
-- ⬜ Live refresh ≤5s, honest "stale/stopped/unknown" states (never a green lie), localhost-bound, read-only by default.
-- **Exit:** an exec can self-serve the "pulse" page; an operator answers "is the system healthy?" in <5s.
+- ✅ Views: Overview/Pulse, System Health, Agents (roster), Runs & History, Memory (read), Reports, Validation gate, Registry/Org graph — all 8 render live data.
+- ✅ IA from the 11 sections of prompt `07_dashboard_generator.md`; Markdown + Mermaid reports rendered in-page (marked + DOMPurify + mermaid.js, vendored under CSP `script-src 'self'`).
+- ✅ Live refresh ≤5s (WS + poll ticker, `?since=` replay, dedupe by `event_id`, auto-reconnect); honest four-state statuses with timestamps (R12), "data pending" for KPI/Agent Health telemetry gaps (R5).
+- ✅ Loopback-only, read-only by default; scoped page CSP (`script-src 'self'`, no `unsafe-inline`); API responses keep `default-src 'none'`.
+- ✅ Parity test suite seed green: `tests/golden/test_parity_read.py` (9 tests — CLI output == API JSON).
+- **Exit criteria met:** an exec self-serves the "pulse" page; an operator answers "is the system healthy?" in <5s from a browser.
+- Work plan: `docs/dashboard/phase1-workplan.md` → **DONE**. Parity matrix P1 rows → **SHIPPED**. OD1–OD4 resolved (see workplan §7).
 
 ### Phase 2 — Operational dashboard (4–6 wks) — the actual pivot
 
@@ -134,16 +138,16 @@ complete; drills run live (restore 397/397 files, recovery restart-before-isolat
 |---|------|----------|-----------|--------|
 | R1 | Broken generate dispatch (phantom targets) | Critical, certain | Phase 0 fix + CI integrity check | **[MITIGATED]** — 0.1 done |
 | R2 | System doesn't self-heal (watchdog isolates, no recovery) | Critical | Recovery policies in Phase 0; recovery-success metric; alert on isolation | **[MITIGATED]** — ADR 0007 + drill tests green; **live end-to-end drill PASSED (§7.6)**; recovery-success metric + isolation alerting moved to Phase 2 backlog |
-| R3 | Dual-interface drift (CLI vs dashboard re-implementing logic) | High | Single `services/` layer; contract tests (golden CLI output == API JSON); parity test suite in CI | **[OPEN]** — ADR 0003 accepted; services layer is Phase 1 |
+| R3 | Dual-interface drift (CLI vs dashboard re-implementing logic) | High | Single `services/` layer; contract tests (golden CLI output == API JSON); parity test suite in CI | **[PARTIALLY MITIGATED]** — ADR 0003 accepted; facade is the single surface; parity seed green (`tests/golden/test_parity_read.py`, 9 commands); full 70-command parity suite grows with Phase 2 |
 | R4 | OpenCode vendor lock-in / version churn | High | Provider abstraction at dispatcher; portable Markdown prompts; pinned version + doctor probe; headless generate fallback; never fork/re-skin desktop app | **[OPEN]** |
-| R5 | Dashboard ships with no data (Model Usage/Agent Health empty) | High | Capture-first ordering: telemetry (Phases 0–1) precedes panels (Phase 2); stub honestly with "data pending," never fake | **[PARTIALLY MITIGATED]** — CLI telemetry capture now live (WS-0.4); runtime metrics persistence + provider usage instrumentation pending; panels must stay honest until then |
+| R5 | Dashboard ships with no data (Model Usage/Agent Health empty) | High | Capture-first ordering: telemetry (Phases 0–1) precedes panels (Phase 2); stub honestly with "data pending," never fake | **[PARTIALLY MITIGATED]** — CLI telemetry capture live (WS-0.4); **Phase 1 views render real data** (registry/exec/graph/memory/reports/validate/health); KPI + Agent Health panels show explicit "data pending" (never fake); runtime metrics persistence + provider usage instrumentation remain (Phase 2 telemetry workstream) |
 | R6 | Data loss (all state gitignored, single machine) | High | Nightly backup bundle + quarterly restore drill + backup tile with alerting | **[PARTIALLY MITIGATED]** — nightly bundle + restore drill done 2026-08-01; backup tile with alerting is Phase 2 dashboard work |
 | R7 | Scope creep (console becomes mini-ERP) | Medium | CEO's NOT-do list: no SaaS/multi-tenant, no visual pipeline-builder v1, no own agent runtime, ≤30% effort on UI, no new metrics until serving layer lands | **[OPEN]** |
-| R8 | Breaking 500+ tests / CI regression | High | Additive-only refactor; engines untouched; CLI surface frozen; full suite green each sprint; parity is a release blocker | **[OPEN]** — guardrails confirmed: engines unchanged in 0.1 |
-| R9 | Localhost security (web server = new attack surface) | Medium-High | Bind 127.0.0.1 only; Host-header + CORS checks; token mode when non-loopback; keys in OS keyring, never rendered; CSP; DOMPurify on all Markdown | **[OPEN]** |
+| R8 | Breaking 500+ tests / CI regression | High | Additive-only refactor; engines untouched; CLI surface frozen; full suite green each sprint; parity is a release blocker | **[PARTIALLY MITIGATED]** — guardrails confirmed (engines unchanged in 0.1); **Phase 1 landed additive-only: 1070 → 1142 tests green on Linux + Windows, no CLI or engine changes** |
+| R9 | Localhost security (web server = new attack surface) | Medium-High | Bind 127.0.0.1 only; Host-header + CORS checks; token mode when non-loopback; keys in OS keyring, never rendered; CSP; DOMPurify on all Markdown | **[PARTIALLY MITIGATED]** — loopback bind + Host allowlist + **scoped page CSP (script-src 'self', no unsafe-inline; API stays default-src 'none')** + DOMPurify on all rendered Markdown/Mermaid (verified in tests + live smoke); token mode for non-loopback remains Phase 2 (ADR 0010) |
 | R10 | Windows/uvicorn issues | Medium | Plain uvicorn (no uvloop), explicit port + friendly errors, `proc.terminate()` not `os.kill`, add windows-latest CI job | **[MITIGATED]** — windows-latest CI job added 2026-08-01; plain uvicorn + `proc.terminate()` enforced; explicit port + friendly errors land with `ai-company serve` (Phase 1) |
-| R11 | User confusion during transition | High | Category rule: read = dashboard, safe write = both, destructive/bulk = CLI-only; "Equivalent CLI command" tooltips; persona onboarding (View/Operate/Develop); frozen CLI | **[OPEN]** — codified in parity matrix v0 |
-| R12 | Misleading statuses (four overlapping vocabularies; stopped ≠ broken) | Medium | One canonical four-state system (All good / Watch / Needs action / Unknown); every status time-stamped; color + icon + text, never color alone | **[OPEN]** |
+| R11 | User confusion during transition | High | Category rule: read = dashboard, safe write = both, destructive/bulk = CLI-only; "Equivalent CLI command" tooltips; persona onboarding (View/Operate/Develop); frozen CLI | **[PARTIALLY MITIGATED]** — category rule codified in parity matrix v0; **"Equivalent CLI command" tooltips on every Phase 1 view**; persona onboarding remains Phase 2/3 |
+| R12 | Misleading statuses (four overlapping vocabularies; stopped ≠ broken) | Medium | One canonical four-state system (All good / Watch / Needs action / Unknown); every status time-stamped; color + icon + text, never color alone | **[PARTIALLY MITIGATED]** — **four-state vocabulary + timestamps + color/icon/text implemented across all Phase 1 views** (app.js staleness classes at 3x/6x poll interval); canonical status service for all surfaces remains with the status model work |
 
 ---
 
@@ -153,7 +157,7 @@ complete; drills run live (restore 397/397 files, recovery restart-before-isolat
 |---|----------|---------|--------|------|
 | D1 | Frontend for v1 | Jinja2+htmx (zero Node, fastest) vs Svelte 5 (full interactivity) | **[DECIDED]** | ADR 0008 accepted (v1 = Jinja2+htmx; Svelte 5 = v2 path, Phase 4) |
 | D2 | Topology: dashboard as runtime engine; `services/` single source of truth | (ratified model) | **[DECIDED]** | ADR 0002 + 0003 accepted |
-| D3 | API contract: REST + WebSocket, `?since=` replay reconnect | (ratified model) | **[DECIDED]** | ADR 0009 accepted; contract v1 shipped (Phase 1 wave 1) |
+| D3 | API contract: REST + WebSocket, `?since=` replay reconnect | (ratified model) | **[DECIDED]** | ADR 0009 accepted; contract v1 shipped (Phase 1 wave 1); **Phase 1 wave 2 extended the read surface to all parity P1 rows (19 new endpoints)** |
 | D4 | Dispatch model variance | `opencode/north-mini-code-free` (desktop-first, no key) vs `ollama/llama3.1:8b` (local default) | **[DECIDED]** | Per-target entries retained; command map is an enforced contract (ADR 0006); `architect` agent defined |
 | D5 | North-star metric | **Recommendation: share of operator actions via Dashboard/OpenCode desktop, target ≥80% by month 6, measured by Phase-0 telemetry** | **[OPEN]** | Needs CEO sign-off |
 
@@ -190,6 +194,14 @@ Root cause on record: `runtime_state.json` shows all 5 engines `failed`/`heartbe
 
 - **Live self-healing drill PASSED** (`scripts/runtime_recovery_drill.py`): real `RuntimeEngine` + `RecoveryManager` + `Supervisor` (real runtime config) — `heartbeat_timeout` on a registered engine → **restart via factory (1 restart, 1 attempt), NOT isolated, state RUNNING/HEALTHY**. Closes the last WS-0.2 acceptance item (ADR 0007 proven end-to-end).
 - **Windows CI landed (WS-0.7):** `test-windows` job added to `.github/workflows/ci.yml` on `windows-latest` running the full pytest suite (bash rc-5 guard). 1054 tests pass on Windows locally. Closes risk R10's CI gap.
+
+### 7.7 Phase 1 close-out — read-only dashboard v1 (2026-08-01)
+
+- **WS-1.0 services layer (ADR 0003):** `RuntimeFacade` extended with 16 read methods — `registry_list/show/verify`, `executives_list/show`, `org_chart`, `memory_list/get/search/stats/snapshots`, `graph_show/stats`, `reports_list`, `report_generate_read`, `validate_read`, `diagnostics`, `orchestration_status/history`, `generate_targets`. All thin adapters over existing engines; 33 unit tests (`tests/unit/services/test_runtime_facade_read.py`).
+- **WS-2.0 API (ADR 0009):** 19 new GET endpoints registered (literal segments before `{name}`/`{type}` params); `/` now serves HTML, index moved to `/api`; 26 integration tests + 5 frontend/CSP tests (`tests/unit/api/test_api_domain.py`), golden parity against the tracked `company/` fixture.
+- **WS-3.0 frontend shell (ADR 0008 v1):** vendored htmx 1.9.12 + ws ext, marked 12.0.2, DOMPurify 3.1.6, mermaid 10.9.1 (`static/vendor/` + provenance `README.md`); `dashboard.css` + `app.js` (WS auto-reconnect, `?since=` replay, dedupe by `event_id`, staleness classes, marked+DOMPurify, mermaid render). **Scoped page CSP** (`default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' ws:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`) — API responses keep `default-src 'none'`.
+- **WS-4.0/5.0:** all 8 views live (Pulse, System Health, Agents, Runs & History, Memory, Reports, Validation, Registry/Org graph); ≤5s refresh via WS + poll ticker; honest four-state statuses (R12), "data pending" for telemetry gaps (R5).
+- **WS-6.0:** parity test suite seed (`tests/golden/test_parity_read.py`, 9 tests — CLI output == API JSON for registry/exec/graph/targets/validate/doctor); full suite **1070 → 1142 tests green** (Linux + Windows, ruff/mypy/format/lock/audit/build/validate all green); live smoke of all 11 routes with correct scoped CSP. **No CLI or engine changes** (ADR 0005/0006 respected).
 
 ---
 

@@ -1,0 +1,37 @@
+﻿{% extends "base.html" %}
+{% block title %}Agents â€” AI Enterprise OS{% endblock %}
+{% block heading %}Agents{% endblock %}
+{% block subtitle %}Executive roster and organization chart{% endblock %}
+
+{% block content %}
+<div class="grid cols-2">
+  <div class="card">
+    <h2>Executive roster</h2>
+    {% if executives %}
+    <table>
+      <thead><tr><th>Name</th><th>Title</th><th>Department</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for ex in executives %}
+        <tr>
+          <td>{{ ex.get("name", "â€”") }}</td>
+          <td>{{ ex.get("title", "â€”") }}</td>
+          <td>{{ ex.get("department", "â€”") }}</td>
+          <td><span class="chip {{ 'ok' if ex.get('status') == 'active' else 'unknown' }}">{{ ex.get("status", "unknown") }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="pending">Data pending â€” roster not loaded (health telemetry for each agent is a Phase 2 concern).</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h2>Organization chart</h2>
+    {% if org_chart and org_chart.get("mermaid") %}
+    <pre class="mermaid-source">{{ org_chart["mermaid"] }}</pre>
+    {% else %}
+    <p class="pending">Data pending â€” org chart source is not available.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

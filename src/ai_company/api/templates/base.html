@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}AI Enterprise OS — Dashboard{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body data-poll-interval-ms="{{ poll_interval_ms | default(5000) }}">
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">AI Enterprise OS
+      <small>Executive Dashboard · v1</small>
+    </div>
+    <nav>
+      <div class="nav-group">
+        <div class="nav-group-title">Overview</div>
+        <a class="nav-item {{ 'active' if active == 'pulse' }}" href="/">Pulse</a>
+        <a class="nav-item {{ 'active' if active == 'health' }}" href="/health">System Health</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">Operations</div>
+        <a class="nav-item {{ 'active' if active == 'agents' }}" href="/agents">Agents</a>
+        <a class="nav-item {{ 'active' if active == 'runs' }}" href="/runs">Runs &amp; History</a>
+        <a class="nav-item {{ 'active' if active == 'memory' }}" href="/memory">Memory</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">Governance</div>
+        <a class="nav-item {{ 'active' if active == 'reports' }}" href="/reports">Reports</a>
+        <a class="nav-item {{ 'active' if active == 'validation' }}" href="/validation">Validation</a>
+        <a class="nav-item {{ 'active' if active == 'registry' }}" href="/registry">Registry &amp; Org Graph</a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-title">API</div>
+        <a class="nav-item" href="/api/docs" target="_blank" rel="noopener">API Docs</a>
+      </div>
+    </nav>
+  </aside>
+  <main class="main">
+    <header class="page-head">
+      <h1>{% block heading %}Dashboard{% endblock %}</h1>
+      <span class="subtitle">{% block subtitle %}{% endblock %}</span>
+      <span id="staleness" class="staleness" title="Seconds since the last successful health poll">—</span>
+    </header>
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script src="/static/vendor/htmx.min.js"></script>
+<script src="/static/vendor/marked.min.js"></script>
+<script src="/static/vendor/dompurify.min.js"></script>
+<script src="/static/vendor/mermaid.min.js"></script>
+<script src="/static/js/app.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

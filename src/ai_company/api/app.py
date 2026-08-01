@@ -13,11 +13,21 @@ import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
-from fastapi.responses import Response
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Query,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
+from fastapi.responses import HTMLResponse, Response
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -30,8 +40,29 @@ __all__ = ["create_app"]
 _SERVICE_NAME = "AI Enterprise OS - Dashboard API"
 _SERVICE_VERSION = "1.0.0"
 
+#: Package-relative template + static asset roots (ADR 0008: Jinja2 + htmx).
+_TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+_STATIC_DIR = Path(__file__).resolve().parent / "static"
+
 #: Loopback hosts only — DNS-rebinding defense (risk R9, ADR 0009).
 _ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "[::1]"})
+
+#: API responses stay locked down (JSON only, nothing to execute).
+_API_CSP = b"default-src 'none'"
+
+#: HTML dashboard pages need same-origin scripts/styles plus a loopback
+#: WebSocket for the live feed. No CDNs, no unsafe-inline (ADR 0008, R9).
+_PAGE_CSP = (
+    b"default-src 'self'; "
+    b"script-src 'self'; "
+    b"style-src 'self'; "
+    b"img-src 'self' data:; "
+    b"connect-src 'self' ws:; "
+    b"font-src 'self'; "
+    b"frame-ancestors 'none'; "
+    b"base-uri 'none'; "
+    b"form-action 'none'"
+)
 
 _SECURITY_HEADERS = (
     (b"x-content-type-options", b"nosniff"),
@@ -92,10 +123,22 @@ class _SecurityMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # Scoped CSP: JSON API stays at default-src 'none'; HTML pages get
+        # the dashboard policy (same-origin scripts/styles + loopback ws).
+        path = scope.get("path", "")
+        page = not path.startswith("/api/")
+        csp = _PAGE_CSP if page else _API_CSP
+        headers = tuple(
+            (b"content-security-policy", csp)
+            if name == b"content-security-policy"
+            else (name, value)
+            for name, value in _SECURITY_HEADERS
+        )
+
         async def send_with_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
-                headers = list(message.get("headers", [])) + list(_SECURITY_HEADERS)
-                message = {**message, "headers": headers}
+                merged = list(message.get("headers", [])) + list(headers)
+                message = {**message, "headers": merged}
             await send(message)
 
         await self.app(scope, receive, send_with_headers)
@@ -160,10 +203,183 @@ def create_app(
         openapi_url="/api/openapi.json",
     )
     app.add_middleware(_SecurityMiddleware)
+    app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+    templates = Jinja2Templates(directory=_TEMPLATES_DIR)
 
-    @app.get("/", tags=["meta"])
-    async def index() -> dict[str, Any]:
-        """Service index with the v1 endpoint map."""
+    # ── WS-3.0/WS-4.0: server-rendered dashboard views (Jinja2) ──────────
+    # Views are thin: they fetch the same facade data the JSON API exposes
+    # and render it into the base template. JSON API remains the source of
+    # truth; the HTML pages never call engines directly.
+
+    def _view_context(request: Request, active: str, **data: Any) -> dict[str, Any]:
+        context: dict[str, Any] = {"request": request, "active": active}
+        context.update(data)
+        return context
+
+    async def _safe(fn: Any, *args: Any, default: Any = None) -> Any:
+        """Run a facade call off the loop; return ``default`` on failure."""
+        try:
+            return await run_in_threadpool(fn, *args)
+        except Exception:
+            return default
+
+    @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+    async def pulse(request: Request) -> HTMLResponse:
+        """Dashboard overview ("pulse") page."""
+        health_data = await _safe(facade.health)
+        summary = await _safe(facade.health_summary, default={}) or {}
+        status = await _safe(facade.status, default={}) or {}
+        engine_states = await _safe(facade.engine_states, default=[]) or []
+        memory_stats = await _safe(facade.memory_stats, default={}) or {}
+        unhealthy = summary.get("unhealthy", 0)
+        degraded = summary.get("degraded", 0)
+        overall = "unhealthy" if unhealthy else ("degraded" if degraded else "ok")
+        return templates.TemplateResponse(
+            request,
+            "views/pulse.html",
+            _view_context(
+                request,
+                "pulse",
+                status=status,
+                checks=health_data,
+                health_summary=summary,
+                health_overall=overall,
+                health_overall_class=(
+                    "action"
+                    if overall == "unhealthy"
+                    else ("watch" if overall == "degraded" else "ok")
+                ),
+                engines=engine_states,
+                running_engines=sum(
+                    1 for e in engine_states if e.get("phase") == "running"
+                ),
+                memory_stats=memory_stats,
+            ),
+        )
+
+    @app.get("/health", response_class=HTMLResponse, include_in_schema=False)
+    async def health_view(request: Request) -> HTMLResponse:
+        """System health page."""
+        checks = await _safe(facade.health, default=[]) or []
+        summary = await _safe(facade.health_summary, default={}) or {}
+        status = await _safe(facade.status, default={}) or {}
+        engine_states = await _safe(facade.engine_states, default=[]) or []
+        diagnostics = await _safe(facade.diagnostics, default=None)
+        unhealthy = summary.get("unhealthy", 0)
+        degraded = summary.get("degraded", 0)
+        overall = "unhealthy" if unhealthy else ("degraded" if degraded else "ok")
+        return templates.TemplateResponse(
+            request,
+            "views/health.html",
+            _view_context(
+                request,
+                "health",
+                checks=checks,
+                health_summary=summary,
+                health_overall=overall,
+                health_overall_class=(
+                    "action"
+                    if overall == "unhealthy"
+                    else ("watch" if overall == "degraded" else "ok")
+                ),
+                status=status,
+                engine_states=engine_states,
+                diagnostics=diagnostics,
+            ),
+        )
+
+    @app.get("/agents", response_class=HTMLResponse, include_in_schema=False)
+    async def agents_view(request: Request) -> HTMLResponse:
+        """Agent roster + org chart page."""
+        exec_data = await _safe(facade.executives_list, default={}) or {}
+        org = await _safe(facade.org_chart, default={}) or {}
+        return templates.TemplateResponse(
+            request,
+            "views/agents.html",
+            _view_context(
+                request,
+                "agents",
+                executives=exec_data.get("executives", []),
+                org_chart=org,
+            ),
+        )
+
+    @app.get("/runs", response_class=HTMLResponse, include_in_schema=False)
+    async def runs_view(request: Request) -> HTMLResponse:
+        """Runs & history page."""
+        orch = await _safe(facade.orchestration_status, default=None)
+        history = await _safe(facade.orchestration_history, default=None)
+        return templates.TemplateResponse(
+            request,
+            "views/runs.html",
+            _view_context(request, "runs", orch_status=orch, history=history),
+        )
+
+    @app.get("/memory", response_class=HTMLResponse, include_in_schema=False)
+    async def memory_view(request: Request) -> HTMLResponse:
+        """Memory (read) page."""
+        stats = await _safe(facade.memory_stats, default={}) or {}
+        listing = await _safe(facade.memory_list, default={}) or {}
+        return templates.TemplateResponse(
+            request,
+            "views/memory.html",
+            _view_context(
+                request,
+                "memory",
+                memory_stats=stats,
+                entries=listing.get("entries", []),
+            ),
+        )
+
+    @app.get("/reports", response_class=HTMLResponse, include_in_schema=False)
+    async def reports_view(request: Request) -> HTMLResponse:
+        """Reports page."""
+        summary = await _safe(facade.report_generate_read, "summary", default=None)
+        validation = await _safe(facade.validate_read, default=None)
+        report_types = await _safe(facade.reports_list, default={}) or {}
+        return templates.TemplateResponse(
+            request,
+            "views/reports.html",
+            _view_context(
+                request,
+                "reports",
+                summary=summary,
+                validation=validation,
+                report_types=report_types.get("types", []),
+            ),
+        )
+
+    @app.get("/validation", response_class=HTMLResponse, include_in_schema=False)
+    async def validation_view(request: Request) -> HTMLResponse:
+        """Validation gate page."""
+        validation = await _safe(facade.validate_read, default=None)
+        return templates.TemplateResponse(
+            request,
+            "views/validation.html",
+            _view_context(request, "validation", validation=validation),
+        )
+
+    @app.get("/registry", response_class=HTMLResponse, include_in_schema=False)
+    async def registry_view(request: Request) -> HTMLResponse:
+        """Registry & org graph page."""
+        registry = await _safe(facade.registry_list, default=None)
+        graph = await _safe(facade.graph_stats, default=None)
+        org = await _safe(facade.org_chart, default={}) or {}
+        return templates.TemplateResponse(
+            request,
+            "views/registry.html",
+            _view_context(
+                request,
+                "registry",
+                registry=registry,
+                graph=graph,
+                org_chart=org,
+            ),
+        )
+
+    @app.get("/api", tags=["meta"])
+    async def api_index() -> dict[str, Any]:
+        """Service index with the v1 endpoint map (HTML landing page at /)."""
         return {
             "service": _SERVICE_NAME,
             "version": _SERVICE_VERSION,
@@ -174,6 +390,25 @@ def create_app(
                 "metrics": "/api/metrics",
                 "engines": "/api/engines",
                 "events": "/api/events?since=<iso8601>&limit=<n>",
+                "registry": "/api/registry",
+                "registry_show": "/api/registry/{name}",
+                "registry_verify": "/api/registry/verify",
+                "executives": "/api/executives",
+                "executive_show": "/api/executives/{name}",
+                "org_chart": "/api/org-chart",
+                "memory": "/api/memory",
+                "memory_search": "/api/memory/search",
+                "memory_stats": "/api/memory/stats",
+                "memory_snapshots": "/api/memory/snapshots",
+                "graph": "/api/graph",
+                "graph_stats": "/api/graph/stats",
+                "reports": "/api/reports",
+                "report_generate": "/api/reports/{type}",
+                "validate": "/api/validate",
+                "diagnostics": "/api/diagnostics",
+                "orchestrate_status": "/api/orchestrate/status",
+                "orchestrate_history": "/api/orchestrate/history",
+                "generate_targets": "/api/generate/targets",
                 "websocket": "/api/ws?since=<iso8601>",
                 "docs": "/api/docs",
             },
@@ -237,6 +472,137 @@ def create_app(
             "replayed": session.succeeded,
             "total": session.total_events,
         }
+
+    # ── Phase 1 WS-2.0: read-only domain endpoints (parity P1) ──────────
+    # Note: literal path segments ("verify", "search", "stats", ...) are
+    # registered BEFORE the {name}/{type} parameter routes so FastAPI matches
+    # the literal first.
+
+    @app.get("/api/registry", tags=["registry"])
+    async def registry_list() -> dict[str, Any]:
+        """Registry summary (vision, departments, counts)."""
+        return await run_in_threadpool(facade.registry_list)
+
+    @app.get("/api/registry/verify", tags=["registry"])
+    async def registry_verify() -> dict[str, Any]:
+        """Verify the registry loads cleanly (parity with ``registry verify``)."""
+        return await run_in_threadpool(facade.registry_verify)
+
+    @app.get("/api/registry/{name}", tags=["registry"])
+    async def registry_show(name: str) -> dict[str, Any]:
+        """Show one registry entry (vision, departments, board, ...)."""
+        return await run_in_threadpool(facade.registry_show, name)
+
+    @app.get("/api/executives", tags=["executives"])
+    async def executives_list() -> dict[str, Any]:
+        """Executive roster (name, title, department, status)."""
+        return await run_in_threadpool(facade.executives_list)
+
+    @app.get("/api/executives/{name}", tags=["executives"])
+    async def executive_show(name: str) -> dict[str, Any]:
+        """Executive profile with KPIs, budget, and agent config."""
+        return await run_in_threadpool(facade.executive_show, name)
+
+    @app.get("/api/org-chart", tags=["executives"])
+    async def org_chart() -> dict[str, Any]:
+        """Organization chart as Mermaid source (client-side render)."""
+        return await run_in_threadpool(facade.org_chart)
+
+    @app.get("/api/memory", tags=["memory"])
+    async def memory_list(
+        memory_type: str | None = Query(default=None),
+        namespace: str | None = Query(default=None),
+        limit: int = Query(default=20, ge=1, le=500),
+    ) -> dict[str, Any]:
+        """Memory entries, optionally filtered by type/namespace."""
+        return await run_in_threadpool(
+            facade.memory_list, memory_type, namespace, limit
+        )
+
+    @app.get("/api/memory/search", tags=["memory"])
+    async def memory_search(
+        query: str = Query(default=""),
+        memory_type: str | None = Query(default=None),
+        namespace: str | None = Query(default=None),
+        tags: str = Query(default=""),
+        limit: int = Query(default=20, ge=1, le=500),
+        min_importance: float = Query(default=0.0, ge=0.0, le=1.0),
+        include_archived: bool = Query(default=False),
+    ) -> dict[str, Any]:
+        """Search memory entries (read-only)."""
+        return await run_in_threadpool(
+            facade.memory_search,
+            query,
+            memory_type,
+            namespace,
+            tags,
+            limit,
+            min_importance,
+            include_archived,
+        )
+
+    @app.get("/api/memory/stats", tags=["memory"])
+    async def memory_stats() -> dict[str, Any]:
+        """Memory statistics (totals by type/namespace)."""
+        return await run_in_threadpool(facade.memory_stats)
+
+    @app.get("/api/memory/snapshots", tags=["memory"])
+    async def memory_snapshots() -> dict[str, Any]:
+        """List available memory snapshots."""
+        return await run_in_threadpool(facade.memory_snapshots)
+
+    @app.get("/api/memory/{key}", tags=["memory"])
+    async def memory_get(key: str) -> dict[str, Any]:
+        """Fetch one memory entry by key (read-only)."""
+        return await run_in_threadpool(facade.memory_get, key)
+
+    @app.get("/api/graph", tags=["graph"])
+    async def graph_show() -> dict[str, Any]:
+        """Organizational graph view (departments, roles, edges)."""
+        return await run_in_threadpool(facade.graph_show)
+
+    @app.get("/api/graph/stats", tags=["graph"])
+    async def graph_stats() -> dict[str, Any]:
+        """Graph statistics (nodes, edges, density)."""
+        return await run_in_threadpool(facade.graph_stats)
+
+    @app.get("/api/reports", tags=["reports"])
+    async def reports_list() -> dict[str, Any]:
+        """Available report types."""
+        return await run_in_threadpool(facade.reports_list)
+
+    @app.get("/api/reports/{report_type}", tags=["reports"])
+    async def report_generate(report_type: str) -> dict[str, Any]:
+        """Generate one report (summary/detailed/health) — read-only."""
+        return await run_in_threadpool(facade.report_generate_read, report_type)
+
+    @app.get("/api/validate", tags=["validation"])
+    async def validate() -> dict[str, Any]:
+        """Run the validation gate (parity with ``ai-company validate``)."""
+        return await run_in_threadpool(facade.validate_read)
+
+    @app.get("/api/diagnostics", tags=["runtime"])
+    async def diagnostics() -> dict[str, Any]:
+        """Full runtime diagnostic report."""
+        return await run_in_threadpool(facade.diagnostics)
+
+    @app.get("/api/orchestrate/status", tags=["orchestration"])
+    async def orchestrate_status() -> dict[str, Any]:
+        """Orchestration engine status (parity with ``orchestrate status``)."""
+        return await run_in_threadpool(facade.orchestration_status)
+
+    @app.get("/api/orchestrate/history", tags=["orchestration"])
+    async def orchestrate_history(
+        plan_id: str | None = Query(default=None),
+        limit: int = Query(default=20, ge=1, le=500),
+    ) -> dict[str, Any]:
+        """Execution history (parity with ``orchestrate history``)."""
+        return await run_in_threadpool(facade.orchestration_history, plan_id, limit)
+
+    @app.get("/api/generate/targets", tags=["generate"])
+    async def generate_targets() -> dict[str, Any]:
+        """Generation targets from the command map (parity with ``targets``)."""
+        return await run_in_threadpool(facade.generate_targets)
 
     @app.websocket("/api/ws")
     async def websocket_endpoint(

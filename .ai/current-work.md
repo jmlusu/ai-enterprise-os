@@ -40,26 +40,30 @@
 
 ---
 
+## Completed — Phase 1 Wave 2: Dashboard Frontend v1 (COMMITTED)
+
+**Commits:** wave-2 feature commit (2026-08-01, hash recorded next session) —
+**Phase 1 is DONE.** Do NOT re-plan this. Work plan: `docs/dashboard/phase1-workplan.md`.
+
+| Deliverable | Status |
+|---|---|
+| `RuntimeFacade` read expansion (ADR 0003): registry/exec/memory/graph/reports/validate/diagnostics/orchestrate/targets (16 methods) | ✅ |
+| 19 new read-only API endpoints (ADR 0009) — `/api/registry*`, `/api/executives*`, `/api/org-chart`, `/api/memory*`, `/api/graph*`, `/api/reports*`, `/api/validate`, `/api/diagnostics`, `/api/orchestrate/*`, `/api/generate/targets` | ✅ |
+| Jinja2 + htmx frontend (ADR 0008 v1): `base.html` + 8 views (Pulse, Health, Agents, Runs, Memory, Reports, Validation, Registry) | ✅ |
+| Vendored assets `static/vendor/` (htmx 1.9.12 + ws ext, marked 12.0.2, DOMPurify 3.1.6, mermaid 10.9.1) + provenance README | ✅ |
+| Scoped page CSP (`script-src 'self'`, no `unsafe-inline`; API keeps `default-src 'none'`) + `app.js` WS client (reconnect, `?since=` replay, dedupe, staleness) | ✅ |
+| Parity test suite seed `tests/golden/test_parity_read.py` (9 tests: CLI output == API JSON) | ✅ |
+| Full suite 1070 → **1142 tests green**; ruff/mypy/format/lock/audit/build/validate all green; no CLI or engine changes | ✅ |
+
+---
+
 ## Next Sprint Candidates (Prioritized)
 
 **No sprint has been officially started yet.**
 
-### 1. Sprint 5.2 — Dashboard Frontend v1 (Jinja2 + htmx) ⭐ **Next**
-**ADR:** 0008 (v1 accepted)
-**Goal:** Server-rendered dashboard — no Node toolchain.
-
-| Task | Status | Notes |
-|---|---|---|
-| Base layout template (`templates/base.html`) | ⬜ | CSP-compatible |
-| Dashboard index (htmx WS + auto-reconnect) | ⬜ | |
-| Engine status cards (partials) | ⬜ | |
-| Events stream panel (partial) | ⬜ | |
-| Metrics view | ⬜ | Lightweight, no heavy JS |
-| FastAPI `TemplateResponse` wiring + static mount | ⬜ | |
-
-### 2. Sprint 5.3 — Phase 2 Write Auth (Bearer + CSRF + Audit) 🔐
+### 1. Sprint 5.2 — Phase 2 Write Auth (Bearer + CSRF + Audit) ⭐ **Next**
 **ADR:** 0010 (Proposed)
-**Goal:** Enable mutating endpoints with full security.
+**Goal:** Enable mutating endpoints with full security (the "operational dashboard" pivot).
 
 | Task | Status | Notes |
 |---|---|---|
@@ -67,10 +71,11 @@
 | Double-submit CSRF token (cookie + header) | ⬜ | `services/csrf.py` |
 | `audit.write` event on every mutation | ⬜ | |
 | Fail-closed on non-loopback (R9) | ⬜ | Extend `_SecurityMiddleware` |
-| Mutation endpoints: runtime start/stop/reload, orchestrate start | ⬜ | Behind auth |
-| Token management CLI: `ai-company dashboard token create\|revoke\|list` | ⬜ | |
+| Mutation endpoints: runtime start/stop/reload, orchestrate start, report generate | ⬜ | Behind auth |
+| Token management CLI: `ai-company dashboard token create\|revoke\|list` | ⬜ | Additive CLI only (ADR 0006) |
+| Parity matrix write rows (`2`, `1/2`) → P2 | ⬜ | 35 rows |
 
-### 3. Sprint 5.4 — SQLite derived read model (ADR 0004) 📊
+### 2. Sprint 5.3 — SQLite derived read model (ADR 0004) 📊
 **ADR:** 0004 (Accepted)
 **Goal:** Rebuildable SQLite (WAL) projection for dashboard reads.
 
@@ -79,6 +84,15 @@
 | Projection schema | ⬜ | JSONL/JSON remain source of truth |
 | Rebuild trigger (startup? watcher? CLI?) | ⬜ | **Decision needed** |
 | WAL mode + concurrent readers | ⬜ | |
+
+### 3. Sprint 5.4 — Telemetry workstream (R5 closure) 📡
+**Goal:** Runtime metrics persistence + provider usage instrumentation so KPI / Model Usage / Agent Health panels go live (currently "data pending").
+
+| Task | Status | Notes |
+|---|---|---|
+| Runtime metrics persistence (JSONL) | ⬜ | `runtime/metrics.py` is in-memory |
+| Provider usage instrumentation | ⬜ | Choke point on `BaseProvider.chat/complete/embed` |
+| Flip dashboard "data pending" → real data | ⬜ | R5 |
 
 ### 4. Sprint 5.5 — Svelte 5 Migration (Phase 4) 🔮
 **ADR:** 0008 (v2 deferred)
@@ -127,6 +141,7 @@ files get wiped. This directory is committed on purpose (NOT in `.gitignore`).
 ## Recently Completed (Commits)
 
 ```text
+<hash>        feat: Phase 1 wave 2 — dashboard frontend v1 (8 views, scoped CSP, parity seed)
 3af24e5 chore: remove legacy sprint dashboard stub and gitignore dashboards/ output
 ce1df08 feat: add .ai/ knowledge base so agents stop re-discovering the system
 a76acdf fix: sort circuit_breaker import before configuration (I001)
@@ -145,12 +160,14 @@ c37f867 feat: Sprint 4.5 — Enterprise Orchestration Engine (COO layer)
 
 ## Key Context for Next Session
 
-1. **Sprint 5.1 is DONE** — all 35 persona agents are live in Opencode.
-   Test with `@ceo-jack-mlusu help`.
+1. **Phase 1 (read-only dashboard v1) is DONE** — wave 1 API (`6d2654b`/`b6d5a26`)
+   + wave 2 frontend (2026-08-01) both committed, CI green (1142 tests).
+   `ai-company serve` → `http://127.0.0.1:8000/` renders 8 live views.
 
-2. **Dashboard API v1 is DONE and committed** (`b6d5a26`) — read-only REST +
-   WS on `127.0.0.1:8000`. **The next work is the frontend** (Jinja2 + htmx,
-   ADR 0008 v1), then Phase 2 write auth (ADR 0010).
+2. **The next work is Phase 2 write auth** (ADR 0010, Sprint 5.2): bearer token,
+   CSRF, audit, mutation endpoints (runtime control, orchestrate, report
+   generate), then the telemetry workstream (R5) and SQLite read model
+   (ADR 0004).
 
 3. **`.ai/` knowledge base is complete** — 8 files, committed. **Rule: update
    the relevant `.ai/` file after every commit** so agents never re-discover
@@ -161,9 +178,14 @@ c37f867 feat: Sprint 4.5 — Enterprise Orchestration Engine (COO layer)
 
 5. **CLI is frozen** — the Typer command tree is a contract (ADR 0006). New
    features must back-port CLI commands; CI validates the command map.
+   Phase 2 token CLI must be additive-only.
 
 6. **Workspace resets to HEAD** — commit work promptly; uncommitted files
    (including `.ai/`) get wiped.
+
+7. **Parity test suite is seeded** — `tests/golden/test_parity_read.py`
+   (golden CLI output == API JSON). Every new read command must add a parity
+   row + parity test (Phase 4 demotion trigger depends on it).
 
 ---
 
@@ -205,5 +227,5 @@ python -m ai_company.cli.command_map validate
 
 ---
 
-*Updated: 2026-08-01 — ADR 0008/0009 ratified, orphaned artifacts cleaned*
-*Next update: When the dashboard frontend sprint starts or after the next commit*
+*Updated: 2026-08-01 — Phase 1 (read-only dashboard v1) complete: wave 2 frontend committed, 1142 tests green*
+*Next update: When Phase 2 write auth starts or after the next commit*

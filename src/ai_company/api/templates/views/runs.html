@@ -1,0 +1,40 @@
+﻿{% extends "base.html" %}
+{% block title %}Runs &amp; History â€” AI Enterprise OS{% endblock %}
+{% block heading %}Runs &amp; History{% endblock %}
+{% block subtitle %}Orchestration engine status and execution history{% endblock %}
+
+{% block content %}
+<div class="card mb-1">
+  <h2>Orchestration engine</h2>
+  {% if orch_status and orch_status.get("engine") %}
+  {% set eng = orch_status["engine"] %}
+  <p>
+    <span class="chip {{ 'ok' if eng.get('running') else 'unknown' }}">{{ "running" if eng.get("running") else "idle" }}</span>
+    <span class="mono">{{ eng.get("name", "Orchestration engine") }} v{{ eng.get("version", "?") }}</span>
+  </p>
+  <p class="subtitle">active plans: {{ eng.get("active_plans", 0) }} Â· tasks total: {{ eng.get("metrics", {}).get("tasks_total", 0) }} Â· failed: {{ eng.get("metrics", {}).get("tasks_failed", 0) }}</p>
+  {% else %}
+  <p class="pending">Data pending â€” orchestration status is not available.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Execution history</h2>
+  {% if history and history.get("records") %}
+  <table>
+    <thead><tr><th>Plan</th><th>Status</th><th>Started</th></tr></thead>
+    <tbody>
+      {% for rec in history["records"] %}
+      <tr>
+        <td class="mono">{{ rec.get("plan_id", rec.get("id", "â€”")) }}</td>
+        <td><span class="chip {{ rec.get('status', 'unknown') }}">{{ rec.get("status", "unknown") }}</span></td>
+        <td class="mono">{{ (rec.get("started_at") or rec.get("created_at") or "â€”") | string | truncate(24) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="pending">Data pending â€” no execution records yet (read-only view; runs appear here once executed).</p>
+  {% endif %}
+</div>
+{% endblock %}

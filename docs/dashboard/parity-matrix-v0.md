@@ -1,6 +1,6 @@
 # Parity Matrix v0 — CLI ↔ API ↔ Dashboard ↔ OpenCode desktop
 
-Status: **v0 baseline (2026-08-01)** · Owner: Chief Architect
+Status: **v0 baseline (2026-08-01) — Phase 1 complete: all read rows SHIPPED** · Owner: Chief Architect
 Purpose: **Scope contract.** Maps every CLI command and capability to its API
 endpoint and GUI path. The Phase 4 demotion trigger requires **100%
 parity-matrix coverage** with the parity test suite green.
@@ -35,24 +35,24 @@ contract), 0009 (API contract).
 |---|---|---|---|---|
 | Bootstrap / scaffold | `ai-company bootstrap` | `POST /api/bootstrap` | Setup wizard | SHIPPED / PLANNED (P2) |
 | Build artifacts | `ai-company build` | `POST /api/build` | Build panel | SHIPPED / PLANNED (P2) |
-| Validate registry | `ai-company validate` | `GET /api/validate` | Health/validate view | SHIPPED / PLANNED (P1) |
+| Validate registry | `ai-company validate` | `GET /api/validate` | Health/validate view | **SHIPPED** (API `GET /api/validate` + Validation gate view, Phase 1) / write `POST` = P2 |
 | Generate via OpenCode | `ai-company generate <target>` | `POST /api/generate` | Generate panel (prompt + agent) | SHIPPED / PLANNED (P2) |
-| List generate targets | `ai-company targets` | `GET /api/generate/targets` | Generate panel | SHIPPED / PLANNED (P1) |
-| Doctor / diagnostics | `ai-company doctor` | `GET /api/diagnostics` | Diagnostics view | SHIPPED / PLANNED (P1) |
-| System status | `ai-company status` | `GET /api/status` | Overview dashboard | SHIPPED / PLANNED (P1) |
+| List generate targets | `ai-company targets` | `GET /api/generate/targets` | Generate panel | **SHIPPED** (Phase 1) |
+| Doctor / diagnostics | `ai-company doctor` | `GET /api/diagnostics` | Diagnostics view | **SHIPPED** (Phase 1) |
+| System status | `ai-company status` | `GET /api/status` | Overview dashboard | **SHIPPED** (Phase 1 — Pulse view) |
 | Serve dashboard API | `ai-company serve` | Serves all `/api/*` + `WS /api/ws` | Hosts the dashboard backend (loopback only) | SHIPPED |
-| Company CRUD | `ai-company company ...` | `GET/PUT /api/company` | Company editor | SHIPPED / PLANNED (P1/P2) |
-| Executive artifacts | `ai-company exec ...` | `GET /api/executives` | Executive view | SHIPPED / PLANNED (P1) |
-| Registry browse | `ai-company registry list/show` | `GET /api/registry` | Registry explorer | SHIPPED / PLANNED (P1) |
-| Memory browse | `ai-company memory show` | `GET /api/memory` | Memory view | SHIPPED / PLANNED (P1) |
-| Graph export | `ai-company graph show/stats` | `GET /api/graph` | Org graph (Mermaid) | SHIPPED / PLANNED (P1) |
-| Reports | `ai-company report generate summary` | `GET /api/reports` | Reports view | SHIPPED / PLANNED (P1) |
-| Orchestration | `ai-company orchestrate ...` | `POST /api/orchestrate` | Pipelines view | SHIPPED / PLANNED (P2) |
+| Company CRUD | `ai-company company ...` | `GET/PUT /api/company` | Company editor | SHIPPED / PLANNED (P2) |
+| Executive artifacts | `ai-company exec ...` | `GET /api/executives` | Executive view | **SHIPPED** (Phase 1 — Agents view) |
+| Registry browse | `ai-company registry list/show` | `GET /api/registry` | Registry explorer | **SHIPPED** (Phase 1 — Registry view) |
+| Memory browse | `ai-company memory show` | `GET /api/memory` | Memory view | **SHIPPED** (Phase 1 — Memory view) |
+| Graph export | `ai-company graph show/stats` | `GET /api/graph` | Org graph (Mermaid) | **SHIPPED** (Phase 1 — Org graph in Registry view) |
+| Reports | `ai-company report generate summary` | `GET /api/reports` | Reports view | **SHIPPED** (Phase 1 read) / generate write = P2 |
+| Orchestration | `ai-company orchestrate ...` | `POST /api/orchestrate` | Pipelines view | SHIPPED / PLANNED (P2) — read (`status`/`history`) SHIPPED in Phase 1 |
 | Runtime control | `ai-company runtime ...` | `POST /api/runtime/start/stop` | Runtime control | SHIPPED / PLANNED (P2) |
-| Runtime live status | `ai-company runtime status` | `GET /api/runtime/status` | Runtime status widget | SHIPPED / PLANNED (P1) |
-| Runtime health | `ai-company runtime health` | `GET /api/runtime/health` | Health widget | SHIPPED / PLANNED (P1) |
-| Runtime metrics | `ai-company runtime metrics` | `GET /api/runtime/metrics` | Metrics charts | SHIPPED / PLANNED (P1) |
-| Runtime events | `ai-company serve` (WS feed) | `WS /api/ws?since=` (replay-then-live) | Live event feed | SHIPPED (server) / PLANNED (P1) |
+| Runtime live status | `ai-company runtime status` | `GET /api/runtime/status` | Runtime status widget | **SHIPPED** (Phase 1 — System Health view) |
+| Runtime health | `ai-company runtime health` | `GET /api/runtime/health` | Health widget | **SHIPPED** (Phase 1 — System Health view) |
+| Runtime metrics | `ai-company runtime metrics` | `GET /api/runtime/metrics` | Metrics charts | **SHIPPED** (Phase 1 — System Health view) |
+| Runtime events | `ai-company serve` (WS feed) | `WS /api/ws?since=` (replay-then-live) | Live event feed | **SHIPPED** (Phase 1 — Pulse live feed, auto-reconnect + replay) |
 | Runtime recovery | `ai-company runtime recover` | `POST /api/runtime/recover` | Recovery view | SHIPPED / PLANNED (P2) |
 | Agent sync | `python -m ai_company.agents sync` | `POST /api/agents/sync` | Agents view | SHIPPED / PLANNED (P2) |
 | Backups | `python -m ai_company.backup` | `POST /api/backup` | Backups view | SHIPPED / PLANNED (P2) |
@@ -62,6 +62,12 @@ contract), 0009 (API contract).
 ---
 
 ## Part B — Command-exhaustive matrix
+
+> **Phase column meaning (updated 2026-08-01, Phase 1 close-out):** `1` = read
+> path **SHIPPED** (API endpoint + dashboard view live and CI-tested); `2` =
+> Phase 2 write work; `1/2` = read half shipped, write half Phase 2; `1/3` =
+> Phase 1 shipped, OpenCode deep link Phase 3. Write actions (`2`) are NOT
+> implemented yet — no GUI button exists until Phase 2 lands.
 
 ### Top-level
 
@@ -180,7 +186,7 @@ contract), 0009 (API contract).
 
 ---
 
-## Coverage summary (v0 baseline)
+## Coverage summary (v0 baseline, updated at Phase 1 close-out 2026-08-01)
 
 | Group | Total | GUI/BOTH | CLI-only (destructive/bulk) |
 |-------|-------|----------|------------------------------|
@@ -195,11 +201,17 @@ contract), 0009 (API contract).
 | runtime | 8 | 8 | 0 |
 | **Total** | **71** | **66 (93%)** | **5 (7%)** |
 
+**Phase 1 status:** **all 31 read rows SHIPPED** — API endpoint + dashboard
+view live (`ai-company serve`), verified by `tests/unit/api/test_api_domain.py`
+(31 tests) and the parity suite seed `tests/golden/test_parity_read.py`
+(9 tests, golden CLI output == API JSON). The 35 write rows (`2`, `1/2`) are
+Phase 2 work (ADR 0010) — deliberately no GUI button until then.
+
 **Guarantees:**
 - Every read and every safe write has a GUI path (no "no GUI path" escalations possible → feeds Phase 4 trigger).
 - Every destructive/bulk operation stays CLI-only by design (guardrail, not gap).
 - The CLI column is the automation contract (ADR 0005) and must never regress.
-- Phase 4 demotion trigger additionally requires the **parity test suite** (golden CLI output == API JSON per command) green in CI.
+- Phase 4 demotion trigger additionally requires the **parity test suite** (golden CLI output == API JSON per command) green in CI — seeded in Phase 1, coverage grows with each phase.
 
 ## Update rule
 

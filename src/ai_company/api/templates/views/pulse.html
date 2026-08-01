@@ -1,0 +1,59 @@
+﻿{% extends "base.html" %}
+{% block title %}Pulse â€” AI Enterprise OS{% endblock %}
+{% block heading %}Pulse{% endblock %}
+{% block subtitle %}Live operational overview{% endblock %}
+
+{% block content %}
+<div class="grid cols-4">
+  <div class="card">
+    <h2>Runtime</h2>
+    <div class="big-number">{{ status.get("phase", "unknown") if status else "unknown" }}
+      <small>lifecycle phase</small>
+    </div>
+    <p><span class="chip {{ 'ok' if status.get('phase') == 'running' else 'unknown' }}">{{ status.get("phase", "unknown") if status else "unknown" }}</span></p>
+  </div>
+  <div class="card">
+    <h2>Health</h2>
+    <div class="big-number"><span data-health-chip class="chip {{ health_overall_class }}">{{ health_overall if health_overall else "unknown" }}</span></div>
+    <p class="subtitle">{{ health_summary.get("healthy", 0) }} healthy Â· {{ health_summary.get("degraded", 0) }} degraded Â· {{ health_summary.get("unhealthy", 0) }} unhealthy</p>
+  </div>
+  <div class="card">
+    <h2>Engines</h2>
+    <div class="big-number">{{ engines | length if engines else 0 }}<small>registered</small></div>
+    <p class="subtitle">{{ running_engines }} running</p>
+  </div>
+  <div class="card">
+    <h2>Memory</h2>
+    <div class="big-number">{{ memory_stats.get("total_memories", "â€”") if memory_stats else "â€”" }}<small>entries</small></div>
+    <p class="subtitle">snapshots: {{ memory_stats.get("total_snapshots", "â€”") if memory_stats else "â€”" }}</p>
+  </div>
+</div>
+
+<div class="grid cols-2 mt-1">
+  <div class="card">
+    <h2>System check</h2>
+    {% if checks %}
+    <table>
+      <thead><tr><th>Engine</th><th>Status</th><th>Message</th></tr></thead>
+      <tbody>
+        {% for check in checks %}
+        <tr>
+          <td>{{ check.get("engine", "system") }}</td>
+          <td><span class="chip {{ check.get('status', 'unknown') }}">{{ check.get("status", "unknown") }}</span></td>
+          <td class="mono">{{ check.get("message", "") }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="pending">Data pending â€” health probes have not run yet.</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h2>Live events</h2>
+    <div id="event-feed" class="event-feed">
+      <p class="empty">Waiting for eventsâ€¦</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

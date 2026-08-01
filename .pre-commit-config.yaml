@@ -5,12 +5,13 @@ repos:
     hooks:
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
-        exclude: ^(generated|\.ai-company)/
+        exclude: ^(generated|\.ai-company|src/ai_company/api/static/vendor)/
       - id: end-of-file-fixer
-        exclude: ^(generated|\.ai-company)/
+        exclude: ^(generated|\.ai-company|src/ai_company/api/static/vendor)/
       - id: check-added-large-files
         args: [--maxkb=500]
-        exclude: ^(generated|\.ai-company)/
+        # vendored frontend assets (mermaid.min.js ~3.3 MB) are CSP-mandated local deps
+        exclude: ^(generated|\.ai-company|src/ai_company/api/static/vendor)/
       - id: check-yaml
         exclude: ^(generated|\.ai-company)/
       - id: check-json
@@ -25,7 +26,8 @@ repos:
         exclude: ^(generated|\.ai-company)/
       - id: mixed-line-ending
         args: [--fix=lf]
-        exclude: ^(generated|\.ai-company)/
+        # vendored minified JS is machine-generated; keep byte-identical to upstream
+        exclude: ^(generated|\.ai-company|src/ai_company/api/static)/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.0
