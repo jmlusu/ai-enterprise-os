@@ -21,6 +21,7 @@
 | `cli/groups/graph.py` | `graph show/stats` |
 | `cli/groups/report.py` | `report generate <type>` |
 | `cli/groups/runtime.py` | `runtime start/stop/restart/status/reload/health/metrics/scheduler/supervisor` |
+| `cli/groups/dashboard.py` | `dashboard token create/revoke/list/info` — write-token management (ADR 0010) |
 | `cli/groups/orchestration.py` | `orchestrate start/stop/status/plans/records/jobs/recover/rollback` |
 
 ### Build-Time Layer
@@ -166,7 +167,9 @@
 |---|---|
 | `services/runtime_facade.py` | `RuntimeFacade` — shared stable surface (ADR 0003) |
 | `services/dashboard_events.py` | `DashboardEventBridge` — EventBus → asyncio queue |
-| `api/app.py` | FastAPI app — read-only REST + WS (ADR 0002/0009), loopback-only |
+| `api/app.py` | FastAPI app — read REST + WS (ADR 0002/0009) + guarded writes (ADR 0010), loopback-only |
+| `api/auth.py` | `WriteTokenService` / `CsrfService` / `host_allowed()` / fail-open write-audit publisher (ADR 0010) |
+| `api/write_endpoints.py` | 20 mutation POSTs + `GET /api/write-csrf` + `GET /api/audit/writes` (ADR 0010) |
 | `telemetry/cli.py` | CLI invocation telemetry (fail-open JSONL) |
 | `audit/` | session, logger, jsonl, events, metrics |
 | `backup/` | `backup/backup.py` + `__main__.py` |
@@ -265,6 +268,10 @@
 | `test_agents_sync.py` | Persona sync engine |
 | `test_prompt_library.py` | Prompt library |
 | `test_technical.py` | Technical checks |
+| `unit/api/test_api.py` | API integration + index (read_only: False since Wave 2a) |
+| `unit/api/test_api_domain.py` | Page render/CSP/domain tests (incl. `/writes`) |
+| `unit/api/test_auth.py` | ADR 0010 auth: tokens, CSRF, host allowlist, audit, fail-open |
+| `unit/api/test_write_endpoints.py` | ADR 0010 write guards: 401/403/422, audit, loopback mode |
 | `tests/golden/` | Golden outputs |
 
 ## File Relationships (key paths)
@@ -278,3 +285,4 @@
 | `company/*.yaml` | `registry/registry.py` → `company/*generator.py` → `generated/` | Generation pipeline |
 | `config/events/event_registry.yaml` | `events/registry.py` | Event schemas |
 | `services/runtime_facade.py` | `api/app.py`, `cli/groups/runtime.py` | Shared runtime surface (ADR 0003) |
+| `api/auth.py` + `api/write_endpoints.py` | `api/app.py` | ADR 0010 write guards + audit (fail-open) |

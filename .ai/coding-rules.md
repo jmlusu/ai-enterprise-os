@@ -78,9 +78,11 @@
 21. **Never commit secrets.** `.env*` is gitignored (only `.env.example`
     kept); `detect-private-key` hook runs in pre-commit. Config with real
     credentials stays out of the repo.
-22. **Dashboard API stays loopback-only (ADR 0009).** Non-loopback exposure
-    requires Phase 2 write auth (ADR 0010): bearer token, CSRF, mandatory
-    write audit, fail-closed Host checks.
+22. **Dashboard API stays loopback-only (ADR 0009/0010).** Non-loopback
+    exposure is fail-closed: every write requires the bearer token + CSRF +
+    `audit.write` (Wave 2a shipped 2026-08-01). `--require-loopback-token`
+    enforces strictness on loopback. Rejected writes must never echo the
+    submitted token/CSRF.
 23. **Fail-open observability.** CLI telemetry and event persistence must
     never break the user command — wrap persistence in try/except and
     continue.

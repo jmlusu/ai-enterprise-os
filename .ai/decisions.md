@@ -29,7 +29,7 @@
 | 0007 | Supervisor self-healing: restart before isolate | Accepted | Software Engineering, Cloud Architecture | Engines get restart attempts (w/ fresh heartbeat) before isolation; `isolate` raises if no process record |
 | 0008 | Dashboard frontend: Jinja2 + htmx (v1), Svelte 5 (v2) | Accepted (v1) | Chief Architect, CTO, SWE, Cloud Architecture | v1: Jinja2+htmx (no Node toolchain, fastest). v2: Svelte 5 + Vite (richer UX, budgeted in Phase 4) |
 | 0009 | Dashboard API contract: REST + WebSocket, replay-based reconnect | Accepted | Chief Architect, SWE, Cybersecurity Architecture | Read-only v1: REST JSON + WS push. Reconnect via `?since=`. Write endpoints deferred to Phase 2 with auth+CSRF+audit |
-| 0010 | Phase 2 write auth: bearer token + CSRF + mandatory write audit | Proposed | Chief Architect, CISO, Cybersecurity Architecture, SWE | Opaque bearer token (256-bit); double-submit CSRF token; `audit.write` event on every mutation; fail-closed on non-loopback |
+| 0010 | Phase 2 write auth: bearer token + CSRF + mandatory write audit | Accepted | Chief Architect, CISO, Cybersecurity Architecture, SWE | Opaque bearer token (256-bit); double-submit CSRF token; `audit.write` event on every mutation; fail-closed on non-loopback. **Ratified + shipped with Phase 2 Wave 2a (2026-08-01):** `api/auth.py` + `api/write_endpoints.py` (20 mutation POSTs), hash-at-rest, `--require-loopback-token`, `dashboard token` CLI |
 
 ## Key Decisions (beyond formal ADRs)
 

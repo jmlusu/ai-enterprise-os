@@ -179,7 +179,9 @@ ai-company serve → uvicorn on 127.0.0.1:8000
    user command.
 6. **Supervisor restarts before isolating** (ADR 0007).
 7. **Loopback-only dashboard** — Host-header allowlist; non-loopback requires
-   Phase 2 auth (ADR 0009, 0010).
+   the Phase 2 write-auth scheme (ADR 0009, 0010 — **shipped Wave 2a
+   2026-08-01**: bearer token + CSRF + `audit.write`, fail-closed non-loopback,
+   optional `--require-loopback-token`).
 
 ## Cross-Cutting Concerns
 

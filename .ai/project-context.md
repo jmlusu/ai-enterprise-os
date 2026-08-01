@@ -109,7 +109,9 @@ tests/            ← pytest suite
 | Phase 0 | ✅ | Command centers: telemetry, backup, integrity gate, self-healing — `3324dbf`; close-out (Windows CI, live recovery drill) — `27348a1` |
 | Phase 1 Wave 1 | ✅ | Dashboard API server, read-only contract v1 — `b6d5a26` / `6d2654b` |
 | Sprint 5.1 | ✅ | OpenCode persona agents (35) + global sync engine — `current_sprint.yaml` |
-| Next | ⬜ | Dashboard frontend v1 (Jinja2+htmx), Phase 2 write auth, Svelte 5 — see `.ai/current-work.md` |
+| Phase 1 Wave 2 | ✅ | Dashboard frontend v1 (8 views, scoped CSP, parity seed) — `d0b1385` |
+| Sprint 5.2 Wave 2a | ✅ | Phase 2 write auth (ADR 0010) + operational write endpoints — see `.ai/current-work.md` |
+| Next | ⬜ | Phase 2 Wave 2b: generate dispatcher → OpenCode, decision/approval inbox, then SQLite read model (Sprint 5.4) — see `.ai/current-work.md` |
 
 ## ADR Index (see `.ai/decisions.md` for rationale; full text in `docs/adr/`)
 
@@ -122,7 +124,7 @@ tests/            ← pytest suite
 - **0007** Supervisor self-healing: restart before isolate — Accepted
 - **0008** Dashboard frontend: Jinja2 + htmx (v1), Svelte 5 (v2) — Accepted (v1)
 - **0009** Dashboard API contract: REST + WS, replay-based reconnect — Accepted
-- **0010** Phase 2 write auth: bearer token + CSRF + audit — Proposed
+- **0010** Phase 2 write auth: bearer token + CSRF + audit — **Accepted** (Wave 2a shipped 2026-08-01)
 
 ## Constitution (`.ai-company/constitution/rules.md`) — immutable
 
