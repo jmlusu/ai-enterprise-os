@@ -40,6 +40,7 @@ contract), 0009 (API contract).
 | List generate targets | `ai-company targets` | `GET /api/generate/targets` | Generate panel | SHIPPED / PLANNED (P1) |
 | Doctor / diagnostics | `ai-company doctor` | `GET /api/diagnostics` | Diagnostics view | SHIPPED / PLANNED (P1) |
 | System status | `ai-company status` | `GET /api/status` | Overview dashboard | SHIPPED / PLANNED (P1) |
+| Serve dashboard API | `ai-company serve` | Serves all `/api/*` + `WS /api/ws` | Hosts the dashboard backend (loopback only) | SHIPPED |
 | Company CRUD | `ai-company company ...` | `GET/PUT /api/company` | Company editor | SHIPPED / PLANNED (P1/P2) |
 | Executive artifacts | `ai-company exec ...` | `GET /api/executives` | Executive view | SHIPPED / PLANNED (P1) |
 | Registry browse | `ai-company registry list/show` | `GET /api/registry` | Registry explorer | SHIPPED / PLANNED (P1) |
@@ -51,7 +52,7 @@ contract), 0009 (API contract).
 | Runtime live status | `ai-company runtime status` | `GET /api/runtime/status` | Runtime status widget | SHIPPED / PLANNED (P1) |
 | Runtime health | `ai-company runtime health` | `GET /api/runtime/health` | Health widget | SHIPPED / PLANNED (P1) |
 | Runtime metrics | `ai-company runtime metrics` | `GET /api/runtime/metrics` | Metrics charts | SHIPPED / PLANNED (P1) |
-| Runtime events | (planned) | `WS /api/runtime/events` | Live event feed | PLANNED (P1) |
+| Runtime events | `ai-company serve` (WS feed) | `WS /api/ws?since=` (replay-then-live) | Live event feed | SHIPPED (server) / PLANNED (P1) |
 | Runtime recovery | `ai-company runtime recover` | `POST /api/runtime/recover` | Recovery view | SHIPPED / PLANNED (P2) |
 | Agent sync | `python -m ai_company.agents sync` | `POST /api/agents/sync` | Agents view | SHIPPED / PLANNED (P2) |
 | Backups | `python -m ai_company.backup` | `POST /api/backup` | Backups view | SHIPPED / PLANNED (P2) |
@@ -73,6 +74,7 @@ contract), 0009 (API contract).
 | `ai-company doctor` | Read | System Health → diagnostics | 1 |
 | `ai-company targets` | Read | Dispatch panel target list | 1 |
 | `ai-company status` | Read | Overview ("pulse" page) | 1 |
+| `ai-company serve` | Read (hosts API + WS bridge) | Serves the dashboard backend (loopback only) | 1 |
 
 ### `ai-company company` group
 
@@ -182,7 +184,7 @@ contract), 0009 (API contract).
 
 | Group | Total | GUI/BOTH | CLI-only (destructive/bulk) |
 |-------|-------|----------|------------------------------|
-| Top-level | 7 | 7 | 0 |
+| Top-level | 8 | 8 | 0 |
 | company | 18 | 18 | 0 |
 | exec | 4 | 4 | 0 |
 | registry | 3 | 3 | 0 |
@@ -191,7 +193,7 @@ contract), 0009 (API contract).
 | report | 1 | 1 | 0 |
 | orchestrate | 7 | 7 | 0 |
 | runtime | 8 | 8 | 0 |
-| **Total** | **70** | **65 (93%)** | **5 (7%)** |
+| **Total** | **71** | **66 (93%)** | **5 (7%)** |
 
 **Guarantees:**
 - Every read and every safe write has a GUI path (no "no GUI path" escalations possible → feeds Phase 4 trigger).

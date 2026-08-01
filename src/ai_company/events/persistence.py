@@ -180,7 +180,11 @@ class EventPersistence:
     def _record_to_event(self, data: dict[str, Any]) -> Event | None:
         """Convert storage record dict to Event."""
         try:
-            return Event(**data)
+            # Records carry a "_type" discriminator; Event (pydantic strict)
+            # rejects unknown fields, so strip it before deserialization.
+            record = dict(data)
+            record.pop("_type", None)
+            return Event(**record)
         except Exception as e:
             self.logger.warning(f"Failed to deserialize event record: {e}")
             return None
