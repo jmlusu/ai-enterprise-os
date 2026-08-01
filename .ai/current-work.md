@@ -42,8 +42,7 @@
 
 ## Completed — Phase 1 Wave 2: Dashboard Frontend v1 (COMMITTED)
 
-**Commits:** wave-2 feature commit (2026-08-01, hash recorded next session) —
-**Phase 1 is DONE.** Do NOT re-plan this. Work plan: `docs/dashboard/phase1-workplan.md`.
+**Commits:** `d0b1385` (wave 2) — **Phase 1 is DONE.** Do NOT re-plan this. Work plan: `docs/dashboard/phase1-workplan.md`.
 
 | Deliverable | Status |
 |---|---|
@@ -141,7 +140,7 @@ files get wiped. This directory is committed on purpose (NOT in `.gitignore`).
 ## Recently Completed (Commits)
 
 ```text
-<hash>        feat: Phase 1 wave 2 — dashboard frontend v1 (8 views, scoped CSP, parity seed)
+d0b1385        feat: Phase 1 wave 2 — dashboard frontend v1 (8 views, scoped CSP, parity seed)
 3af24e5 chore: remove legacy sprint dashboard stub and gitignore dashboards/ output
 ce1df08 feat: add .ai/ knowledge base so agents stop re-discovering the system
 a76acdf fix: sort circuit_breaker import before configuration (I001)
