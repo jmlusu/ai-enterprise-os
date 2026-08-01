@@ -1,10 +1,13 @@
-/* AI Enterprise OS — Dashboard client (Phase 1, WS-5.0)
+/* AI Enterprise OS — Dashboard client (Phase 1 WS-5.0 + Phase 2 ADR 0010)
    Runs under a strict CSP: no inline scripts, no unsafe-eval.
    Responsibilities:
      - staleness ticker: poll /api/health every N seconds, show age
      - mermaid: render any <pre class="mermaid-source"> block client-side
      - markdown: render [data-md] blocks through marked + DOMPurify
      - events panel: WebSocket feed with auto-reconnect + dedupe
+     - write actions: guarded mutations (bearer token + CSRF + audit, ADR 0010)
+       with a reason dialog for high-impact actions, plus the Write History
+       panel backed by GET /api/audit/writes
 */
 
 (function () {
@@ -132,6 +135,237 @@
     ws.onerror = function () { try { ws.close(); } catch (e) { /* noop */ } };
   }
 
+  /* ── Write actions (Phase 2, ADR 0010: token + CSRF + audit) ────────── */
+  var TOKEN_KEY = "aios.write_token";
+  var writeStatusEl = document.getElementById("write-status");
+
+  function getWriteToken() {
+    try { return window.localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; }
+  }
+
+  function setWriteToken(value) {
+    try {
+      if (value) { window.localStorage.setItem(TOKEN_KEY, value); }
+      else { window.localStorage.removeItem(TOKEN_KEY); }
+    } catch (e) { /* storage unavailable (e.g. private mode): ignore */ }
+  }
+
+  function setWriteStatus(text, cls) {
+    if (!writeStatusEl) return;
+    writeStatusEl.textContent = text;
+    writeStatusEl.className = "write-status " + (cls || "");
+  }
+
+  async function fetchCsrf() {
+    var resp = await fetch("/api/write-csrf", { headers: { "Accept": "application/json" } });
+    if (!resp.ok) { throw new Error("CSRF endpoint unavailable (HTTP " + resp.status + ")"); }
+    var body = await resp.json();
+    if (!body.csrf_token) { throw new Error("CSRF endpoint returned no token"); }
+    return body.csrf_token;
+  }
+
+  async function performWrite(path, payload) {
+    var csrf = await fetchCsrf();
+    var headers = { "Content-Type": "application/json", "X-CSRF-Token": csrf };
+    var token = getWriteToken();
+    if (token) { headers["Authorization"] = "Bearer " + token; }
+    var resp = await fetch(path, { method: "POST", headers: headers, body: JSON.stringify(payload || {}) });
+    var body = null;
+    try { body = await resp.json(); } catch (e) { /* non-JSON body */ }
+    if (!resp.ok) {
+      var detail = (body && body.detail) || ("HTTP " + resp.status);
+      if (resp.status === 401) {
+        detail = "Write token missing or invalid — save it on the Write History page.";
+      }
+      if (resp.status === 403) {
+        detail = "CSRF token rejected — refresh the page and retry.";
+      }
+      throw new Error(detail);
+    }
+    if (body && body.success === false) {
+      throw new Error((body.errors || ["operation failed"]).join("; "));
+    }
+    return body;
+  }
+
+  /* Native <dialog> confirm with an optional required reason (CSP-safe). */
+  function openWriteDialog(cfg) {
+    return new Promise(function (resolve) {
+      var dialog = document.createElement("dialog");
+      dialog.className = "write-dialog";
+      var prompt = document.createElement("p");
+      prompt.textContent = cfg.prompt || "Confirm write action?";
+      dialog.appendChild(prompt);
+
+      var reasonBox = null;
+      if (cfg.highImpact) {
+        var label = document.createElement("label");
+        label.className = "write-dialog-label";
+        label.textContent = "Reason (required for high-impact actions):";
+        dialog.appendChild(label);
+        reasonBox = document.createElement("textarea");
+        reasonBox.className = "write-dialog-reason";
+        reasonBox.placeholder = "e.g. scheduled maintenance window";
+        dialog.appendChild(reasonBox);
+      }
+
+      var actions = document.createElement("div");
+      actions.className = "write-dialog-actions";
+      var cancelBtn = document.createElement("button");
+      cancelBtn.type = "button"; cancelBtn.className = "btn"; cancelBtn.textContent = "Cancel";
+      var confirmBtn = document.createElement("button");
+      confirmBtn.type = "button"; confirmBtn.className = "btn btn-danger"; confirmBtn.textContent = "Confirm";
+      actions.appendChild(cancelBtn);
+      actions.appendChild(confirmBtn);
+      dialog.appendChild(actions);
+
+      function closeWith(result) {
+        try { dialog.close(); } catch (e) { /* already closed */ }
+        if (dialog.parentNode) { dialog.parentNode.removeChild(dialog); }
+        resolve(result);
+      }
+      cancelBtn.addEventListener("click", function () { closeWith(null); });
+      confirmBtn.addEventListener("click", function () {
+        var reason = reasonBox ? reasonBox.value.trim() : null;
+        if (cfg.highImpact && !reason) {
+          reasonBox.setAttribute("aria-invalid", "true");
+          reasonBox.focus();
+          return;
+        }
+        closeWith(reason);
+      });
+      dialog.addEventListener("cancel", function () { closeWith(null); });
+      document.body.appendChild(dialog);
+      dialog.showModal();
+      if (reasonBox) { reasonBox.focus(); } else { confirmBtn.focus(); }
+    });
+  }
+
+  async function runWriteAction(el) {
+    var path = el.getAttribute("data-write");
+    if (!path || el.disabled) { return; }
+    var action = el.getAttribute("data-action") || path;
+    var highImpact = el.getAttribute("data-high-impact") === "1";
+    var prompt = el.getAttribute("data-prompt") || ("Execute " + action + "?");
+    var payload = {};
+    var bodyAttr = el.getAttribute("data-body");
+    if (bodyAttr) {
+      try { payload = JSON.parse(bodyAttr); } catch (e) { payload = { raw: bodyAttr }; }
+    }
+    if (highImpact) {
+      var reason = await openWriteDialog({ prompt: prompt, highImpact: true });
+      if (reason === null) { return; } // cancelled
+      payload.reason = reason;
+    } else if (!window.confirm(prompt)) {
+      return;
+    }
+    el.disabled = true;
+    var oldText = el.textContent;
+    el.textContent = "running…";
+    setWriteStatus("Executing " + action + " …", "info");
+    try {
+      await performWrite(path, payload);
+      setWriteStatus(action + " completed (audited)", "ok");
+      if (el.getAttribute("data-reload") === "1") { window.location.reload(); return; }
+      loadWriteHistory();
+    } catch (err) {
+      setWriteStatus(action + " failed: " + err.message, "err");
+    } finally {
+      el.disabled = false;
+      el.textContent = oldText;
+    }
+  }
+
+  /* ── Write History panel (GET /api/audit/writes, ADR 0010 §3) ───────── */
+  var writeHistoryBody = document.getElementById("write-history-tbody");
+
+  function escHtml(value) {
+    var div = document.createElement("div");
+    div.textContent = value == null ? "" : String(value);
+    return div.innerHTML;
+  }
+
+  function renderWriteHistoryEmpty(msg) {
+    var tr = document.createElement("tr");
+    var td = document.createElement("td");
+    td.colSpan = 6;
+    td.className = "empty";
+    td.textContent = msg;
+    tr.appendChild(td);
+    writeHistoryBody.appendChild(tr);
+  }
+
+  async function loadWriteHistory() {
+    if (!writeHistoryBody) { return; }
+    writeHistoryBody.textContent = "";
+    var resp;
+    try {
+      resp = await fetch("/api/audit/writes?limit=50", { headers: { "Accept": "application/json" } });
+    } catch (e) {
+      renderWriteHistoryEmpty("Network error — write history unavailable.");
+      return;
+    }
+    if (!resp.ok) {
+      renderWriteHistoryEmpty("Write history unavailable (HTTP " + resp.status + ").");
+      return;
+    }
+    var body = await resp.json();
+    var events = body.events || [];
+    if (!events.length) {
+      renderWriteHistoryEmpty("No write actions recorded yet.");
+      return;
+    }
+    events.forEach(function (ev) {
+      var meta = ev.metadata || {};
+      var payload = ev.payload || {};
+      var type = meta.event_type || "";
+      var ok = type === "audit.write";
+      var ts = (meta.timestamp || "").replace("T", " ").slice(0, 19);
+      var detail = payload.detail || "";
+      if (!detail && payload.details) { detail = JSON.stringify(payload.details); }
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td class="mono">' + escHtml(ts) + "</td>" +
+        '<td><span class="chip ' + (ok ? "ok" : "action") + '">' +
+          escHtml(ok ? "write" : "rejected") + "</span></td>" +
+        '<td class="mono">' + escHtml(payload.action || "") + "</td>" +
+        "<td>" + escHtml(payload.result || (ok ? "ok" : "rejected")) + "</td>" +
+        "<td>" + escHtml(payload.reason || "") + "</td>" +
+        '<td class="mono">' + escHtml(detail) + "</td>";
+      writeHistoryBody.appendChild(tr);
+    });
+  }
+
+  function wireTokenInput() {
+    var input = document.getElementById("write-token-input");
+    if (!input) { return; }
+    input.value = getWriteToken();
+    var saveBtn = document.getElementById("write-token-save");
+    if (saveBtn) {
+      saveBtn.addEventListener("click", function () {
+        setWriteToken(input.value.trim());
+        setWriteStatus(input.value.trim() ? "Write token saved for this browser." : "Write token cleared.", "ok");
+      });
+    }
+    var clearBtn = document.getElementById("write-token-clear");
+    if (clearBtn) {
+      clearBtn.addEventListener("click", function () {
+        input.value = "";
+        setWriteToken("");
+        setWriteStatus("Write token cleared.", "ok");
+      });
+    }
+  }
+
+  function wireWriteActions() {
+    document.addEventListener("click", function (evt) {
+      var el = evt.target && evt.target.closest ? evt.target.closest("[data-write]") : null;
+      if (!el) { return; }
+      evt.preventDefault();
+      runWriteAction(el);
+    });
+  }
+
   /* ── Boot ────────────────────────────────────────────────────────────── */
   document.addEventListener("DOMContentLoaded", function () {
     pollHealth();
@@ -140,5 +374,8 @@
     renderMarkdown();
     renderMermaid();
     connectFeed();
+    wireTokenInput();
+    wireWriteActions();
+    loadWriteHistory();
   });
 })();

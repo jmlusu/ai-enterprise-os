@@ -813,6 +813,433 @@ class RuntimeFacade:
         except Exception as exc:
             return {"success": False, "errors": [str(exc)], "targets": []}
 
+    # ── Phase 2 (WS-2.1): write actions (ADR 0010 — auth-guarded by the API) ──
+    # Thin adapters mirroring the equivalent CLI write commands. The API layer
+    # enforces bearer token + CSRF + audit before any of these run; the facade
+    # itself stays an honest, dependency-free mirror of the CLI semantics.
+
+    def runtime_start(self) -> dict[str, Any]:
+        """Start the runtime (parity with ``ai-company runtime start``)."""
+        try:
+            status = self._runtime.start()
+            return {
+                "success": True,
+                "errors": [],
+                "phase": getattr(status, "phase", "running").value
+                if hasattr(getattr(status, "phase", None), "value")
+                else str(getattr(status, "phase", "running")),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)]}
+
+    def runtime_stop(self, reason: str = "manual") -> dict[str, Any]:
+        """Stop the runtime (parity with ``ai-company runtime stop``)."""
+        try:
+            status = self._runtime.stop(reason=reason)
+            return {
+                "success": True,
+                "errors": [],
+                "phase": str(getattr(status, "phase", "stopped")),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)]}
+
+    def runtime_restart(self, reason: str = "manual") -> dict[str, Any]:
+        """Restart the runtime (parity with ``ai-company runtime restart``)."""
+        try:
+            status = self._runtime.restart(reason=reason)
+            return {
+                "success": True,
+                "errors": [],
+                "phase": str(getattr(status, "phase", "running")),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)]}
+
+    def runtime_reload(self) -> dict[str, Any]:
+        """Hot-reload runtime configuration (parity with ``runtime reload``)."""
+        try:
+            changed = self._runtime.reload()
+            return {"success": True, "errors": [], "changed": list(changed)}
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)]}
+
+    def runtime_recover(self, engine: str, reason: str = "manual") -> dict[str, Any]:
+        """Recover one failed engine (parity with ``runtime recover``)."""
+        try:
+            result = self._runtime.recover_engine(engine, reason=reason)
+            return {
+                "success": True,
+                "errors": [],
+                "engine": engine,
+                "recovered": bool(getattr(result, "recovered", True)),
+                "attempts": getattr(result, "attempts", None),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)]}
+
+    def runtime_unisolate(self, engine: str) -> dict[str, Any]:
+        """Un-isolate an engine (parity with ``runtime unisolate``)."""
+        try:
+            self._runtime.unisolate(engine)
+            return {"success": True, "errors": [], "engine": engine}
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)]}
+
+    def orchestrate_plan(
+        self,
+        name: str | None = None,
+        yaml_path: str | None = None,
+        data: dict[str, Any] | None = None,
+        description: str = "",
+        engine: Any | None = None,
+    ) -> dict[str, Any]:
+        """Create an orchestration plan (parity with ``orchestrate plan``)."""
+        from ai_company.orchestration import OrchestrationEngine
+
+        owns = engine is None
+        try:
+            engine = engine or OrchestrationEngine()
+            plan = engine.plan(
+                name=name, yaml_path=yaml_path, data=data, description=description
+            )
+            return {
+                "success": True,
+                "errors": [],
+                "plan": plan.model_dump(mode="json"),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "plan": None}
+        finally:
+            if owns and engine is not None:
+                try:
+                    engine.close()
+                except Exception:
+                    logger.debug("Orchestration engine close failed", exc_info=True)
+
+    def orchestrate_start(
+        self, plan_id: str, engine: Any | None = None
+    ) -> dict[str, Any]:
+        """Start a planned pipeline (parity with ``orchestrate start``)."""
+        from ai_company.orchestration import OrchestrationEngine
+
+        owns = engine is None
+        try:
+            engine = engine or OrchestrationEngine()
+            plan = next((p for p in engine.list_plans() if p.id == plan_id), None)
+            if plan is None:
+                return {
+                    "success": False,
+                    "errors": [f"Plan not found: {plan_id}"],
+                    "record": None,
+                }
+            record = engine.start(plan)
+            return {
+                "success": True,
+                "errors": [],
+                "record": record.model_dump(mode="json"),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "record": None}
+        finally:
+            if owns and engine is not None:
+                try:
+                    engine.close()
+                except Exception:
+                    logger.debug("Orchestration engine close failed", exc_info=True)
+
+    def orchestrate_resume(
+        self,
+        plan_id: str,
+        checkpoint_id: str | None = None,
+        engine: Any | None = None,
+    ) -> dict[str, Any]:
+        """Resume a paused pipeline (parity with ``orchestrate resume``)."""
+        from ai_company.orchestration import OrchestrationEngine
+
+        owns = engine is None
+        try:
+            engine = engine or OrchestrationEngine()
+            record = engine.resume(plan_id, checkpoint_id=checkpoint_id)
+            return {
+                "success": True,
+                "errors": [],
+                "record": record.model_dump(mode="json"),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "record": None}
+        finally:
+            if owns and engine is not None:
+                try:
+                    engine.close()
+                except Exception:
+                    logger.debug("Orchestration engine close failed", exc_info=True)
+
+    def orchestrate_retry(
+        self, plan_id: str, engine: Any | None = None
+    ) -> dict[str, Any]:
+        """Retry a failed pipeline (parity with ``orchestrate retry``)."""
+        from ai_company.orchestration import OrchestrationEngine
+
+        owns = engine is None
+        try:
+            engine = engine or OrchestrationEngine()
+            record = engine.retry(plan_id)
+            return {
+                "success": True,
+                "errors": [],
+                "record": record.model_dump(mode="json"),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "record": None}
+        finally:
+            if owns and engine is not None:
+                try:
+                    engine.close()
+                except Exception:
+                    logger.debug("Orchestration engine close failed", exc_info=True)
+
+    def orchestrate_rollback(
+        self, plan_id: str, reason: str = "manual rollback", engine: Any | None = None
+    ) -> dict[str, Any]:
+        """Roll back a pipeline (parity with ``orchestrate rollback``)."""
+        from ai_company.orchestration import OrchestrationEngine
+
+        owns = engine is None
+        try:
+            engine = engine or OrchestrationEngine()
+            plan = engine.rollback(plan_id, reason=reason)
+            return {
+                "success": True,
+                "errors": [],
+                "rollback": plan.model_dump(mode="json"),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "rollback": None}
+        finally:
+            if owns and engine is not None:
+                try:
+                    engine.close()
+                except Exception:
+                    logger.debug("Orchestration engine close failed", exc_info=True)
+
+    def memory_save(
+        self,
+        content: dict[str, Any],
+        memory_type: str | None = None,
+        namespace: str | None = None,
+        tags: list[str] | None = None,
+        source: str = "dashboard",
+        importance: float | None = None,
+        memory_engine: Any | None = None,
+        config_path: Path | None = None,
+        storage_path: Path | None = None,
+    ) -> dict[str, Any]:
+        """Save a memory entry (parity with ``ai-company memory save``)."""
+        try:
+            engine = self._memory_engine(memory_engine, config_path, storage_path)
+            entry = engine.save(
+                content=content,
+                memory_type=memory_type or "system",
+                namespace=namespace or "global",
+                tags=tags or [],
+                source=source,
+                importance=importance,
+            )
+            return {"success": True, "errors": [], "entry": entry.to_dict()}
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "entry": None}
+
+    def memory_update(
+        self,
+        memory_id: str,
+        content: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+        importance: float | None = None,
+        memory_engine: Any | None = None,
+        config_path: Path | None = None,
+        storage_path: Path | None = None,
+    ) -> dict[str, Any]:
+        """Update a memory entry (parity with ``ai-company memory update``)."""
+        try:
+            engine = self._memory_engine(memory_engine, config_path, storage_path)
+            entry = engine.update(
+                memory_id,
+                content=content,
+                tags=tags,
+                importance=importance,
+            )
+            return {"success": True, "errors": [], "entry": entry.to_dict()}
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "entry": None}
+
+    def memory_archive(
+        self,
+        memory_id: str,
+        memory_engine: Any | None = None,
+        config_path: Path | None = None,
+        storage_path: Path | None = None,
+    ) -> dict[str, Any]:
+        """Archive a memory entry (parity with ``ai-company memory archive``)."""
+        try:
+            engine = self._memory_engine(memory_engine, config_path, storage_path)
+            archived = engine.archive(memory_id)
+            return {
+                "success": True,
+                "errors": [],
+                "memory_id": memory_id,
+                "archived": bool(archived),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "archived": False}
+
+    def memory_unarchive(
+        self,
+        memory_id: str,
+        memory_engine: Any | None = None,
+        config_path: Path | None = None,
+        storage_path: Path | None = None,
+    ) -> dict[str, Any]:
+        """Un-archive a memory entry (parity with ``ai-company memory unarchive``)."""
+        try:
+            engine = self._memory_engine(memory_engine, config_path, storage_path)
+            unarchived = engine.unarchive(memory_id)
+            return {
+                "success": True,
+                "errors": [],
+                "memory_id": memory_id,
+                "unarchived": bool(unarchived),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "unarchived": False}
+
+    def memory_snapshot(
+        self,
+        name: str | None = None,
+        memory_ids: list[str] | None = None,
+        memory_engine: Any | None = None,
+        config_path: Path | None = None,
+        storage_path: Path | None = None,
+    ) -> dict[str, Any]:
+        """Create a memory snapshot (parity with ``ai-company memory snapshot``)."""
+        from datetime import datetime as _datetime
+
+        try:
+            engine = self._memory_engine(memory_engine, config_path, storage_path)
+            snapshot_name = (
+                name or f"snapshot-{_datetime.now().strftime('%Y%m%d%H%M%S')}"
+            )
+            snapshot_id = engine.snapshot(snapshot_name, memory_ids)
+            return {
+                "success": True,
+                "errors": [],
+                "snapshot_id": snapshot_id,
+                "name": snapshot_name,
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "snapshot_id": None}
+
+    def memory_restore(
+        self,
+        snapshot_id: str,
+        memory_engine: Any | None = None,
+        config_path: Path | None = None,
+        storage_path: Path | None = None,
+    ) -> dict[str, Any]:
+        """Restore from a snapshot (parity with ``ai-company memory restore``)."""
+        try:
+            engine = self._memory_engine(memory_engine, config_path, storage_path)
+            restored = engine.restore_snapshot(snapshot_id)
+            return {
+                "success": True,
+                "errors": [],
+                "snapshot_id": snapshot_id,
+                "restored": int(restored),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "restored": 0}
+
+    def memory_export(
+        self,
+        path: Path | None = None,
+        memory_engine: Any | None = None,
+        config_path: Path | None = None,
+        storage_path: Path | None = None,
+    ) -> dict[str, Any]:
+        """Export memory to JSON (parity with ``ai-company memory export``)."""
+        from datetime import datetime as _datetime
+
+        try:
+            engine = self._memory_engine(memory_engine, config_path, storage_path)
+            target = path or Path(
+                f"generated/exports/memory-{_datetime.now().strftime('%Y%m%d%H%M%S')}.json"
+            )
+            exported = engine.export_to_json(target)
+            return {"success": True, "errors": [], "path": str(exported)}
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "path": None}
+
+    def validate_run(
+        self,
+        company_dir: Path | None = None,
+        config_dir: Path | None = None,
+    ) -> dict[str, Any]:
+        """Authenticated validation run (POST /api/validate).
+
+        Executes the same :class:`ValidatorEngine` pass as the read-only view;
+        the API layer audits this as an operator action (ADR 0010).
+        """
+        return self.validate_read(company_dir=company_dir, config_dir=config_dir)
+
+    def report_generate_write(
+        self,
+        report_type: str = "summary",
+        company_dir: Path | None = None,
+        config_dir: Path | None = None,
+    ) -> dict[str, Any]:
+        """Authenticated on-demand report generation (POST /api/reports/generate).
+
+        Mirrors ``ai-company report generate <type>`` — the CLI renders the
+        report to the console (no file write), so the write surface is the
+        audited on-demand run of the same rendering.
+        """
+        return self.report_generate_read(
+            report_type=report_type, company_dir=company_dir, config_dir=config_dir
+        )
+
+    def build_run(self) -> dict[str, Any]:
+        """Run the artifact build pipeline (parity with ``ai-company build``)."""
+        from ai_company.bootstrap.bootstrap import BootstrapGenerator
+        from ai_company.company.generator import CompanyGenerator
+
+        try:
+            bootstrap = BootstrapGenerator()
+            result = bootstrap.run()
+            if not result.success:
+                return {
+                    "success": False,
+                    "errors": list(result.errors),
+                    "created_files": 0,
+                }
+            company_gen = CompanyGenerator()
+            all_result = company_gen.generate_all()
+            return {
+                "success": True,
+                "errors": [],
+                "warnings": list(all_result.warnings),
+                "created_files": len(all_result.created_files),
+                "summaries": {
+                    name: dict(summary)
+                    for name, summary in all_result.summaries.items()
+                },
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "created_files": 0}
+
+    def bootstrap_run(self) -> dict[str, Any]:
+        """Scaffold + generate the full company (parity with ``bootstrap``)."""
+        return self.build_run()
+
     def close(self) -> None:
         """Best-effort graceful shutdown of the runtime (idempotent)."""
         try:

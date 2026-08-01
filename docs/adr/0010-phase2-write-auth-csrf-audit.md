@@ -1,6 +1,6 @@
 # ADR 0010 — Phase 2 write auth: bearer token (loopback-optional) + CSRF + mandatory write audit
 
-Status: **Proposed** (decision D8)
+Status: **Accepted** (decision D8) — ratified 2026-08-01 with Phase 2 Wave 2a shipment
 Date: 2026-08-01
 Owner: Chief Architect · Reviewers: CISO, Cybersecurity Architecture, Software Engineering
 Related: ADR 0002 (backend), ADR 0003 (services layer), ADR 0009 (API contract, read-vs-write split), ADR 0008 (frontend), `docs/dashboard/parity-matrix-v0.md`
@@ -91,6 +91,39 @@ Negative / tradeoffs:
 - **JWT with expiry:** not needed; opaque token is stateless, revocable by file replacement.
 - **OAuth/OpenID:** beyond scope; localhost only.
 - **Push-based token refresh:** stateless model; token rotation is file replacement.
+
+## Ratification (2026-08-01)
+
+Ratified with the Phase 2 Wave 2a shipment (Sprint 5.2). Implemented surface
+(see `docs/dashboard/phase2-workplan.md` Wave 2a):
+
+- **`src/ai_company/api/auth.py`** — `WriteTokenService` (create/rotate/revoke/
+  verify, constant-time compare, SHA-256 hash-at-rest, env override
+  `AI_ENTERPRISE_WRITE_TOKEN`), `CsrfService` (per-run synchronizer token),
+  `host_allowed()` (loopback-only Host allowlist), fail-open audit publisher
+  to `runtime/.audit.failed.jsonl`.
+- **`src/ai_company/api/write_endpoints.py`** — `GET /api/write-csrf`,
+  `GET /api/audit/writes`, and 20 mutation POSTs: `/api/runtime/{start,stop,
+  restart,reload,recover,unisolate}`, `/api/orchestrate/{plan,start,resume,
+  retry,rollback}`, `/api/memory/{save,update,snapshot,restore,export}`,
+  `/api/memory/{key}/{archive,unarchive}`, `/api/validate`,
+  `/api/reports/generate`, `/api/build`, `/api/bootstrap`. All behind the
+  bearer-token + CSRF guard (`audit.write_rejected` published on rejection).
+- **High-impact actions** (`HIGH_IMPACT_ACTIONS`): `runtime.stop`,
+  `runtime.restart`, `runtime.recover`, `runtime.unisolate`,
+  `orchestrate.rollback` — require a `reason` field (422 otherwise); reason
+  captured in the audit payload.
+- **CLI (additive, ADR 0006):** `ai-company serve --hash-at-rest
+  --require-loopback-token`; `ai-company dashboard token create|revoke|list|
+  info` (value printed only on first-time creation; rotation never echoes).
+- **Tests:** `tests/unit/api/test_auth.py` (18) + `test_write_endpoints.py`
+  (11) — host allowlist, CSRF, rotation semantics, audit payloads, fail-open
+  JSONL, no token/CSRF leakage in rejected payloads. Suite: 1142 → **1171**.
+
+**Deferred to Wave 2b (unchanged by this ratification):** `POST /api/generate`
+(OpenCode dispatch), decision/approval inbox, WS-channel token enforcement for
+non-loopback deployments, company CRUD `PUT /api/company`, agent sync, backup,
+and CLI-telemetry write surfaces.
 
 ## Implementation notes
 

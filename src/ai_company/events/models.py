@@ -126,6 +126,8 @@ class EventType(str, Enum):
 
     # Audit lifecycle
     AUDIT_RECORDED = "audit.recorded"
+    AUDIT_WRITE = "audit.write"
+    AUDIT_WRITE_REJECTED = "audit.write_rejected"
 
     # Event bus lifecycle
     EVENT_PUBLISHED = "event.published"

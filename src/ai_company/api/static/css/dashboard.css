@@ -129,6 +129,46 @@ tr:last-child td { border-bottom: none; }
 .empty { color: var(--text-dim); font-style: italic; padding: 1rem 0; }
 .pending { color: var(--watch); }
 
+/* ── Write actions (Phase 2, ADR 0010: token + CSRF + audit) ─────────────── */
+
+.btn {
+  background: var(--bg-panel-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 0.4rem 0.9rem; font-size: 0.85rem; cursor: pointer;
+}
+.btn:hover { border-color: var(--accent); color: #cfe0ff; text-decoration: none; }
+.btn:disabled { opacity: 0.55; cursor: wait; }
+.btn-danger { border-color: var(--action); color: var(--action); }
+.btn-danger:hover { background: #3a1616; color: var(--action); }
+
+.write-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.write-token-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+#write-token-input {
+  background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 0.4rem 0.6rem; font-family: var(--mono);
+  width: 22rem; max-width: 100%;
+}
+.write-status { display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-dim); }
+.write-status.ok { color: var(--ok); }
+.write-status.err { color: var(--action); }
+.write-status.info { color: var(--watch); }
+
+.write-dialog {
+  background: var(--bg-panel); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1.25rem; max-width: 420px;
+}
+.write-dialog::backdrop { background: rgba(5, 8, 16, 0.7); }
+.write-dialog p { margin: 0 0 0.75rem; }
+.write-dialog-label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.35rem; }
+.write-dialog-reason {
+  width: 100%; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 0.4rem 0.6rem; font-family: var(--mono); margin-bottom: 0.75rem;
+}
+.write-dialog-reason[aria-invalid="true"] { border-color: var(--action); }
+.write-dialog-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+
 /* ── Spacing utilities (no inline styles: CSP style-src 'self') ───────── */
 
 .mt-1 { margin-top: 1rem; }

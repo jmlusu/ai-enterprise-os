@@ -59,7 +59,9 @@ def test_index(client: TestClient) -> None:
     assert "text/html" in resp.headers["content-type"]
 
     api = client.get("/api").json()
-    assert api["read_only"] is True
+    # Phase 2 (ADR 0010): the surface now carries a guarded write set.
+    assert api["read_only"] is False
+    assert api["write"]["csrf"] == "/api/write-csrf"
     assert api["endpoints"]["websocket"].startswith("/api/ws")
 
 

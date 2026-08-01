@@ -9,6 +9,7 @@ import typer
 from ai_company.bootstrap.bootstrap import BootstrapGenerator
 from ai_company.cli.command_map import load_command_map, resolve_target
 from ai_company.cli.groups import company_cli as company_group
+from ai_company.cli.groups import dashboard as dashboard_group
 from ai_company.cli.groups import executive as executive_group
 from ai_company.cli.groups import graph as graph_group
 from ai_company.cli.groups import memory as memory_group
@@ -28,6 +29,7 @@ app = typer.Typer()
 configure_console()
 
 app.add_typer(company_group.app, name="company")
+app.add_typer(dashboard_group.app, name="dashboard")
 app.add_typer(executive_group.app, name="exec")
 app.add_typer(registry_group.app, name="registry")
 app.add_typer(memory_group.app, name="memory")
@@ -295,24 +297,56 @@ def serve(
     config_dir: str = typer.Option(
         "config", "--config-dir", help="Directory containing the runtime/ config"
     ),
+    hash_at_rest: bool = typer.Option(
+        False,
+        "--hash-at-rest",
+        help="Store the write token as a SHA-256 digest (ADR 0010 section 1)",
+    ),
+    require_loopback_token: bool = typer.Option(
+        False,
+        "--require-loopback-token",
+        help="Demand a valid write token even on loopback (ADR 0010 section 1)",
+    ),
 ) -> None:
-    """Start the dashboard API server (read-only contract v1).
+    """Start the dashboard API server (read + guarded writes, ADR 0010).
 
-    Boots the runtime (if needed), serves the read-only REST + WebSocket
-    API on http://<host>:<port>/, and shuts the runtime down on exit.
+    Boots the runtime (if needed), serves the REST + WebSocket API on
+    http://<host>:<port>/, and shuts the runtime down on exit. Write
+    endpoints require the bearer token (mandatory on non-loopback hosts,
+    opt-in on loopback via ``--require-loopback-token``) plus the per-run
+    CSRF token from ``GET /api/write-csrf`` echoed in ``X-CSRF-Token``.
     Imports are lazy so ``ai-company --help`` stays fast.
     """
     import uvicorn
 
     from ai_company.api.app import create_app
+    from ai_company.api.auth import WriteTokenService
     from ai_company.services.runtime_facade import RuntimeFacade
 
     facade = RuntimeFacade(config_dir=config_dir)
-    app = create_app(facade=facade, config_dir=config_dir)
+    tokens = WriteTokenService(hash_at_rest=hash_at_rest)
+    if require_loopback_token and not tokens.has_token():
+        created = tokens.create()
+        if created is not None:
+            console_print(
+                "[yellow]Write token created (store it — never shown again):[/yellow]"
+            )
+            console_print(f"  [bold cyan]{created}[/bold cyan]")
+    app = create_app(
+        facade=facade,
+        config_dir=config_dir,
+        tokens=tokens,
+        require_loopback_token=require_loopback_token,
+    )
     console_print(f"[cyan]Dashboard API:[/cyan] http://{host}:{port}/")
+    token_mode = (
+        "required (loopback enforcement on)"
+        if require_loopback_token
+        else "optional on loopback, required on non-loopback hosts"
+    )
     console_print(
-        f"[dim]Read-only contract v1 - WebSocket http://{host}:{port}/api/ws "
-        "(Ctrl-C to stop)[/dim]"
+        f"[dim]Write auth (ADR 0010): token {token_mode}; "
+        "CSRF via GET /api/write-csrf -> X-CSRF-Token header[/dim]"
     )
     try:
         uvicorn.run(app, host=host, port=port, log_level="info", access_log=True)

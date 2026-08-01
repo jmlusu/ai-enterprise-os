@@ -4,6 +4,14 @@
 {% block subtitle %}Configuration validation gate{% endblock %}
 
 {% block content %}
+<div class="card mb-1">
+  <h2>Run the gate <span class="subtitle">(audited, ADR 0010)</span></h2>
+  <div class="write-actions">
+    <button type="button" class="btn" data-write="/api/validate" data-action="validate.run" data-prompt="Run the validation gate?">Run validation</button>
+  </div>
+  <p class="subtitle mt-1">Re-runs the same validation pass as an audited operator action.</p>
+</div>
+
 <div class="card">
   <h2>Validation gate</h2>
   {% if validation %}

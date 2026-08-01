@@ -83,6 +83,7 @@ def test_dashboard_pages_render(client: TestClient) -> None:
         "/agents",
         "/runs",
         "/memory",
+        "/writes",
         "/reports",
         "/validation",
         "/registry",

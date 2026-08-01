@@ -33,19 +33,27 @@
     <h2>Engine states</h2>
     {% if engine_states %}
     <table>
-      <thead><tr><th>Engine</th><th>Phase</th><th>Healthy</th></tr></thead>
+      <thead><tr><th>Engine</th><th>Phase</th><th>Healthy</th><th>Actions</th></tr></thead>
       <tbody>
         {% for state in engine_states %}
+        {% set engine_name = state.get("name", state.get("engine", "")) %}
         <tr>
-          <td>{{ state.get("name", state.get("engine", "?")) }}</td>
-          <td>{{ state.get("phase", "â€”") }}</td>
-          <td>{{ state.get("healthy", "â€”") }}</td>
+          <td>{{ engine_name or "?" }}</td>
+          <td>{{ state.get("phase", "—") }}</td>
+          <td>{{ state.get("healthy", "—") }}</td>
+          <td>
+            <div class="write-actions">
+              <button type="button" class="btn" data-write="/api/runtime/recover" data-action="runtime.recover" data-high-impact="1" data-prompt="Recover this engine?" data-body='{{ {"engine": engine_name} | tojson }}'>Recover</button>
+              <button type="button" class="btn" data-write="/api/runtime/unisolate" data-action="runtime.unisolate" data-high-impact="1" data-prompt="Un-isolate this engine?" data-body='{{ {"engine": engine_name} | tojson }}'>Un-isolate</button>
+            </div>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+    <p class="subtitle mt-1">Recover/un-isolate are high-impact audited actions (ADR 0010 §5) — a reason is required.</p>
     {% else %}
-    <p class="pending">Data pending â€” engine state table is empty.</p>
+    <p class="pending">Data pending — engine state table is empty.</p>
     {% endif %}
   </div>
 </div>

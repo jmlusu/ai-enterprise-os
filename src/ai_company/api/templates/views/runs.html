@@ -22,19 +22,27 @@
   <h2>Execution history</h2>
   {% if history and history.get("records") %}
   <table>
-    <thead><tr><th>Plan</th><th>Status</th><th>Started</th></tr></thead>
+    <thead><tr><th>Plan</th><th>Status</th><th>Started</th><th>Actions</th></tr></thead>
     <tbody>
       {% for rec in history["records"] %}
+      {% set plan_id = rec.get("plan_id") or rec.get("id") or "" %}
       <tr>
-        <td class="mono">{{ rec.get("plan_id", rec.get("id", "â€”")) }}</td>
+        <td class="mono">{{ plan_id or "—" }}</td>
         <td><span class="chip {{ rec.get('status', 'unknown') }}">{{ rec.get("status", "unknown") }}</span></td>
-        <td class="mono">{{ (rec.get("started_at") or rec.get("created_at") or "â€”") | string | truncate(24) }}</td>
+        <td class="mono">{{ (rec.get("started_at") or rec.get("created_at") or "—") | string | truncate(24) }}</td>
+        <td>
+          <div class="write-actions">
+            <button type="button" class="btn" data-write="/api/orchestrate/retry" data-action="orchestrate.retry" data-prompt="Retry this pipeline?" data-body='{{ {"plan_id": plan_id} | tojson }}'>Retry</button>
+            <button type="button" class="btn btn-danger" data-write="/api/orchestrate/rollback" data-action="orchestrate.rollback" data-high-impact="1" data-prompt="Roll back this pipeline?" data-body='{{ {"plan_id": plan_id} | tojson }}'>Rollback</button>
+          </div>
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  <p class="subtitle mt-1">Retry/rollback are audited operator actions (ADR 0010); rollback requires a reason.</p>
   {% else %}
-  <p class="pending">Data pending â€” no execution records yet (read-only view; runs appear here once executed).</p>
+  <p class="pending">Data pending — no execution records yet (read-only view; runs appear here once executed).</p>
   {% endif %}
 </div>
 {% endblock %}

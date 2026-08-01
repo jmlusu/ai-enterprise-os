@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Write History — AI Enterprise OS{% endblock %}
+{% block heading %}Write History{% endblock %}
+{% block subtitle %}Guarded operator actions — token, CSRF, audit (ADR 0010){% endblock %}
+
+{% block content %}
+<div class="card mb-1">
+  <h2>Write token</h2>
+  <p class="subtitle">
+    Optional on loopback (ADR 0010 §1). If the server runs with
+    <span class="mono">--require-loopback-token</span>, paste the token printed
+    at boot here. The token is stored in this browser only.
+  </p>
+  <div class="write-token-row">
+    <input id="write-token-input" type="password" placeholder="Bearer token (optional)" autocomplete="off">
+    <button id="write-token-save" type="button" class="btn">Save token</button>
+    <button id="write-token-clear" type="button" class="btn">Clear</button>
+  </div>
+  <span id="write-status" class="write-status"></span>
+</div>
+
+<div class="card mb-1">
+  <h2>Operator actions</h2>
+  <p class="subtitle">
+    Every mutation is audited. Stop/restart require a reason (high-impact, ADR 0010 §5).
+  </p>
+  <div class="write-actions">
+    <button type="button" class="btn" data-write="/api/runtime/start" data-action="runtime.start" data-prompt="Start the runtime?">Start runtime</button>
+    <button type="button" class="btn btn-danger" data-write="/api/runtime/stop" data-action="runtime.stop" data-high-impact="1" data-prompt="Stop the runtime?">Stop runtime</button>
+    <button type="button" class="btn btn-danger" data-write="/api/runtime/restart" data-action="runtime.restart" data-high-impact="1" data-prompt="Restart the runtime?">Restart runtime</button>
+    <button type="button" class="btn" data-write="/api/runtime/reload" data-action="runtime.reload" data-prompt="Hot-reload runtime configuration?">Reload config</button>
+    <button type="button" class="btn" data-write="/api/validate" data-action="validate.run" data-prompt="Run the validation gate?">Run validation</button>
+    <button type="button" class="btn" data-write="/api/build" data-action="build.run" data-prompt="Run the artifact build?">Run build</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Audit log <span class="subtitle">audit.write / audit.write_rejected</span></h2>
+  <table>
+    <thead>
+      <tr><th>Timestamp</th><th>Status</th><th>Action</th><th>Result</th><th>Reason</th><th>Detail</th></tr>
+    </thead>
+    <tbody id="write-history-tbody"></tbody>
+  </table>
+</div>
+{% endblock %}

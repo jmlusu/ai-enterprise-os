@@ -47,12 +47,16 @@
 </div>
 
 <div class="card mt-1">
-  <h2>Available report types</h2>
+  <h2>Available report types <span class="subtitle">(generate on demand, audited)</span></h2>
   {% if report_types %}
-  <p>{% for t in report_types %}<span class="tag">{{ t }}</span>{% endfor %}</p>
-  <p class="subtitle">Detailed report and health report render below (data pending until generated in Phase 2).</p>
+  <div class="write-actions mb-1">
+    {% for t in report_types %}
+    <button type="button" class="btn" data-write="/api/reports/generate" data-action="reports.generate" data-prompt="Generate the {{ t }} report?" data-body='{{ {"report_type": t} | tojson }}'>Generate {{ t }}</button>
+    {% endfor %}
+  </div>
+  <p class="subtitle">Generation is an audited operator action (ADR 0010).</p>
   {% else %}
-  <p class="pending">Data pending â€” no report types known.</p>
+  <p class="pending">Data pending — no report types known.</p>
   {% endif %}
 </div>
 {% endblock %}

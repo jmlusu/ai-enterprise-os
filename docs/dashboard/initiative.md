@@ -1,6 +1,6 @@
 # Initiative: GUI Dashboard + OpenCode Desktop as Command Centers
 
-Status: **ACTIVE — Phase 1 DONE (read-only dashboard v1 shipped 2026-08-01); Phase 2 (operational/write) next**
+Status: **ACTIVE — Phase 1 DONE (read-only dashboard v1 shipped 2026-08-01); Phase 2 Wave 2a (write auth + operational writes) SHIPPED 2026-08-01; Wave 2b (generate dispatcher + approval inbox) next**
 Owner: Chief Architect (opencode/big-pickle) · Ratified by: CEO / CIO / CTO / CAIO / CDO / SWE
 Last updated: 2026-08-01
 
@@ -107,11 +107,28 @@ complete; drills run live (restore 397/397 files, recovery restart-before-isolat
 
 ### Phase 2 — Operational dashboard (4–6 wks) — the actual pivot
 
-`[NOT STARTED]`
+`[IN PROGRESS]` — **Wave 2a SHIPPED 2026-08-01** (ADR 0010 ratified; §7.8).
 
-- Write actions with confirm dialogs: start/stop/restart/reload runtime, run validator, resume/retry/rollback pipelines.
-- Generate dispatcher → streams to OpenCode, run history, live logs; write-auth token + CSRF + audit hook on every write.
-- Decision/approval inbox — decision engine (risk scoring, approval matrix, escalation) rendered as visual approval cards. **Killer feature:** the governance brain exists; the GUI becomes its renderer.
+- ✅ Write-auth security scheme live (ADR 0010): opaque 256-bit bearer token
+  (`runtime/.write_token`, env override, optional SHA-256 hash-at-rest),
+  per-run CSRF synchronizer token (`GET /api/write-csrf` + `X-CSRF-Token`),
+  mandatory `audit.write` / `audit.write_rejected` audit on every mutation
+  (fail-open JSONL; rejected payloads never leak token/CSRF). Non-loopback
+  Hosts fail closed; loopback is token-optional with `--require-loopback-token`.
+- ✅ Mutation endpoints live (20 POSTs): runtime start/stop/restart/reload/
+  recover/unisolate, orchestrate plan/start/resume/retry/rollback, memory
+  save/update/snapshot/restore/export/archive/unarchive, validate, reports
+  generate, build, bootstrap. High-impact actions (stop/restart/recover/
+  unisolate/rollback) require a `reason` (422 otherwise).
+- ✅ Dashboard buttons + confirm dialogs (Write History page, reason prompts);
+  token saved per-browser (localStorage), CSRF fetched per action, CSP-safe JS.
+- ✅ Additive CLI: `ai-company dashboard token create|revoke|list|info` +
+  `serve --hash-at-rest` / `--require-loopback-token` (ADR 0006).
+- ✅ Suite 1142 → **1171 tests green**; ruff/mypy/format/lock/audit clean.
+- ⬜ **Wave 2b (next):** generate dispatcher → OpenCode with run history + live
+  logs (`POST /api/generate`, streaming), decision/approval inbox (decision
+  engine → visual approval cards), per-artifact company validators, graph
+  export, company CRUD write, WS-channel token enforcement for non-loopback.
 - **Exit:** an operator runs a full generate → review → validate → approve loop without opening a terminal.
 
 ### Phase 3 — OpenCode desktop as first-class command center (3–4 wks)
@@ -144,7 +161,7 @@ complete; drills run live (restore 397/397 files, recovery restart-before-isolat
 | R6 | Data loss (all state gitignored, single machine) | High | Nightly backup bundle + quarterly restore drill + backup tile with alerting | **[PARTIALLY MITIGATED]** — nightly bundle + restore drill done 2026-08-01; backup tile with alerting is Phase 2 dashboard work |
 | R7 | Scope creep (console becomes mini-ERP) | Medium | CEO's NOT-do list: no SaaS/multi-tenant, no visual pipeline-builder v1, no own agent runtime, ≤30% effort on UI, no new metrics until serving layer lands | **[OPEN]** |
 | R8 | Breaking 500+ tests / CI regression | High | Additive-only refactor; engines untouched; CLI surface frozen; full suite green each sprint; parity is a release blocker | **[PARTIALLY MITIGATED]** — guardrails confirmed (engines unchanged in 0.1); **Phase 1 landed additive-only: 1070 → 1142 tests green on Linux + Windows, no CLI or engine changes** |
-| R9 | Localhost security (web server = new attack surface) | Medium-High | Bind 127.0.0.1 only; Host-header + CORS checks; token mode when non-loopback; keys in OS keyring, never rendered; CSP; DOMPurify on all Markdown | **[PARTIALLY MITIGATED]** — loopback bind + Host allowlist + **scoped page CSP (script-src 'self', no unsafe-inline; API stays default-src 'none')** + DOMPurify on all rendered Markdown/Mermaid (verified in tests + live smoke); token mode for non-loopback remains Phase 2 (ADR 0010) |
+| R9 | Localhost security (web server = new attack surface) | Medium-High | Bind 127.0.0.1 only; Host-header + CORS checks; token mode when non-loopback; keys in OS keyring, never rendered; CSP; DOMPurify on all Markdown | **[MITIGATED]** — loopback bind + Host allowlist + scoped page CSP + DOMPurify (Phase 1) **+ ADR 0010 shipped Wave 2a (2026-08-01):** fail-closed non-loopback token mode, loopback token-optional with `--require-loopback-token`, per-run CSRF, mandatory write audit, hash-at-rest option; keys never rendered (keyring intentionally not used per ADR 0010 — CISO preference, single-platform portability); token value printed only on first-time creation |
 | R10 | Windows/uvicorn issues | Medium | Plain uvicorn (no uvloop), explicit port + friendly errors, `proc.terminate()` not `os.kill`, add windows-latest CI job | **[MITIGATED]** — windows-latest CI job added 2026-08-01; plain uvicorn + `proc.terminate()` enforced; explicit port + friendly errors land with `ai-company serve` (Phase 1) |
 | R11 | User confusion during transition | High | Category rule: read = dashboard, safe write = both, destructive/bulk = CLI-only; "Equivalent CLI command" tooltips; persona onboarding (View/Operate/Develop); frozen CLI | **[PARTIALLY MITIGATED]** — category rule codified in parity matrix v0; **"Equivalent CLI command" tooltips on every Phase 1 view**; persona onboarding remains Phase 2/3 |
 | R12 | Misleading statuses (four overlapping vocabularies; stopped ≠ broken) | Medium | One canonical four-state system (All good / Watch / Needs action / Unknown); every status time-stamped; color + icon + text, never color alone | **[PARTIALLY MITIGATED]** — **four-state vocabulary + timestamps + color/icon/text implemented across all Phase 1 views** (app.js staleness classes at 3x/6x poll interval); canonical status service for all surfaces remains with the status model work |
@@ -160,6 +177,7 @@ complete; drills run live (restore 397/397 files, recovery restart-before-isolat
 | D3 | API contract: REST + WebSocket, `?since=` replay reconnect | (ratified model) | **[DECIDED]** | ADR 0009 accepted; contract v1 shipped (Phase 1 wave 1); **Phase 1 wave 2 extended the read surface to all parity P1 rows (19 new endpoints)** |
 | D4 | Dispatch model variance | `opencode/north-mini-code-free` (desktop-first, no key) vs `ollama/llama3.1:8b` (local default) | **[DECIDED]** | Per-target entries retained; command map is an enforced contract (ADR 0006); `architect` agent defined |
 | D5 | North-star metric | **Recommendation: share of operator actions via Dashboard/OpenCode desktop, target ≥80% by month 6, measured by Phase-0 telemetry** | **[OPEN]** | Needs CEO sign-off |
+| D8 | Phase 2 write auth scheme | (ratified model: opaque bearer token + double-submit CSRF + mandatory write audit; fail-closed non-loopback; optional hash-at-rest; high-impact reason requirement) | **[DECIDED]** | **ADR 0010 accepted 2026-08-01** and shipped with Wave 2a (Sprint 5.2); CISO / Cybersecurity Architecture / Software Engineering reviewed |
 
 ---
 
@@ -202,6 +220,44 @@ Root cause on record: `runtime_state.json` shows all 5 engines `failed`/`heartbe
 - **WS-3.0 frontend shell (ADR 0008 v1):** vendored htmx 1.9.12 + ws ext, marked 12.0.2, DOMPurify 3.1.6, mermaid 10.9.1 (`static/vendor/` + provenance `README.md`); `dashboard.css` + `app.js` (WS auto-reconnect, `?since=` replay, dedupe by `event_id`, staleness classes, marked+DOMPurify, mermaid render). **Scoped page CSP** (`default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' ws:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`) — API responses keep `default-src 'none'`.
 - **WS-4.0/5.0:** all 8 views live (Pulse, System Health, Agents, Runs & History, Memory, Reports, Validation, Registry/Org graph); ≤5s refresh via WS + poll ticker; honest four-state statuses (R12), "data pending" for telemetry gaps (R5).
 - **WS-6.0:** parity test suite seed (`tests/golden/test_parity_read.py`, 9 tests — CLI output == API JSON for registry/exec/graph/targets/validate/doctor); full suite **1070 → 1142 tests green** (Linux + Windows, ruff/mypy/format/lock/audit/build/validate all green); live smoke of all 11 routes with correct scoped CSP. **No CLI or engine changes** (ADR 0005/0006 respected).
+
+### 7.8 Phase 2 Wave 2a close-out — write auth + operational writes (2026-08-01)
+
+- **ADR 0010 ratified** (Proposed → Accepted, decision D8) and shipped in the
+  same change. Security scheme: opaque `secrets.token_urlsafe(32)` bearer token
+  (`runtime/.write_token`, env override `AI_ENTERPRISE_WRITE_TOKEN`, optional
+  SHA-256 hash-at-rest via `--hash-at-rest`), per-run CSRF synchronizer token
+  (`GET /api/write-csrf`, echoed in `X-CSRF-Token`), mandatory
+  `audit.write`/`audit.write_rejected` on every mutation (fail-open to
+  `runtime/.audit.failed.jsonl` — never blocks localhost writes; rejected
+  payloads never include the submitted token/CSRF).
+- **Write guard (R9 closure):** non-loopback Host → token mandatory
+  (fail-closed); loopback → token optional unless `--require-loopback-token`;
+  provided token must verify (else 401); CSRF missing/mismatch → 403.
+  `host_allowed()` allowlist = `{"127.0.0.1","localhost","::1","[::1]"}` (bare
+  `::1` rejected per RFC 3986 — `[::1]:port` required).
+- **High-impact actions** (`HIGH_IMPACT_ACTIONS`): `runtime.stop`,
+  `runtime.restart`, `runtime.recover`, `runtime.unisolate`,
+  `orchestrate.rollback` — require a `reason` field (422 otherwise); reason is
+  captured in the audit payload.
+- **Facade write adapters** appended to `RuntimeFacade` (auth enforced at the
+  API layer, not the facade — engines untouched, ADR 0005/0006): runtime
+  start/stop/restart/reload/recover/unisolate; orchestrate plan/start/resume/
+  retry/rollback; memory save/update/snapshot/restore/export/archive/unarchive;
+  validate run; report generate; build; bootstrap.
+- **Frontend:** Write History page (`/writes`) with token input + audit table;
+  operator action buttons with native confirm dialogs (reason required for
+  high-impact); CSP-safe JS (DOM textContent only, no innerHTML).
+- **CLI (additive):** `ai-company serve --hash-at-rest --require-loopback-token`;
+  `ai-company dashboard token create|revoke|list|info` — value printed only on
+  first-time creation; rotation never echoes the new value (verified by test);
+  env-managed tokens refuse CLI revoke.
+- **Tests:** `tests/unit/api/test_auth.py` (18) + `test_write_endpoints.py`
+  (11) — host allowlist incl. `[::1]:8000` / rejection of bare `::1` and
+  `127.0.0.1.evil.com`, CSRF roundtrip, rotation semantics, hash-at-rest,
+  fail-open JSONL, audit payloads, no token/CSRF leakage, `require_loopback_token`
+  mode. Full suite **1142 → 1171 green**; ruff/mypy/format/uv-lock/uv-audit
+  clean; parity matrix P2 rows → `1+2` (Wave 2a subset; generate rows → `2b`).
 
 ---
 

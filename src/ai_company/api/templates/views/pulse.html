@@ -29,6 +29,17 @@
   </div>
 </div>
 
+<div class="card mb-1">
+  <h2>Runtime actions <span class="subtitle">(audited, ADR 0010)</span></h2>
+  <div class="write-actions">
+    <button type="button" class="btn" data-write="/api/runtime/start" data-action="runtime.start" data-prompt="Start the runtime?">Start</button>
+    <button type="button" class="btn btn-danger" data-write="/api/runtime/stop" data-action="runtime.stop" data-high-impact="1" data-prompt="Stop the runtime?">Stop</button>
+    <button type="button" class="btn btn-danger" data-write="/api/runtime/restart" data-action="runtime.restart" data-high-impact="1" data-prompt="Restart the runtime?">Restart</button>
+    <button type="button" class="btn" data-write="/api/runtime/reload" data-action="runtime.reload" data-prompt="Hot-reload runtime configuration?">Reload</button>
+  </div>
+  <p class="subtitle mt-1">Stop/restart require a reason. Results appear in Write History.</p>
+</div>
+
 <div class="grid cols-2 mt-1">
   <div class="card">
     <h2>System check</h2>
@@ -46,13 +57,13 @@
       </tbody>
     </table>
     {% else %}
-    <p class="pending">Data pending â€” health probes have not run yet.</p>
+    <p class="pending">Data pending — health probes have not run yet.</p>
     {% endif %}
   </div>
   <div class="card">
     <h2>Live events</h2>
     <div id="event-feed" class="event-feed">
-      <p class="empty">Waiting for eventsâ€¦</p>
+      <p class="empty">Waiting for events…</p>
     </div>
   </div>
 </div>

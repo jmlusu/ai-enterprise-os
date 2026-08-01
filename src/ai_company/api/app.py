@@ -1,10 +1,12 @@
-"""Dashboard API — read-only contract v1 (FastAPI + WebSocket bridge).
+"""Dashboard API — read contract v1 + guarded write surface (FastAPI + WebSocket).
 
 ADR 0002: FastAPI + plain uvicorn (no uvloop — Windows-safe). ADR 0009:
-contract v1 is read-only REST + WebSocket push; write endpoints arrive in
-Phase 2 with token auth, CSRF headers, and audit events. The runtime is
-thread-based, so every synchronous runtime call is bridged through
-``run_in_threadpool`` and never blocks on runtime locks directly.
+contract v1 is REST + WebSocket push. Phase 2 (ADR 0010, wave 2a) adds the
+write surface — every mutation is guarded by the bearer token, the per-run
+CSRF synchronizer token, and mandatory ``audit.write`` / ``audit.write_rejected``
+events. The runtime is thread-based, so every synchronous runtime call is
+bridged through ``run_in_threadpool`` and never blocks on runtime locks
+directly.
 """
 
 from __future__ import annotations
@@ -31,6 +33,8 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from ai_company.api.auth import CsrfService, WriteTokenService
+from ai_company.api.write_endpoints import register_write_endpoints
 from ai_company.events import Event, ReplayRequest
 from ai_company.services.dashboard_events import DashboardEventBridge
 from ai_company.services.runtime_facade import RuntimeFacade
@@ -164,6 +168,10 @@ def create_app(
     facade: RuntimeFacade | None = None,
     config_dir: str = "config",
     auto_start: bool = True,
+    *,
+    tokens: WriteTokenService | None = None,
+    csrf_token: str | None = None,
+    require_loopback_token: bool = False,
 ) -> FastAPI:
     """Build the dashboard API application.
 
@@ -172,8 +180,17 @@ def create_app(
         config_dir: Directory containing ``config/runtime/*.yaml``.
         auto_start: Boot the runtime on startup and stop it on shutdown.
             Tests pass ``False`` and drive the runtime themselves.
+        tokens: Write-token service (ADR 0010). Defaults to a service backed
+            by ``runtime/.write_token`` (relative to the working directory).
+        csrf_token: Fixed per-run CSRF synchronizer token (ADR 0010 §2).
+            Tests pass a known value; production derives one at boot.
+        require_loopback_token: Demand a valid bearer token even for loopback
+            Host headers (ADR 0010 §1 opt-in; non-loopback hosts are always
+            token-mandatory and fail closed).
     """
     facade = facade or RuntimeFacade(config_dir=config_dir)
+    tokens = tokens or WriteTokenService()
+    csrf = CsrfService(token=csrf_token)
     bridge_state: dict[str, DashboardEventBridge | None] = {"bridge": None}
 
     @asynccontextmanager
@@ -331,6 +348,15 @@ def create_app(
             ),
         )
 
+    @app.get("/writes", response_class=HTMLResponse, include_in_schema=False)
+    async def writes_view(request: Request) -> HTMLResponse:
+        """Write History page (Phase 2, ADR 0010 — guarded operator actions)."""
+        return templates.TemplateResponse(
+            request,
+            "views/writes.html",
+            _view_context(request, "writes"),
+        )
+
     @app.get("/reports", response_class=HTMLResponse, include_in_schema=False)
     async def reports_view(request: Request) -> HTMLResponse:
         """Reports page."""
@@ -383,7 +409,18 @@ def create_app(
         return {
             "service": _SERVICE_NAME,
             "version": _SERVICE_VERSION,
-            "read_only": True,
+            "read_only": False,
+            "write": {
+                "csrf": "/api/write-csrf",
+                "audit_history": "/api/audit/writes?limit=<n>",
+                "runtime": "/api/runtime/{start|stop|restart|reload|recover|unisolate}",
+                "orchestrate": "/api/orchestrate/{plan|start|resume|retry|rollback}",
+                "memory": "/api/memory/{save|update|snapshot|restore|export|{key}/archive|{key}/unarchive}",
+                "validate": "/api/validate",
+                "reports": "/api/reports/generate",
+                "build": "/api/build",
+                "bootstrap": "/api/bootstrap",
+            },
             "endpoints": {
                 "health": "/api/health",
                 "status": "/api/status",
@@ -412,6 +449,12 @@ def create_app(
                 "websocket": "/api/ws?since=<iso8601>",
                 "docs": "/api/docs",
             },
+            "auth": (
+                "Write endpoints require the bearer token (mandatory on "
+                "non-loopback hosts; optional on loopback unless "
+                "--require-loopback-token) plus the per-run CSRF token from "
+                "GET /api/write-csrf echoed in X-CSRF-Token (ADR 0010)."
+            ),
             "reconnect": (
                 "WebSocket clients pass ?since=<iso8601>; the server replays "
                 "matching events then streams live (deduplicate by event_id)."
@@ -638,5 +681,22 @@ def create_app(
             pass  # client went away; teardown below
         finally:
             bridge.unsubscribe_client(client_id)
+
+    # ── Phase 2 (WS-2.1, ADR 0010): guarded write surface ─────────────────
+    # Bearer token + per-run CSRF synchronizer + mandatory audit events.
+    # Registered last: the read-only routes above keep their paths, and the
+    # mutation routes use POST (no method collisions with the GET contract).
+    register_write_endpoints(
+        app,
+        facade=facade,
+        tokens=tokens,
+        csrf=csrf,
+        require_loopback_token=require_loopback_token,
+    )
+
+    # Expose the auth services on app.state for tests and operational checks.
+    app.state.write_tokens = tokens
+    app.state.csrf_token = csrf.token
+    app.state.require_loopback_token = require_loopback_token
 
     return app
