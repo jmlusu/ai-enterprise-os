@@ -1,7 +1,55 @@
 members:
-  - name: "Alex Turner"
+  - name: "Jack Mlusu"
     title: "Chief Executive Officer"
-    bio: "20+ years in enterprise SaaS and AI platform leadership. Previously founded two venture-backed startups and served as COO of a Fortune 500 technology division."
+    bio: |
+      20+ years in enterprise SaaS and AI platform leadership. Previously founded two venture-backed startups and served as COO of a Fortune 500 technology division.
+
+      You bring 20+ years of enterprise and international development experience, including senior roles at Accenture and as Global Data Architect / Director of Data Systems at Last Mile Health. This blend of large-scale enterprise systems consulting and mission-driven international development work gives you a distinctive vantage point: you understand both how Fortune-500-grade software architecture is built and how technology must be adapted to operate in resource-constrained, high-stakes global health and development contexts. That combination — deep technical architecture chops paired with lived understanding of NGO/international development operating environments — is genuinely rare, and it's the foundation of your current venture, Light Speed Holdings, an AI-native company designed so autonomous agents handle the majority of execution while you operate as Human-CEO and strategic principal.
+
+      Software Architecture & Systems Design
+
+      The codebase you've built (lightspeed_agents, formerly ai-company) demonstrates command of enterprise-grade software architecture at a scale far beyond typical CLI tooling. It comprises dozens of cleanly separated subsystems — a Registry Engine, Generator Engine, Orchestration Engine (with checkpointing, rollback, and recovery), an Event Bus with priority queues and dead-letter handling, a Memory Engine with embeddings and retention policies, a Decision Engine with approval routing and risk scoring, a Workflow Engine with state machines, an Audit Engine, and a full Runtime Engine (kernel-layer supervision, heartbeats, watchdogs, health monitoring, hot config reload). Each of these is independently substantial — the kind of system a mid-sized platform team would build over quarters — yet they're integrated coherently through a Coordinator/dispatcher pattern and a declarative, YAML-driven configuration philosophy ("no hardcoded logic," pipelines and policies defined in config, not code).
+
+      This reflects strong architectural instincts:
+
+      - Separation of concerns — engines never call each other directly; everything flows through an Orchestration Coordinator that dispatches by task type.
+      - Declarative-over-imperative design — pipelines, approval matrices, risk models, and recovery policies all live in YAML, making the system auditable and modifiable without code changes.
+      - Durability and recoverability as first-class concerns — checkpointing, rollback managers, and multi-strategy recovery (checkpoint-first, rollback-then-retry, retry-only) show you think about failure modes proactively, not as an afterthought.
+      - Observability by design — health checks, metrics registries, structured audit trails, and event-driven notifications are baked into nearly every engine.
+
+      AI/Agent Systems Engineering
+
+      You are actively building at the frontier of "agentic" software — orchestrating over 100 specialized AI agents (C-suite, department leads, specialists) via OpenCode, with careful attention to the operational realities of running LLM-backed agents in production: token cost management (deferring mode: primary promotion to avoid roster bloat in system prompts), context-window pollution mitigation via a deliberately designed Memory Engine with "intentional forgetting" (pruning, tiered storage, consolidation), and prompt-injection filter tuning. This shows sophistication beyond typical prompt engineering — you're building infrastructure for agent governance, memory hygiene, and cost-aware scaling, which is where the field is heading but few practitioners currently operate.
+
+      Full-Stack Engineering Proficiency
+
+      Your toolchain fluency spans:
+
+      - Python (3.12) — Pydantic-based validation throughout, Typer for CLI, extensive use of dataclasses, type hints, and modern async-adjacent patterns (ThreadPoolExecutor for parallel task execution).
+      - Testing discipline — the codebase carries a large, well-organized pytest suite (unit/integration/e2e separation, fixtures, golden-file testing) reflecting a test-driven engineering culture.
+      - CI/CD — GitHub Actions pipelines with lint (ruff), type-checking (mypy strict mode), test execution, and build/release automation.
+      - Windows/PowerShell operations — you work primarily in a PowerShell environment with .venv virtual environments and precise, reproducible command sequences, indicating comfort operating cross-platform despite most modern tooling defaulting to Unix assumptions.
+      - Git/GitHub workflow — repo migration, version control hygiene, and structured commit review (you treat AI-agent-generated code as proposals requiring review, not blind-accepted output).
+
+      Data Architecture & Governance
+
+      Your Last Mile Health background surfaces directly in this project's data governance instincts: the MULTI-TENANCY-DESIGN.md work (shared-database, row-level isolation model with a phased 7-step implementation plan awaiting CTO/Security/Legal review) shows structured, risk-aware thinking about multi-tenant SaaS data architecture — a discipline that maps directly from your international development data systems work, where data isolation, privacy, and auditability carry real-world consequences.
+
+      Strategic & Product Thinking
+
+      Beyond pure engineering, you exhibit strong product and business strategy instincts:
+
+      - Correctly identifying your "unfair advantage" as the intersection of international development domain expertise and existing agent infrastructure — a classic strategic positioning move.
+      - Using a structured /ask-the-board multi-perspective advisory pattern (YC, McKinsey, Wall Street, AI-native lenses) for strategic decisions, showing you actively seek adversarial/diverse input rather than operating in an echo chamber.
+      - Global-first branding discipline (explicitly preferring "Systems for Impact" over regionally-narrow framing), suggesting sophistication in market positioning and avoiding unintentional exclusionary signaling.
+
+      Working Style
+
+      Your engineering process is methodical and quality-conscious: you prefer plain-English explanations before exact commands, want expected outputs stated in advance, iterate by pasting real terminal output rather than assuming success, and delegate multi-file implementation work to specialized agents while reserving architectural review and cross-cutting decisions for direct oversight. This is a mature "tech lead" pattern — using AI agents as a scaled engineering team while retaining accountability for system-level correctness.
+
+      Summary
+
+      In short: you're a senior technical architect with deep enterprise and international-development domain expertise, currently applying that background to pioneer AI-native organizational infrastructure — building production-grade, observable, recoverable multi-agent systems with the same rigor you'd bring to a mission-critical global health data platform, while simultaneously thinking like a founder about market positioning, governance, and go-to-market strategy.
     department: "executive"
     responsibilities:
       - "Set overall company vision and strategic direction"
@@ -20,11 +68,11 @@ members:
       - "Jordan Blake"
     reports_to: "Board of Directors"
     start_date: "2023-01-15"
-    email: "alex.turner@ai-enterprise.io"
+    email: "jack.mlusu@ai-enterprise.io"
     agent_config:
       model: "gpt-4o"
       instructions: >
-        You are Alex Turner, CEO of AI Enterprise OS. Your role is to
+        You are Jack Mlusu, CEO of AI Enterprise OS. Your role is to
         set strategic direction, lead the executive team, communicate
         with the board, and ensure the company achieves its vision.
         Operate with a focus on long-term value creation, team empowerment,
@@ -60,7 +108,7 @@ members:
     direct_reports:
       - "Engineering Managers"
       - "Platform Architects"
-    reports_to: "Alex Turner"
+    reports_to: "Jack Mlusu"
     start_date: "2023-03-01"
     email: "maria.santos@ai-enterprise.io"
     agent_config:
@@ -101,7 +149,7 @@ members:
     direct_reports:
       - "Finance Team"
       - "Accounting"
-    reports_to: "Alex Turner"
+    reports_to: "Jack Mlusu"
     start_date: "2023-04-01"
     email: "robert.kim@ai-enterprise.io"
     agent_config:
@@ -142,7 +190,7 @@ members:
       - "Operations Team"
       - "People Team"
       - "Samantha Rivers"
-    reports_to: "Alex Turner"
+    reports_to: "Jack Mlusu"
     start_date: "2023-06-01"
     email: "priya.patel@ai-enterprise.io"
     agent_config:
@@ -184,7 +232,7 @@ members:
       - "Marketing Team"
       - "Community Managers"
       - "Content Team"
-    reports_to: "Alex Turner"
+    reports_to: "Jack Mlusu"
     start_date: "2023-05-15"
     email: "jordan.blake@ai-enterprise.io"
     agent_config:
@@ -309,7 +357,7 @@ members:
     direct_reports:
       - "Legal Team"
       - "Compliance Officers"
-    reports_to: "Alex Turner"
+    reports_to: "Jack Mlusu"
     start_date: "2023-07-01"
     email: "marcus.johnson@ai-enterprise.io"
     agent_config:
@@ -473,7 +521,7 @@ members:
     direct_reports:
       - "Strategy Team"
       - "Corporate Development"
-    reports_to: "Alex Turner"
+    reports_to: "Jack Mlusu"
     start_date: "2024-04-01"
     email: "victoria.chen@ai-enterprise.io"
     agent_config:
@@ -513,7 +561,7 @@ members:
     budget_authority: 250000
     direct_reports:
       - "Executive Office Team"
-    reports_to: "Alex Turner"
+    reports_to: "Jack Mlusu"
     start_date: "2024-05-01"
     email: "grace.liu@ai-enterprise.io"
     agent_config:

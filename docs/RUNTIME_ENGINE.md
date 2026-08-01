@@ -50,8 +50,8 @@ Engines register under canonical names. `register_engine` auto-binds
 from ai_company.runtime import create_runtime
 
 runtime = create_runtime(config_dir="config")
-status = runtime.start()          # boots the company
-print(status.phase)               # RuntimePhase.RUNNING
+status = runtime.start()  # boots the company
+print(status.phase)  # RuntimePhase.RUNNING
 runtime.stop(reason="manual")
 ```
 

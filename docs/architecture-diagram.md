@@ -2,34 +2,56 @@
 
 ```mermaid
 flowchart TB
-    subgraph CLI["CLI Layer (Typer)"]
-        CLI_root["ai-company<br/>(bootstrap | build | generate<br/>validate | doctor | targets | status)"]
-        CLI_reg["registry<br/>(list | show | verify)"]
-        CLI_mem["memory<br/>(show | clear)"]
-        CLI_graph["graph<br/>(show | stats)"]
-        CLI_report["report<br/>(generate)"]
+    subgraph CLI["CLI Layer (Typer) — ai-company"]
+        CLI_root["root: bootstrap | build | generate<br/>validate | doctor | targets | status"]
+        CLI_company["company (generators)"]
+        CLI_exec["exec (executives)"]
+        CLI_reg["registry (list | show | verify)"]
+        CLI_mem["memory (show | clear)"]
+        CLI_graph["graph (show | stats)"]
+        CLI_report["report (generate)"]
+        CLI_orch["orchestrate (plan | start | status<br/>resume | retry | rollback | history)"]
     end
 
-    subgraph DATA["Company Data (YAML)"]
-        C_MANIFEST["config/company/*.yaml<br/>Manifest + Vision + Strategy<br/>Culture + Governance<br/>Policies + Budget + KPIs"]
-        C_REGISTRY["company/*.yaml<br/>Departments + Executives<br/>Board + Specialists<br/>Policies + Workflows"]
+    subgraph DATA["Data Layer (YAML)"]
+        C_MANIFEST["config/company/*.yaml<br/>Manifest + Vision + Strategy<br/>Culture + Governance + Policies<br/>Budget + KPIs"]
+        C_TEMPLATES["config/{board,departments,executives,<br/>specialists}/*.yaml — templates"]
+        C_WORKFLOWS["config/workflows/*.yaml<br/>workflow definitions + registry"]
+        C_EVENTS["config/events/*.yaml<br/>event pipeline + registry"]
+        C_DECISION["config/decision/*.yaml<br/>approval matrix + decision tree + risk"]
+        C_MEMORY["config/memory/memory.yaml"]
+        C_ORCH["config/orchestration/*.yaml<br/>engine + checkpoints + dependencies<br/>recovery + retries + scheduler<br/>monitoring + notifications"]
+        C_REGISTRY["company/*.yaml<br/>board + company + departments<br/>executives + policies<br/>specialists + workflows"]
     end
 
     subgraph ENGINES["Engine Layer"]
-        REG["Registry Engine<br/>Loader → Parser → Validator<br/>→ Resolver → CompanyRegistry"]
+        REG["Registry Engine<br/>Loader → Parser → Validator<br/>→ Resolver → CompanyRegistry<br/>(frozen)"]
         TEMPLATE["Template Engine<br/>Jinja2 / Python / Markdown<br/>JSON / YAML handlers"]
-        GENERATOR["Generator Engine<br/>Planner → Execution<br/>Retry + Rollback"]
         BOOTSTRAP["Bootstrap Generator<br/>Idempotent scaffolding"]
-        MEMORY["Memory Engine<br/>Store + Search + Archive<br/>Snapshots + Summaries"]
-        DECISION["Decision Engine<br/>Approval + Risk + Policy<br/>History + Routing"]
-        ORCH["Orchestration Engine<br/>Router + Scheduler<br/>Executor + Workflow"]
-        AUDIT["Audit Engine<br/>JSONL event store<br/>Metrics + Sessions"]
-        GRAPH["Graph Engine<br/>Org chart + Workflow DAGs<br/>Dependency analysis"]
+        COMPANY_GEN["Company Generators<br/>Organization · Board · Executives<br/>Departments · Specialists<br/>Workflows · Prompts · Docs<br/>Graph export"]
+        GENERATOR["Generator Engine<br/>Planner → Dependency Resolver<br/>→ Renderer → Writer<br/>retry + rollback + checksums"]
         VALIDATOR["Validator Engine<br/>YAML → Registry → Templates<br/>→ Manifest → Output"]
+        WORKFLOW["Workflow Engine<br/>Loader + Registry<br/>State machine + Transitions"]
+        DECISION["Decision Engine<br/>Approval + Risk + Policy<br/>History + Routing"]
+        MEMORY["Memory Engine<br/>Store + Search + Archive<br/>Snapshots + Summaries<br/>Embedding + Knowledge"]
+        EVENTBUS["Event Bus<br/>Publish/Subscribe + Router<br/>Dispatcher + Persistence<br/>Dead Letter + Replay<br/>Middleware + Priorities"]
+        AUDIT["Audit Engine<br/>JSONL event store<br/>Metrics + Sessions"]
+        GRAPH["Graph Engine (NetworkX)<br/>Org charts + Workflow DAGs<br/>Dependency analysis + Export"]
+    end
+
+    subgraph COO["Enterprise Orchestration Engine (COO Layer)"]
+        ORCH["OrchestrationEngine (facade)"]
+        PLANNER["PipelinePlanner"]
+        SCHEDULER["OrchestrationScheduler"]
+        RUNNER["PipelineRunner"]
+        EXECUTOR["TaskExecutor"]
+        COORD["Coordinator<br/>(task dispatch → engines)"]
+        DURABILITY["State Store + Checkpoints<br/>Rollback + Recovery"]
+        OBS["Health + Metrics<br/>Monitoring + Notifications"]
     end
 
     subgraph PROVIDERS["AI Provider Layer"]
-        P_BASE["BaseProvider (ABC)"]
+        P_BASE["BaseProvider (ABC) + Factory"]
         P_OPENAI["OpenAI"]
         P_ANTH["Anthropic"]
         P_OLLAMA["Ollama"]
@@ -43,78 +65,129 @@ flowchart TB
         EXT_GH["GitHub Actions<br/>CI/CD Pipeline"]
     end
 
-    subgraph OUTPUT["Generated Outputs"]
-        OUT_README["generated/READMEs"]
-        OUT_DOCS["generated/docs/*"]
-        OUT_PROMPTS["generated/prompts/*"]
-        OUT_TESTS["generated/test stubs"]
+    subgraph OUTPUT["Outputs"]
+        OUT_GEN["generated/ (READMEs, docs,<br/>prompts, dashboards, graph)"]
+        OUT_REPORTS["reports/ + dashboards/"]
+        OUT_MEM["memory/store.jsonl"]
+        OUT_EVENTS["events/ store + dead letter"]
+        OUT_CI["pre-commit + CI gates"]
     end
 
-    %% Data Flow
-    C_MANIFEST --> CLI_root
-    C_REGISTRY --> REG
-    REG -->|CompanyRegistry| BOOTSTRAP
-    REG -->|CompanyRegistry| GENERATOR
-    REG -->|CompanyRegistry| TEMPLATE
-    REG -->|CompanyRegistry| MEMORY
-    REG -->|CompanyRegistry| DECISION
-    REG -->|CompanyRegistry| GRAPH
-    BOOTSTRAP --> TEMPLATE
-    GENERATOR --> TEMPLATE
-    TEMPLATE --> OUT_README
-    TEMPLATE --> OUT_DOCS
-    TEMPLATE --> OUT_PROMPTS
-    TEMPLATE --> OUT_TESTS
-
+    %% CLI → Engines
     CLI_root --> REG
     CLI_root --> BOOTSTRAP
-    CLI_root --> GENERATOR
     CLI_root --> VALIDATOR
+    CLI_company --> COMPANY_GEN
+    CLI_exec --> COMPANY_GEN
     CLI_reg --> REG
     CLI_mem --> MEMORY
     CLI_graph --> GRAPH
-    CLI_report --> GENERATOR
+    CLI_report --> COMPANY_GEN
+    CLI_orch --> ORCH
 
-    ORCH --> REG
-    ORCH --> GENERATOR
-    ORCH --> MEMORY
-    ORCH --> DECISION
-    ORCH --> AUDIT
-    ORCH --> GRAPH
+    %% Data → Engines
+    C_REGISTRY --> REG
+    C_MANIFEST --> REG
+    C_TEMPLATES --> REG
+    C_WORKFLOWS --> WORKFLOW
+    C_EVENTS --> EVENTBUS
+    C_DECISION --> DECISION
+    C_MEMORY --> MEMORY
+    C_ORCH --> ORCH
 
-    DECISION --> MEMORY
-    AUDIT --> MEMORY
+    %% Registry feeds all engines
+    REG -->|CompanyRegistry| BOOTSTRAP
+    REG -->|CompanyRegistry| COMPANY_GEN
+    REG -->|CompanyRegistry| GENERATOR
+    REG -->|CompanyRegistry| TEMPLATE
+    REG -->|CompanyRegistry| VALIDATOR
+    REG -->|CompanyRegistry| GRAPH
+    REG -->|CompanyRegistry| MEMORY
+    REG -->|CompanyRegistry| DECISION
+    REG -->|CompanyRegistry| WORKFLOW
 
-    GENERATOR -.->|AI prompts| EXT_OC
-    EXT_OC -.-> EXT_OLLAMA
-    PROVIDERS --> EXT_OLLAMA
+    %% Generation pipeline
+    BOOTSTRAP --> TEMPLATE
+    COMPANY_GEN --> TEMPLATE
+    GENERATOR --> TEMPLATE
+    GENERATOR --> BOOTSTRAP
+    TEMPLATE --> OUT_GEN
+    GRAPH --> OUT_GEN
+    COMPANY_GEN --> OUT_REPORTS
 
+    %% Validation & quality gates
     VALIDATOR --> REG
     VALIDATOR --> TEMPLATE
     VALIDATOR --> BOOTSTRAP
+    VALIDATOR -.-> OUT_CI
 
-    %% Styling: completed vs in-progress vs planned
+    %% COO wiring
+    ORCH --> PLANNER
+    ORCH --> SCHEDULER
+    ORCH --> RUNNER
+    ORCH --> OBS
+    PLANNER --> SCHEDULER
+    SCHEDULER --> RUNNER
+    RUNNER --> EXECUTOR
+    EXECUTOR --> COORD
+    RUNNER --> DURABILITY
+    COORD --> REG
+    COORD --> GENERATOR
+    COORD --> VALIDATOR
+    COORD --> WORKFLOW
+    COORD --> MEMORY
+    COORD --> DECISION
+    COORD --> AUDIT
+    COORD --> EVENTBUS
+    COORD --> GRAPH
+    ORCH --> DURABILITY
+    OBS --> EVENTBUS
+
+    %% Cross-engine event flow
+    EVENTBUS --> AUDIT
+    EVENTBUS --> MEMORY
+    DECISION --> MEMORY
+    AUDIT --> MEMORY
+    DECISION --> EVENTBUS
+    GRAPH --> EVENTBUS
+
+    %% AI providers
+    PROVIDERS --> EXT_OLLAMA
+    GENERATOR -.->|AI prompts| EXT_OC
+    EXT_OC -.-> EXT_OLLAMA
+    COMPANY_GEN -.->|OpenCode run| EXT_OC
+    P_BASE --> P_OPENAI
+    P_BASE --> P_ANTH
+    P_BASE --> P_OLLAMA
+    P_BASE --> P_GEMINI
+    P_BASE --> P_MOCK
+
+    %% Styling
     classDef completed fill:#1a7a3a,stroke:#2ecc71,stroke-width:2px,color:#fff
-    classDef inprogress fill:#7a6a1a,stroke:#f1c40f,stroke-width:2px,color:#fff
-    classDef planned fill:#3a3a3a,stroke:#666,stroke-width:2px,color:#aaa
+    classDef data fill:#1a4a6a,stroke:#3498db,stroke-width:2px,color:#fff
 
-    class CLI_root,CLI_reg,CLI_mem,CLI_graph,CLI_report completed
-    class REG,TEMPLATE,BOOTSTRAP,VALIDATOR completed
-    class C_MANIFEST,C_REGISTRY completed
-    class EXT_GH,EXT_OLLAMA completed
-    class OUT_README,OUT_DOCS,OUT_PROMPTS,OUT_TESTS completed
-
-    class MEMORY,DECISION,AUDIT,GRAPH,GENERATOR inprogress
-    class P_BASE,P_OPENAI,P_ANTH,P_OLLAMA,P_GEMINI,P_MOCK inprogress
-
-    class ORCH planned
-    class EXT_OC planned
+    class CLI_root,CLI_company,CLI_exec,CLI_reg,CLI_mem,CLI_graph,CLI_report,CLI_orch completed
+    class REG,TEMPLATE,BOOTSTRAP,COMPANY_GEN,GENERATOR,VALIDATOR,WORKFLOW,DECISION,MEMORY,EVENTBUS,AUDIT,GRAPH completed
+    class ORCH,PLANNER,SCHEDULER,RUNNER,EXECUTOR,COORD,DURABILITY,OBS completed
+    class P_BASE,P_OPENAI,P_ANTH,P_OLLAMA,P_GEMINI,P_MOCK completed
+    class EXT_GH completed
+    class OUT_GEN,OUT_REPORTS,OUT_MEM,OUT_EVENTS,OUT_CI completed
+    class C_MANIFEST,C_TEMPLATES,C_WORKFLOWS,C_EVENTS,C_DECISION,C_MEMORY,C_ORCH,C_REGISTRY data
 ```
 
 ## Legend
 
-| Color | Status |
+| Color | Meaning |
 |---|---|
-| 🟢 **Green** (completed) | Production-ready, tested, wired to CLI |
-| 🟡 **Yellow** (in progress) | Framework exists, deeper implementation needed |
-| ⬛ **Gray** (planned) | Architecture designed, not yet built |
+| 🟢 **Green** | Implemented, tested, and wired to the CLI |
+| 🔵 **Blue** | Data/configuration layer (YAML) |
+| ⛁ **Dashed arrows** | Indirect / out-of-process interaction (OpenCode subprocess, CI gates) |
+
+## Status by Sprint
+
+| Sprint | Delivered |
+|---|---|
+| 1–2 | Registry, Template, Bootstrap, Validator engines + CLI |
+| 3 | Company generators (board, exec, dept, specialist, workflow, prompts, docs, graph export) |
+| 4.4 | Event Bus & Messaging Platform (publish/subscribe, routing, persistence, DLQ, replay) |
+| 4.5 | Enterprise Orchestration Engine (COO layer: planning, scheduling, checkpoints, rollback, recovery, health/monitoring) |

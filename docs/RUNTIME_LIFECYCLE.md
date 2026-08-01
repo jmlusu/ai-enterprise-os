@@ -50,8 +50,8 @@ into the running context. If `recover_persisted_state: false` is set in
 ### Mutations
 
 ```python
-runtime.state_store.add_active("pipelines", "p_123")       # appends + saves
-runtime.state_store.remove_active("pipelines", "p_123")    # removes + saves
+runtime.state_store.add_active("pipelines", "p_123")  # appends + saves
+runtime.state_store.remove_active("pipelines", "p_123")  # removes + saves
 runtime.state_store.set_phase(RuntimePhase.RUNNING)
 runtime.state_store.set_process(RuntimeProcess(name="worker", status="running"))
 runtime.state_store.set_engine(EngineState(name="memory"))
