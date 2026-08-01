@@ -24,8 +24,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from ai_company.runtime.configuration import RuntimeConfiguration
 from ai_company.runtime.circuit_breaker import CircuitBreaker
+from ai_company.runtime.configuration import RuntimeConfiguration
 from ai_company.runtime.dependency_graph import RuntimeDependencyGraph
 from ai_company.runtime.diagnostics import DiagnosticCollector
 from ai_company.runtime.health import HealthMonitor
