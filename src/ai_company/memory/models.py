@@ -125,13 +125,23 @@ class MemoryEntry(BaseModel):
     importance: float = Field(
         default=0.5, ge=0.0, le=1.0, description="Importance score 0.0-1.0"
     )
+    base_importance: float = Field(
+        default=0.5, ge=0.0, le=1.0, description="Initial importance (before decay)"
+    )
+    recall_count: int = Field(default=0, description="Number of times accessed")
     version: int = Field(default=1, ge=1, description="Version number for updates")
+    tier: str = Field(
+        default="working",
+        description="Storage tier: working, short_term, long_term, archived",
+    )
+    encrypted: bool = Field(
+        default=False, description="True if payload is AES-256-GCM encrypted"
+    )
     parent_id: str | None = Field(
         default=None, description="Parent memory ID for hierarchy"
     )
-    children_ids: list[str] = Field(
-        default_factory=list, description="Child memory IDs"
-    )
+    agent_id: str | None = Field(default=None, description="Originating agent ID")
+    session_id: str | None = Field(default=None, description="Originating session ID")
     created_at: datetime = Field(
         default_factory=_utcnow, description="Creation timestamp"
     )
@@ -140,6 +150,9 @@ class MemoryEntry(BaseModel):
     )
     accessed_at: datetime | None = Field(
         default=None, description="Last access timestamp"
+    )
+    expires_at: datetime | None = Field(
+        default=None, description="Auto-archival deadline"
     )
     archived: bool = Field(default=False, description="Whether entry is archived")
     archived_at: datetime | None = Field(

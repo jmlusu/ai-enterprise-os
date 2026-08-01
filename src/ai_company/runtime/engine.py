@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from ai_company.runtime.configuration import RuntimeConfiguration
+from ai_company.runtime.circuit_breaker import CircuitBreaker
 from ai_company.runtime.dependency_graph import RuntimeDependencyGraph
 from ai_company.runtime.diagnostics import DiagnosticCollector
 from ai_company.runtime.health import HealthMonitor
@@ -32,6 +33,7 @@ from ai_company.runtime.heartbeat import HeartbeatManager
 from ai_company.runtime.lifecycle import RuntimeLifecycle
 from ai_company.runtime.metrics import MetricsRegistry
 from ai_company.runtime.models import (
+    CircuitBreakerOpenError,
     EngineNotRegisteredError,
     EngineState,
     EngineStateStatus,
@@ -138,6 +140,9 @@ class RuntimeEngine:
         self.startup_sequence: StartupSequence | None = None
         self.shutdown_sequence: ShutdownSequence | None = None
 
+        # Circuit breakers for engine dependencies
+        self._circuit_breakers: dict[str, CircuitBreaker] = {}
+
         # Local runtime event handlers (keyed by runtime.* type string)
         self._handlers: dict[str, list[Callable[[str, dict[str, Any]], None]]] = {}
         self._handler_lock = threading.Lock()
@@ -189,6 +194,20 @@ class RuntimeEngine:
         logger.info("Engine registered: %s", name)
         return state
 
+    def register_engine_with_circuit_breaker(
+        self,
+        name: str,
+        instance: Any,
+        metadata: dict[str, Any] | None = None,
+    ) -> EngineState:
+        """Register an engine with circuit breaker protection."""
+        state = self.register_engine(name, instance, metadata)
+
+        # Add circuit breaker for this engine
+        self._circuit_breakers[name] = CircuitBreaker(name)
+
+        return state
+
     def unregister_engine(self, name: str) -> bool:
         """Remove an engine from the runtime registry."""
         if name not in self.engines:
@@ -198,6 +217,8 @@ class RuntimeEngine:
         self.dependency_graph.remove_component(name)
         self.health_monitor.unregister(name)
         self.heartbeats.unregister(name)
+        # Clean up circuit breaker for this engine
+        self._circuit_breakers.pop(name, None)
         return True
 
     def get_engine(self, name: str) -> Any:
@@ -221,6 +242,19 @@ class RuntimeEngine:
 
     def engine_state(self, name: str) -> EngineState | None:
         return self._engine_states.get(name)
+
+    def _propagate_health_to_circuit_breakers(self):
+        """Propagate health status to circuit breakers."""
+        for name, engine_state in self._engine_states.items():
+            if name in self._circuit_breakers:
+                cb = self._circuit_breakers[name]
+                if engine_state.health is HealthStatus.UNHEALTHY:
+                    cb.on_failure()
+                elif engine_state.health in (
+                    HealthStatus.HEALTHY,
+                    HealthStatus.DEGRADED,
+                ):
+                    cb.on_success()
 
     def _mark_engine_status(
         self,
@@ -336,6 +370,18 @@ class RuntimeEngine:
         bus = self.event_bus
         if bus is None:
             return
+
+        # Check backpressure
+        current_load = getattr(bus, "get_load", lambda: 0)()
+        max_load = getattr(bus, "max_load", 100)
+
+        if current_load > max_load * 0.9:
+            # Backpressure detected, use circuit breaker to isolate
+            if bus.name in self._circuit_breakers:
+                cb = self._circuit_breakers[bus.name]
+                cb.call(lambda: bus.stop())  # Force stop to prevent overload
+            return
+
         running = getattr(bus, "is_running", False)
         if callable(running):
             running = running()
@@ -348,50 +394,75 @@ class RuntimeEngine:
             except Exception as exc:
                 logger.warning("Could not start event bus: %s", exc)
 
-    def _start_registered_engines(self) -> None:
+    def _start_engine_with_protection(self, name: str, instance: Any):
+        """Start an engine with circuit breaker protection."""
+        if name in self._circuit_breakers:
+            cb = self._circuit_breakers[name]
+            try:
+                return cb.call(self._start_engine, name, instance)
+            except CircuitBreakerOpenError:
+                # Engine is isolated, mark as failed
+                self._mark_engine_status(
+                    name,
+                    EngineStateStatus.FAILED,
+                    HealthStatus.UNHEALTHY,
+                    "Circuit breaker is open",
+                )
+                return False
+        return self._start_engine(name, instance)
+
+    def _start_engine(self, name: str, instance: Any):
+        """Internal start method for engines."""
         import inspect
 
+        if name in ("event_bus",):
+            return
+
+        start = getattr(instance, "start", None)
+        if not callable(start):
+            self._mark_engine_status(
+                name, EngineStateStatus.RUNNING, HealthStatus.HEALTHY
+            )
+            return
+
+        try:
+            signature = inspect.signature(start)
+            required = [
+                param
+                for param in signature.parameters.values()
+                if param.default is inspect.Parameter.empty
+                and param.kind
+                in (
+                    inspect.Parameter.POSITIONAL_ONLY,
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                )
+            ]
+            if required:
+                logger.info(
+                    "Engine %s.start() requires %s — marking running without "
+                    "starting it (start it explicitly via the engine)",
+                    name,
+                    [param.name for param in required],
+                )
+                self._mark_engine_status(
+                    name, EngineStateStatus.RUNNING, HealthStatus.HEALTHY
+                )
+                return
+            start()
+            self._mark_engine_status(
+                name, EngineStateStatus.RUNNING, HealthStatus.HEALTHY
+            )
+        except Exception as exc:
+            logger.warning("Engine %s did not start cleanly: %s", name, exc)
+            self._mark_engine_status(
+                name, EngineStateStatus.DEGRADED, HealthStatus.DEGRADED, str(exc)
+            )
+
+    def _start_registered_engines(self) -> None:
         for name, instance in self.engines.items():
             if name in ("event_bus",):
                 continue
-            start = getattr(instance, "start", None)
-            if not callable(start):
-                self._mark_engine_status(
-                    name, EngineStateStatus.RUNNING, HealthStatus.HEALTHY
-                )
-                continue
-            try:
-                signature = inspect.signature(start)
-                required = [
-                    param
-                    for param in signature.parameters.values()
-                    if param.default is inspect.Parameter.empty
-                    and param.kind
-                    in (
-                        inspect.Parameter.POSITIONAL_ONLY,
-                        inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    )
-                ]
-                if required:
-                    logger.info(
-                        "Engine %s.start() requires %s — marking running without "
-                        "starting it (start it explicitly via the engine)",
-                        name,
-                        [param.name for param in required],
-                    )
-                    self._mark_engine_status(
-                        name, EngineStateStatus.RUNNING, HealthStatus.HEALTHY
-                    )
-                    continue
-                start()
-                self._mark_engine_status(
-                    name, EngineStateStatus.RUNNING, HealthStatus.HEALTHY
-                )
-            except Exception as exc:
-                logger.warning("Engine %s did not start cleanly: %s", name, exc)
-                self._mark_engine_status(
-                    name, EngineStateStatus.DEGRADED, HealthStatus.DEGRADED, str(exc)
-                )
+            self._start_engine_with_protection(name, instance)
 
     def mark_stopped(self) -> None:
         """Mark the runtime STOPPED (called by the ``finalize`` shutdown step)."""

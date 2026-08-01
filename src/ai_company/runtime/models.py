@@ -52,6 +52,7 @@ __all__ = [
     "StartupStep",
     "StartupStepStatus",
     "RUNTIME_EVENT_TYPES",
+    "CircuitBreakerOpenError",
 ]
 
 RUNTIME_EVENT_TYPES: list[str] = [
@@ -111,6 +112,10 @@ class JobRegistrationError(RuntimeError):
 
 class RecoveryError(RuntimeError):
     """Raised when recovery for a component fails or is exhausted."""
+
+
+class CircuitBreakerOpenError(RuntimeError):
+    """Raised when circuit breaker is open and preventing operation."""
 
 
 # ── Enums ──────────────────────────────────────────────────────────

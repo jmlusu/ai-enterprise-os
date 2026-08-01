@@ -286,5 +286,39 @@ def status() -> None:
     console_print("\n[green]System is operational.[/green]")
 
 
+@app.command()
+def serve(
+    host: str = typer.Option(
+        "127.0.0.1", "--host", help="Bind address (v1 is loopback-only)"
+    ),
+    port: int = typer.Option(8000, "--port", help="Port for the dashboard API"),
+    config_dir: str = typer.Option(
+        "config", "--config-dir", help="Directory containing the runtime/ config"
+    ),
+) -> None:
+    """Start the dashboard API server (read-only contract v1).
+
+    Boots the runtime (if needed), serves the read-only REST + WebSocket
+    API on http://<host>:<port>/, and shuts the runtime down on exit.
+    Imports are lazy so ``ai-company --help`` stays fast.
+    """
+    import uvicorn
+
+    from ai_company.api.app import create_app
+    from ai_company.services.runtime_facade import RuntimeFacade
+
+    facade = RuntimeFacade(config_dir=config_dir)
+    app = create_app(facade=facade, config_dir=config_dir)
+    console_print(f"[cyan]Dashboard API:[/cyan] http://{host}:{port}/")
+    console_print(
+        f"[dim]Read-only contract v1 - WebSocket http://{host}:{port}/api/ws "
+        "(Ctrl-C to stop)[/dim]"
+    )
+    try:
+        uvicorn.run(app, host=host, port=port, log_level="info", access_log=True)
+    finally:
+        facade.close()
+
+
 if __name__ == "__main__":
     app()

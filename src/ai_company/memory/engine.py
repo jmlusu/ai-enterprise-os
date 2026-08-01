@@ -33,7 +33,7 @@ from ai_company.memory.models import (  # noqa: F401 — re-exported for public 
 from ai_company.memory.retrieval import MemoryRetrieval
 from ai_company.memory.search import MemorySearch
 from ai_company.memory.snapshot import MemorySnapshot
-from ai_company.memory.store import MemoryStore
+from ai_company.memory.store import FileStore, InMemoryStore, JsonlStore, MemoryStore
 from ai_company.memory.summary import MemorySummarizer
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,19 @@ class MemoryEngine:
         storage_path: str | Path | None = None,
     ) -> None:
         self.config = config or MemoryConfig()
+        base_path = (
+            Path(storage_path) if storage_path else Path(self.config.storage_path)
+        )
         self.store = store or MemoryStore(storage_path=storage_path)
+
+        # Tiered storage
+        memory_dir = base_path.parent
+        self.working_store = InMemoryStore(max_size=100)
+        self.short_term_store = JsonlStore(
+            str(memory_dir / "short_term" / "store.jsonl")
+        )
+        self.long_term_store = FileStore(str(memory_dir / "long_term" / "store.jsonl"))
+
         self.embedding_manager = embedding_manager or EmbeddingManager(
             TfidfEmbedder() if self.config.enable_embeddings else None
         )
@@ -144,7 +156,9 @@ class MemoryEngine:
             tags=tags or [],
             source=source,
             importance=importance,
+            base_importance=importance,
             parent_id=parent_id,
+            tier="working",
             metadata=metadata or {},
         )
 
@@ -161,6 +175,8 @@ class MemoryEngine:
             except Exception as e:
                 self.logger.warning(f"Embedding generation failed: {e}")
 
+        # Save to working memory store
+        self.working_store.put(entry, "working")
         self.store.save(entry)
         self.logger.info(f"Memory saved: {memory_id} ({memory_type.value})")
 
@@ -526,6 +542,136 @@ class MemoryEngine:
             min_importance=self.config.retention.min_importance,
             auto_purge=self.config.retention.auto_purge,
         )
+
+    # ──────────────────────────────────────────────
+    # Tiered Storage Management
+    # ──────────────────────────────────────────────
+
+    def promote_to_long_term(self, memory_id: str, min_importance: float = 0.7) -> bool:
+        """Promote working memory to long-term storage if importance >= threshold."""
+        entry = self.retrieve(memory_id)
+        if not entry:
+            return False
+
+        if entry.importance >= min_importance:
+            entry.tier = "long_term"
+            self.long_term_store.save(entry)
+            self.store.save(entry)
+            self.logger.info(f"Promoted memory {memory_id} to long_term tier")
+            return True
+        return False
+
+    def demote_to_archived(
+        self, memory_id: str, importance_threshold: float = 0.05
+    ) -> bool:
+        """Demote long-term memory to archive if importance < threshold."""
+        entry = self.retrieve(memory_id)
+        if not entry:
+            return False
+
+        if entry.importance < importance_threshold:
+            entry.archived = True
+            entry.archived_at = datetime.now(UTC)
+            entry.tier = "archived"
+            self.long_term_store.delete(memory_id)
+            self.archive(memory_id)
+            self.logger.info(f"Demoted memory {memory_id} to archived tier")
+            return True
+        return False
+
+    def cleanup_expired(self) -> int:
+        """Clean up expired memories based on expires_at.
+
+        Returns:
+            Number of entries archived
+        """
+        all_entries = self.retrieve_all()
+        now = datetime.now(UTC)
+        archived_count = 0
+
+        for entry in all_entries:
+            if entry.expires_at and entry.expires_at < now:
+                entry.archived = True
+                entry.archived_at = now
+                entry.tier = "archived"
+                self.store.save(entry)
+                self.long_term_store.delete(entry.id)
+                archived_count += 1
+
+        if archived_count > 0:
+            self.logger.info(f"Archived {archived_count} expired memories")
+        return archived_count
+
+    def apply_tier_management(
+        self, promote_threshold: float = 0.7, demote_threshold: float = 0.05
+    ) -> dict[str, int]:
+        """Periodically run tier management based on importance.
+
+        Args:
+            promote_threshold: Importance threshold for working → long_term promotion
+            demote_threshold: Importance threshold for long_term → archive demotion
+
+        Returns:
+            Dict with counts of promoted, demoted, and expired entries
+        """
+        results = {"promoted": 0, "demoted": 0, "expired": 0}
+
+        all_entries = self.retrieve_all()
+        now = datetime.now(UTC)
+
+        for entry in all_entries:
+            if entry.tier == "working" and entry.importance >= promote_threshold:
+                entry.tier = "long_term"
+                self.long_term_store.save(entry)
+                self.store.save(entry)
+                results["promoted"] += 1
+
+            elif (
+                entry.tier in ("short_term", "long_term")
+                and entry.importance < demote_threshold
+            ):
+                entry.archived = True
+                entry.archived_at = now
+                entry.tier = "archived"
+                self.long_term_store.delete(entry.id)
+                self.archive(entry.id)
+                results["demoted"] += 1
+
+            if entry.expires_at and entry.expires_at < now:
+                entry.archived = True
+                entry.archived_at = now
+                entry.tier = "archived"
+                self.store.save(entry)
+                self.cleanup_expired()
+                results["expired"] += 1
+
+        self.logger.info(
+            f"Tier management: promoted={results['promoted']}, "
+            f"demoted={results['demoted']}, expired={results['expired']}"
+        )
+        return results
+
+    def get_tier_stats(self) -> dict[str, dict[str, int]]:
+        """Get statistics by tier.
+
+        Returns:
+            Dict mapping tier names to count statistics
+        """
+        tier_stats: dict[str, dict[str, int]] = {
+            "working": {},
+            "short_term": {},
+            "long_term": {},
+            "archived": {},
+        }
+
+        for entry in self.retrieve_all():
+            tier = entry.tier or "working"
+            if tier not in tier_stats:
+                tier_stats[tier] = {}
+            type_key = entry.memory_type.value
+            tier_stats[tier][type_key] = tier_stats[tier].get(type_key, 0) + 1
+
+        return tier_stats
 
     # ──────────────────────────────────────────────
     # Statistics & Utility

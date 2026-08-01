@@ -1,1 +1,1 @@
-Commit all changes the monito CI job until it is successful, otherwise fix issue and commit again.
+Commit all changes the monitor CI job until it is successful, otherwise fix issue and commit again.

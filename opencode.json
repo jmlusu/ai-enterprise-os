@@ -1,40 +1,71 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "ollama/llama3.1:8b",
-  "small_model": "ollama/qwen2.5-coder:7b",
+
   "provider": {
     "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama (Local)",
+
       "options": {
-        "baseURL": "http://localhost:11434"
+        "baseURL": "http://localhost:11434/v1"
+      },
+
+      "models": {
+        "llama3.1:8b": {
+          "name": "Llama 3.1 8B"
+        },
+
+        "qwen2.5-coder:7b": {
+          "name": "Qwen 2.5 Coder 7B"
+        },
+
+        "mistral:7b": {
+          "name": "Mistral 7B"
+        },
+
+        "deepseek-r1:7b": {
+          "name": "DeepSeek R1 7B"
+        },
+
+        "deepseek-r1:7b-64k": {
+          "name": "DeepSeek R1 7B 64K"
+        }
       }
     }
   },
+
+  "model": "ollama/llama3.1:8b",
+
+  "small_model": "ollama/qwen2.5-coder:7b",
+
   "agent": {
     "build": {
-      "model": "ollama/llama3.1:8b",
-      "mode": "primary",
-      "description": "General-purpose builder agent using Llama 3.1 8B"
+      "model": "ollama/llama3.1:8b"
     },
+
     "plan": {
-      "model": "ollama/qwen2.5-coder:7b",
-      "mode": "primary",
-      "description": "Planning agent using Qwen 2.5 Coder 7B for complex reasoning"
+      "model": "ollama/deepseek-r1:7b-64k"
     },
+
     "explore": {
-      "model": "ollama/mistral:7b",
-      "mode": "primary",
-      "description": "Code exploration agent using Mistral 7B"
+      "model": "ollama/mistral:7b"
     },
+
     "general": {
-      "model": "ollama/llama3.1:8b",
-      "mode": "primary",
-      "description": "General-purpose agent using Llama 3.1 8B"
-    },
-    "architect": {
-      "model": "opencode/north-mini-code-free",
-      "mode": "primary",
-      "description": "Architecture agent used by ai-company generate targets for repo-level design and artifact generation (reconciled 2026-08-01, Phase 0 WS-0.3)"
+      "model": "ollama/qwen2.5-coder:7b"
     }
   },
-  "default_agent": "build"
+
+  "default_agent": "build",
+
+  "permission": {
+    "bash": "ask",
+    "edit": "ask"
+  },
+
+  "compaction": {
+    "auto": true,
+    "prune": false,
+    "reserved": 10000
+  }
 }

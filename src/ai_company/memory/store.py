@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections import OrderedDict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,227 @@ from ai_company.memory.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class InMemoryStore:
+    """LRU cache for working memory (per-session, cap 100)."""
+
+    def __init__(self, max_size: int = 100):
+        self.max_size = max_size
+        self.cache: dict[str, MemoryEntry] = {}
+        self.access_order: OrderedDict[str, datetime] = OrderedDict()
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+    def get(self, memory_id: str) -> MemoryEntry | None:
+        """Get entry with LRU tracking."""
+        if memory_id not in self.cache:
+            return None
+        entry = self.cache[memory_id]
+        entry.accessed_at = datetime.now(UTC)
+        if memory_id in self.access_order:
+            self.access_order.move_to_end(memory_id)
+        return entry
+
+    def put(self, entry: MemoryEntry, tier: str = "working") -> None:
+        """Store entry with tier management."""
+        entry.tier = tier
+        if len(self.cache) >= self.max_size:
+            oldest_id = next(iter(self.access_order))
+            self.cache.pop(oldest_id, None)
+            self.access_order.pop(oldest_id, None)
+        self.cache[entry.id] = entry
+        self.access_order[entry.id] = entry.accessed_at or datetime.now(UTC)
+
+    def get_all(self) -> list[MemoryEntry]:
+        return list(self.cache.values())
+
+    def delete(self, memory_id: str) -> bool:
+        if memory_id in self.cache:
+            del self.cache[memory_id]
+            self.access_order.pop(memory_id, None)
+            return True
+        return False
+
+    def clear(self) -> None:
+        self.cache.clear()
+        self.access_order.clear()
+
+    def count(self) -> int:
+        return len(self.cache)
+
+
+class JsonlStore:
+    """Session-scoped short-term storage (recency-ordered, JSONL on disk)."""
+
+    def __init__(self, storage_path: str | Path):
+        self.storage_path = Path(storage_path)
+        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+    def save(self, entry: MemoryEntry) -> None:
+        """Append entry to JSONL file."""
+        entry.tier = "short_term"
+        with open(self.storage_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry.to_dict()) + "\n")
+
+    def get(self, memory_id: str) -> MemoryEntry | None:
+        """Get entry by ID from JSONL."""
+        return self._read_entry(memory_id)
+
+    def get_recent(
+        self, session_id: str | None = None, limit: int = 100
+    ) -> list[MemoryEntry]:
+        """Get recent entries, optionally filtered by session."""
+        entries = self._read_all()
+        if session_id:
+            entries = [e for e in entries if e.session_id == session_id]
+        entries.sort(key=lambda e: e.created_at, reverse=True)
+        return entries[:limit]
+
+    def get_all(self) -> list[MemoryEntry]:
+        return self._read_all()
+
+    def delete(self, memory_id: str) -> bool:
+        entries = self._read_all()
+        original_len = len(entries)
+        entries = [e for e in entries if e.id != memory_id]
+        if len(entries) < original_len:
+            self._write_all(entries)
+            return True
+        return False
+
+    def clear(self) -> None:
+        if self.storage_path.exists():
+            self.storage_path.unlink()
+
+    def count(self) -> int:
+        return len(self._read_all())
+
+    def _read_entry(self, memory_id: str) -> MemoryEntry | None:
+        if not self.storage_path.exists():
+            return None
+        with open(self.storage_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    data = json.loads(line)
+                    if data.get("id") == memory_id:
+                        return MemoryEntry.from_dict(data)
+        return None
+
+    def _read_all(self) -> list[MemoryEntry]:
+        if not self.storage_path.exists():
+            return []
+        entries = []
+        with open(self.storage_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    data = json.loads(line)
+                    entries.append(MemoryEntry.from_dict(data))
+        return entries
+
+
+def _write_all(self, entries: list[MemoryEntry]) -> None:
+    with open(self.storage_path, "w", encoding="utf-8") as f:
+        f.writelines(json.dumps(entry.to_dict()) + "\n" for entry in entries)
+
+
+class FileStore:
+    """Indexed long-term storage (cross-session, indexed for fast retrieval)."""
+
+    def __init__(self, storage_path: str | Path):
+        self.storage_path = Path(storage_path)
+        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+        self.index_path = self.storage_path.parent / "index.yaml"
+        self.index: dict[str, dict[str, Any]] = {}
+        self.cache: dict[str, MemoryEntry] = {}
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.load_index()
+
+    def save(self, entry: MemoryEntry) -> None:
+        entry.tier = "long_term"
+        self.cache[entry.id] = entry
+        self.index[entry.id] = {
+            "memory_type": entry.memory_type.value,
+            "namespace": entry.namespace.value,
+            "created_at": entry.created_at.isoformat() if entry.created_at else None,
+            "importance": entry.importance,
+            "tier": entry.tier,
+        }
+        self.save_index()
+
+    def get(self, memory_id: str) -> MemoryEntry | None:
+        if memory_id in self.cache:
+            return self.cache[memory_id]
+        return self._load_entry(memory_id)
+
+    def get_by_tier(self, tier: str) -> list[MemoryEntry]:
+        """Get all entries by tier."""
+        return [entry for entry in self.cache.values() if entry.tier == tier]
+
+    def search_by_tier(self, tier: str) -> list[MemoryEntry]:
+        """Search entries by tier (alias for get_by_tier)."""
+        return self.get_by_tier(tier)
+
+    def get_all(self) -> list[MemoryEntry]:
+        if not self.cache:
+            self._load_all()
+        return list(self.cache.values())
+
+    def delete(self, memory_id: str) -> bool:
+        if memory_id in self.cache:
+            del self.cache[memory_id]
+            self.index.pop(memory_id, None)
+            self.save_index()
+            return True
+        return False
+
+    def clear(self) -> None:
+        self.cache.clear()
+        self.index.clear()
+        if self.storage_path.exists():
+            self.storage_path.unlink()
+
+    def count(self) -> int:
+        return len(self.cache)
+
+    def load_index(self) -> None:
+        if self.index_path.exists():
+            try:
+                import yaml
+
+                with open(self.index_path, "r", encoding="utf-8") as f:
+                    self.index = yaml.safe_load(f) or {}
+            except Exception as e:
+                self.logger.warning(f"Failed to load index: {e}")
+                self.index = {}
+
+    def save_index(self) -> None:
+        try:
+            import yaml
+
+            with open(self.index_path, "w", encoding="utf-8") as f:
+                yaml.safe_dump(self.index, f)
+        except Exception as e:
+            self.logger.warning(f"Failed to save index: {e}")
+
+    def _load_entry(self, memory_id: str) -> MemoryEntry | None:
+        return self.cache.get(memory_id)
+
+    def _load_all(self) -> None:
+        if not self.storage_path.exists():
+            return
+        try:
+            with open(self.storage_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        data = json.loads(line)
+                        entry = MemoryEntry.from_dict(data)
+                        self.cache[entry.id] = entry
+        except Exception as e:
+            self.logger.warning(f"Failed to load all entries: {e}")
 
 
 class MemoryStore:
@@ -34,6 +256,7 @@ class MemoryStore:
         self._type_index: dict[str, set[str]] = {}
         self._tag_index: dict[str, set[str]] = {}
         self._parent_index: dict[str, set[str]] = {}  # parent_id -> children_ids
+        self._tier_index: dict[str, set[str]] = {}  # tier -> memory_ids
         self.logger = logging.getLogger(self.__class__.__name__)
         self.storage_path = Path(storage_path) if storage_path else None
 
@@ -44,14 +267,10 @@ class MemoryStore:
     def save(self, entry: MemoryEntry) -> None:
         """Save a memory entry with indexing."""
         old_entry = self._entries.get(entry.id)
-
-        # Remove old indices if updating
         if old_entry:
             self._remove_from_indices(old_entry)
-
         self._entries[entry.id] = entry
         self._add_to_indices(entry)
-
         if self.storage_path:
             self._append_to_disk(entry)
 
@@ -62,6 +281,11 @@ class MemoryStore:
     def get_all(self) -> list[MemoryEntry]:
         """Get all memory entries."""
         return list(self._entries.values())
+
+    def get_by_tier(self, tier: str) -> list[MemoryEntry]:
+        """Get entries by tier (working, short_term, long_term, archived)."""
+        ids = self._tier_index.get(tier, set())
+        return [self._entries[eid] for eid in ids if eid in self._entries]
 
     def get_by_type(self, memory_type: str | MemoryType) -> list[MemoryEntry]:
         """Get entries by type."""
@@ -330,6 +554,12 @@ class MemoryStore:
                 self._parent_index[entry.parent_id] = set()
             self._parent_index[entry.parent_id].add(entry.id)
 
+        # Tier index
+        tier = entry.tier
+        if tier not in self._tier_index:
+            self._tier_index[tier] = set()
+        self._tier_index[tier].add(entry.id)
+
     def _remove_from_indices(self, entry: MemoryEntry) -> None:
         """Remove entry from all indices."""
         ns = entry.namespace.value
@@ -346,6 +576,11 @@ class MemoryStore:
 
         if entry.parent_id and entry.parent_id in self._parent_index:
             self._parent_index[entry.parent_id].discard(entry.id)
+
+        # Tier index
+        tier = entry.tier if entry.tier else "working"
+        if tier in self._tier_index:
+            self._tier_index[tier].discard(entry.id)
 
     def _append_to_disk(self, entry: MemoryEntry) -> None:
         """Append entry to JSONL file."""
