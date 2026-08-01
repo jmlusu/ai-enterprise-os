@@ -1,6 +1,6 @@
 # ADR 0008 — Dashboard frontend stack: Jinja2 + htmx (v1), Svelte 5 (v2 path)
 
-Status: **Proposed** (decision D1 — 1-day ADR, not a fork)
+Status: **Accepted** (decision D1 — 1-day ADR, not a fork; v1 ratified with the Phase 1 wave 1 API)
 Date: 2026-08-01
 Owner: Chief Architect · Reviewers: CTO, SWE, Cloud Architecture
 Related: ADR 0002 (backend), ADR 0009 (API contract), `docs/dashboard/initiative.md`

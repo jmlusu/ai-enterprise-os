@@ -1,6 +1,6 @@
 # ADR 0009 — Dashboard API contract: REST + WebSocket, replay-based reconnect
 
-Status: **Proposed** (decision D3)
+Status: **Accepted** (decision D3; contract v1 shipped as Phase 1 wave 1 — `6d2654b`/`b6d5a26`)
 Date: 2026-08-01
 Owner: Chief Architect · Reviewers: SWE, Cybersecurity Architecture
 Related: ADR 0002 (backend), ADR 0003 (services layer), ADR 0008 (frontend),

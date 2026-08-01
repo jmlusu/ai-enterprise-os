@@ -127,6 +127,8 @@ files get wiped. This directory is committed on purpose (NOT in `.gitignore`).
 ## Recently Completed (Commits)
 
 ```text
+3af24e5 chore: remove legacy sprint dashboard stub and gitignore dashboards/ output
+ce1df08 feat: add .ai/ knowledge base so agents stop re-discovering the system
 a76acdf fix: sort circuit_breaker import before configuration (I001)
 3b145b5 chore: update commit instruction
 bc28582 Merge branch 'main'
@@ -203,5 +205,5 @@ python -m ai_company.cli.command_map validate
 
 ---
 
-*Updated: 2026-08-01 — `.ai/` knowledge base rebuilt and committed*
+*Updated: 2026-08-01 — ADR 0008/0009 ratified, orphaned artifacts cleaned*
 *Next update: When the dashboard frontend sprint starts or after the next commit*

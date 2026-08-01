@@ -1,6 +1,6 @@
 # Initiative: GUI Dashboard + OpenCode Desktop as Command Centers
 
-Status: **ACTIVE — Phase 0 in progress**
+Status: **ACTIVE — Phase 1 in progress (wave 1 API shipped; frontend pending)**
 Owner: Chief Architect (opencode/big-pickle) · Ratified by: CEO / CIO / CTO / CAIO / CDO / SWE
 Last updated: 2026-08-01
 
@@ -30,7 +30,7 @@ against this repository before tracking began. Evidence paths are as found.
 |---|---------|---------------------|----------|--------|
 | 1 | Generation dispatch map broken: `command_map.yaml` maps 11 targets to 9 prompt files that don't exist; only `bootstrap` + `registry` resolve. Real `prompts/opencode/` has **8 files, differently named** (01–08: bootstrap, registry, generator_engine, cli, document_generator, opencode_agent_generator, dashboard_generator, constitution_loader). | `src/ai_company/cli/command_map.yaml` vs `prompts/opencode/*.md` | **P0** | **[DONE]** — reconciled 2026-08-01; CI integrity test added (see §7.1) |
 | 2 | Self-healing doesn't work: all 5 engines `failed` / `heartbeat_timeout`, `restart_count: 0`. Watchdog isolates; supervisor never recovers. Active pipeline `p_recovery_test` ended fully failed. | `runtime/runtime_state.json` | **P0** | **[DONE]** — recovery fix landed (ADR 0007); drill tests green; **end-to-end live drill PASSED 2026-08-01** (§7.6) |
-| 3 | "Dashboard" is a 16-line static stub; `docs/architecture.md` lists a "Dashboard Engine" with no source; prompt `07_dashboard_generator.md` is aspirational ("Update automatically"). GUI is greenfield. | `dashboards/sprint_dashboard.html` (16 lines); `docs/architecture.md` line 14; `prompts/opencode/07_dashboard_generator.md` | **P0** | **[NOT STARTED]** — Phases 1–2 |
+| 3 | "Dashboard" is a 16-line static stub; `docs/architecture.md` lists a "Dashboard Engine" with no source; prompt `07_dashboard_generator.md` is aspirational ("Update automatically"). GUI is greenfield. | `dashboards/sprint_dashboard.html` (16 lines); `docs/architecture.md` line 14; `prompts/opencode/07_dashboard_generator.md` | **P0** | **[IN PROGRESS]** — Phase 1 wave 1 (API backend) shipped 2026-08-01 (`6d2654b`/`b6d5a26`); frontend is the next sprint |
 | 4 | ~60% of telemetry is generated then discarded: metrics/heartbeats/health are in-memory dicts lost on restart; provider token usage is computed (`CompletionResult.usage`) and never persisted. "Model Usage" / "Agent Health" have zero upstream data. | `src/ai_company/runtime/metrics.py` (`MetricsRegistry` = plain dicts, no persistence); `src/ai_company/providers/base.py` (`usage: dict` field, unused) | **P0** | **[IN PROGRESS]** — CLI invocation telemetry LIVE (`runtime/cli_telemetry.jsonl`, fail-open, WS-0.4); runtime metrics persistence + provider usage instrumentation remain (Phase 2 telemetry workstream) |
 | 5 | Two sources of truth drifting: `command_map.yaml` pins `opencode/north-mini-code-free` + an `architect` agent that is **not defined** in `opencode.json`; `opencode.json` uses `ollama/llama3.1:8b` with agents `build/plan/explore/general`. | `src/ai_company/cli/command_map.yaml` vs `opencode.json` | **P1** | **[DONE]** — `architect` agent added to `opencode.json` 2026-08-01 (see §7.2); command map now an **enforced contract** (ADR 0006, CI integrity gates); model variance documented as decision D4 |
 | 6 | All state gitignored, no backup: `memory/`, `events/`, `generated/`, `.ai-company/`, `runtime/`, `reports/`, `scripts/`, `slides/` excluded from git; a dead laptop = full data loss. | `.gitignore` lines 35–58 | **P1** | **[DONE]** — WS-0.5 complete 2026-08-01: nightly bundle + `restore_backup()` + live restore drill (397/397 files) + `.opencode/` template committed |
@@ -93,12 +93,12 @@ complete; drills run live (restore 397/397 files, recovery restart-before-isolat
 
 ### Phase 1 — Read-only Dashboard v1 (4–6 wks) — 80% of demo/exec value for ~30% effort
 
-`[NOT STARTED]`
+`[IN PROGRESS]` — **wave 1 (API backend) SHIPPED** (`6d2654b`/`b6d5a26`, live on `ai-company serve`); frontend pending.
 
-- `ai-company serve` booting FastAPI + WS bridge.
-- Views: Overview, System Health, Agents (roster), Runs & History, Memory (read), Reports, Validation gate, Registry/Org graph.
-- Reuse the 11 sections of prompt `07_dashboard_generator.md` as the IA; render Markdown + Mermaid reports in-page (marked + DOMPurify + mermaid.js).
-- Live refresh ≤5s, honest "stale/stopped/unknown" states (never a green lie), localhost-bound, read-only by default.
+- ✅ `ai-company serve` booting FastAPI + WS bridge (read-only contract v1, ADR 0009).
+- ⬜ Views: Overview, System Health, Agents (roster), Runs & History, Memory (read), Reports, Validation gate, Registry/Org graph.
+- ⬜ Reuse the 11 sections of prompt `07_dashboard_generator.md` as the IA; render Markdown + Mermaid reports in-page (marked + DOMPurify + mermaid.js).
+- ⬜ Live refresh ≤5s, honest "stale/stopped/unknown" states (never a green lie), localhost-bound, read-only by default.
 - **Exit:** an exec can self-serve the "pulse" page; an operator answers "is the system healthy?" in <5s.
 
 ### Phase 2 — Operational dashboard (4–6 wks) — the actual pivot
@@ -151,9 +151,9 @@ complete; drills run live (restore 397/397 files, recovery restart-before-isolat
 
 | # | Decision | Options | Status | Note |
 |---|----------|---------|--------|------|
-| D1 | Frontend for v1 | Jinja2+htmx (zero Node, fastest) vs Svelte 5 (full interactivity) | **[OPEN]** | Both share the same API; 1-day ADR, not a fork → ADR 0008 (proposed) |
+| D1 | Frontend for v1 | Jinja2+htmx (zero Node, fastest) vs Svelte 5 (full interactivity) | **[DECIDED]** | ADR 0008 accepted (v1 = Jinja2+htmx; Svelte 5 = v2 path, Phase 4) |
 | D2 | Topology: dashboard as runtime engine; `services/` single source of truth | (ratified model) | **[DECIDED]** | ADR 0002 + 0003 accepted |
-| D3 | API contract: REST + WebSocket, `?since=` replay reconnect | (ratified model) | **[PROPOSED]** | ADR 0009 |
+| D3 | API contract: REST + WebSocket, `?since=` replay reconnect | (ratified model) | **[DECIDED]** | ADR 0009 accepted; contract v1 shipped (Phase 1 wave 1) |
 | D4 | Dispatch model variance | `opencode/north-mini-code-free` (desktop-first, no key) vs `ollama/llama3.1:8b` (local default) | **[DECIDED]** | Per-target entries retained; command map is an enforced contract (ADR 0006); `architect` agent defined |
 | D5 | North-star metric | **Recommendation: share of operator actions via Dashboard/OpenCode desktop, target ≥80% by month 6, measured by Phase-0 telemetry** | **[OPEN]** | Needs CEO sign-off |
 
