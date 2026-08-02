@@ -129,6 +129,22 @@
   status row + R12 note, `.ai/current-work.md`. Suite 1265 → **1281 green**;
   ruff/mypy/format clean.
 
+### 2026-08-02 — R8 CI gate (CLI surface contract) + R3 milestone + R11 draft
+- **R8: CLI surface now CI-enforced** (`integrity/check_cli_surface.py`):
+  typer/click introspection captures the full command tree and compares it
+  against the committed golden `cli_surface_contract.json`. Removals, renames
+  and signature changes of existing commands/options are hard errors (exit 1);
+  additive drift (new commands/options) is exit 2 and must be accepted with
+  `--update` + committed. Wired into both lint jobs in `.github/workflows/ci.yml`
+  next to the command-map gate. 8 unit tests.
+- **R3: explicit parity-coverage milestone:** ≥40 of 71 command rows
+  parity-tested (golden CLI == API) by Phase 3 close-out; every new command
+  adds its parity test in the same change (parity-matrix-v0.md + initiative.md
+  §5 R3).
+- **R11: D10 drafted** (persona onboarding scope — View/Operate/Develop, one
+  skippable first-run tour each + tooltips, no tutorial system) — **[PROPOSED,
+  pending CEO/COO sign-off]**, initiative.md §6.
+
 ### 2026-08-02 — Sprint 5.3 (SQLite read model + orphaned-decision close-out)
 - **ADR 0004 shipped:** `readmodel/` package — `ReadModelStore` (SQLite WAL,
   schema v1) + `ReadModelEngine` (rebuild-on-construct); `runtime/dashboard.db`

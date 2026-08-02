@@ -22,9 +22,9 @@
 - [x] **D5 north-star metric signed off** — CEO approved 2026-08-02: share of operator actions via Dashboard/OpenCode desktop ≥ **80% by month 6**; baseline = CLI telemetry (`runtime/cli_telemetry.jsonl`); GUI/desktop telemetry in Phase 3 (honest numerator); Phase 4 trigger depends on it
 - [x] **R4 fallback strategy decided (D9)** — CEO approved 2026-08-02: **free/local models** (e.g. `ollama/llama3.1:8b`, D4) are the official fallback; R4 status `[PARTIALLY MITIGATED]`; remaining work: end-to-end fallback test → R4 `[MITIGATED]`
 - [x] **R12 canonical status service** — `services/status_service.py` (four-state `ok`/`watch`/`action`/`unknown` + timestamp, phase state machine; stopped → watch, never action); CLI `runtime status` Overall line, `GET /api/status` + `/api/health` canonical, dashboard views + app.js unified; golden parity `tests/golden/test_parity_status.py`; **also fixed root cause of misleading unhealthy flags — `HeartbeatSender` liveness worker (passive engines were isolated after boot) + read-model `check_same_thread=False`**; R12 → `[MITIGATED]` in initiative.md — **committed `147540b` (heartbeat fix) + `75e0595` (status service), pushed 2026-08-02, CI green**
-- [ ] **R8 CI gate** — enforce CLI additive-only rule (ADR 0006) as a CI gate (pattern: existing `command_map validate`)
-- [ ] **R3 parity coverage milestone** — explicit milestone target in `docs/dashboard/initiative.md`
-- [ ] **R11 persona onboarding scope** — decision row on scope of persona onboarding (which personas, what flows)
+- [x] **R8 CI gate — CLI additive-only rule** — `integrity/check_cli_surface.py` (typer/click introspection vs committed `cli_surface_contract.json`; removal/rename/change = hard error exit 1; additive drift = exit 2, accept with `--update`); wired into both lint jobs in ci.yml next to the command-map gate; 8 unit tests (`tests/unit/integrity/test_check_cli_surface.py`); verified: real removal → exit 1
+- [x] **R3 parity coverage milestone** — explicit target in `docs/dashboard/initiative.md` §5 R3 + parity-matrix-v0.md: **≥40 of 71 command rows parity-tested by Phase 3 close-out**; every new command adds its parity test in the same change
+- [x] **R11 persona onboarding scope** — **D10 drafted** (2026-08-02) in initiative.md §6: three personas View/Operate/Develop, one skippable first-run tour each + persistent "Equivalent CLI command" tooltips; no tutorial system; proposed Phase 2/3 — **status [PROPOSED], pending CEO/COO sign-off** (R11 flips to MITIGATED on sign-off)
 
 ### Sprint 5.3 Deliverables
 
@@ -235,5 +235,5 @@ python -m ai_company.cli.command_map validate
 
 ---
 
-*Updated: 2026-08-02 — Sprint 5.3 committed (`de9c851`) + pushed; CI green end-to-end (run 30743095405, 8/8 jobs) after parity-test ANSI fix (`936f9ea`); D5 north-star + D9 fallback sign-offs recorded (initiative.md + decisions.md); **R12 MITIGATED — canonical status service + HeartbeatSender liveness fix committed (`147540b` + `75e0595`) + pushed, CI green, suite 1265 → 1281**; follow-up risk mitigation in progress (R8 CI gate, R3 parity milestone, R11 onboarding decision)*
+*Updated: 2026-08-02 — Sprint 5.3 committed (`de9c851`) + pushed; CI green end-to-end (run 30743095405, 8/8 jobs) after parity-test ANSI fix (`936f9ea`); D5 north-star + D9 fallback sign-offs recorded (initiative.md + decisions.md); **R12 MITIGATED — canonical status service + HeartbeatSender liveness fix committed (`147540b` + `75e0595`) + pushed, CI green (run 30747089240, 8/8), suite 1265 → 1281**; **R8 CI gate implemented (CLI surface contract), R3 parity milestone set, R11 D10 drafted pending sign-off — commit+push+CI pending**; next: sign-off on D10, then next sprint*
 *Next update: after the risk-mitigation commits (R8/R3/R11) or when the next sprint starts*

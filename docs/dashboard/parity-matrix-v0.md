@@ -221,6 +221,19 @@ view live (`ai-company serve`), verified by `tests/unit/api/test_api_domain.py`
 (2 tests: running + stopped parity, CLI boots its own runtime against a
 hermetic API-side runtime).
 
+**R3 parity-coverage milestone (explicit target, 2026-08-02):**
+- **Now:** parity suite = `test_parity_read.py` (9 golden CLI==API) +
+  `test_parity_status.py` (2) + `test_parity_wave2b.py` (per-artifact
+  validate reports == CLI `validate` lines; generate/backup OpenAPI
+  contract; shared guard 401/403) — 11 golden tests + contract tests.
+- **Target by Phase 3 close-out:** every read and every safe-write row is
+  parity-tested — **≥40 of 71 command rows** golden-tested (the 5 CLI-only
+  destructive rows are out of scope by design; they have no GUI path to
+  compare).
+- **Rule (additive):** any new CLI command or endpoint adds its parity test
+  (or an explicit exemption in this matrix) in the same change; the R3
+  milestone is tracked in `initiative.md` §5 R3.
+
 **Phase 2 status (Waves 2a + 2b, ADR 0010 ratified 2026-08-01, close-out
 2026-08-02):** **all safe-write rows are `1+2`** — both surfaces live, behind
 bearer token + CSRF + `audit.write` (shared `api/guards.py` `WriteGuard`;

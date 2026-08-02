@@ -43,6 +43,11 @@ jobs:
         run: uv audit
       - name: Command map integrity
         run: uv run python -m ai_company.integrity.check_command_map
+      # Frozen CLI surface (ADR 0006 / R8): fails on any removal, rename or
+      # signature change of an existing command or option. Additive drift
+      # (new commands/options) must be accepted with --update and committed.
+      - name: CLI surface integrity
+        run: uv run python -m ai_company.integrity.check_cli_surface
 
   type-check:
     name: Type check (${{ matrix.os }})

@@ -1,0 +1,789 @@
+{
+  "commands": {
+    "bootstrap": {
+      "params": {}
+    },
+    "build": {
+      "params": {}
+    },
+    "company": {
+      "commands": {
+        "board-generate": {
+          "params": {}
+        },
+        "board-report": {
+          "params": {}
+        },
+        "board-validate": {
+          "params": {}
+        },
+        "dept-generate": {
+          "params": {}
+        },
+        "dept-validate": {
+          "params": {}
+        },
+        "doc-validate": {
+          "params": {}
+        },
+        "docs-generate": {
+          "params": {}
+        },
+        "exec-generate": {
+          "params": {}
+        },
+        "exec-validate": {
+          "params": {}
+        },
+        "generate": {
+          "params": {}
+        },
+        "prompt-generate": {
+          "params": {}
+        },
+        "prompt-validate": {
+          "params": {}
+        },
+        "report": {
+          "params": {}
+        },
+        "specialist-generate": {
+          "params": {}
+        },
+        "specialist-validate": {
+          "params": {}
+        },
+        "validate": {
+          "params": {}
+        },
+        "workflow-generate": {
+          "params": {}
+        },
+        "workflow-validate": {
+          "params": {}
+        }
+      },
+      "params": {}
+    },
+    "dashboard": {
+      "commands": {
+        "token": {
+          "commands": {
+            "create": {
+              "params": {
+                "hash_at_rest": {
+                  "opts": [
+                    "--hash-at-rest"
+                  ],
+                  "required": false
+                },
+                "token_file": {
+                  "opts": [
+                    "--token-file"
+                  ],
+                  "required": false
+                }
+              }
+            },
+            "info": {
+              "params": {
+                "token_file": {
+                  "opts": [
+                    "--token-file"
+                  ],
+                  "required": false
+                }
+              }
+            },
+            "list": {
+              "params": {
+                "token_file": {
+                  "opts": [
+                    "--token-file"
+                  ],
+                  "required": false
+                }
+              }
+            },
+            "revoke": {
+              "params": {
+                "token_file": {
+                  "opts": [
+                    "--token-file"
+                  ],
+                  "required": false
+                }
+              }
+            }
+          },
+          "params": {}
+        }
+      },
+      "params": {}
+    },
+    "doctor": {
+      "params": {
+        "force_ascii": {
+          "opts": [
+            "--force-ascii"
+          ],
+          "required": false
+        }
+      }
+    },
+    "exec": {
+      "commands": {
+        "agent": {
+          "params": {
+            "name": {
+              "opts": [
+                "name"
+              ],
+              "required": true
+            }
+          }
+        },
+        "list": {
+          "params": {}
+        },
+        "org-chart": {
+          "params": {}
+        },
+        "show": {
+          "params": {
+            "name": {
+              "opts": [
+                "name"
+              ],
+              "required": true
+            }
+          }
+        }
+      },
+      "params": {}
+    },
+    "generate": {
+      "params": {
+        "dry_run": {
+          "opts": [
+            "--dry-run"
+          ],
+          "required": false
+        },
+        "target": {
+          "opts": [
+            "target"
+          ],
+          "required": true
+        }
+      }
+    },
+    "graph": {
+      "commands": {
+        "export": {
+          "params": {}
+        },
+        "show": {
+          "params": {}
+        },
+        "stats": {
+          "params": {}
+        }
+      },
+      "params": {}
+    },
+    "memory": {
+      "commands": {
+        "apply-retention": {
+          "params": {}
+        },
+        "archive": {
+          "params": {
+            "memory_id": {
+              "opts": [
+                "memory_id"
+              ],
+              "required": true
+            }
+          }
+        },
+        "archive-old": {
+          "params": {
+            "days": {
+              "opts": [
+                "days"
+              ],
+              "required": false
+            }
+          }
+        },
+        "clear": {
+          "params": {}
+        },
+        "delete": {
+          "params": {
+            "memory_id": {
+              "opts": [
+                "memory_id"
+              ],
+              "required": true
+            }
+          }
+        },
+        "export": {
+          "params": {
+            "file_path": {
+              "opts": [
+                "file_path"
+              ],
+              "required": false
+            }
+          }
+        },
+        "get": {
+          "params": {
+            "memory_id": {
+              "opts": [
+                "memory_id"
+              ],
+              "required": true
+            }
+          }
+        },
+        "list": {
+          "params": {
+            "limit": {
+              "opts": [
+                "--limit",
+                "-l"
+              ],
+              "required": false
+            },
+            "namespace": {
+              "opts": [
+                "--namespace",
+                "-n"
+              ],
+              "required": false
+            },
+            "type": {
+              "opts": [
+                "--type",
+                "-t"
+              ],
+              "required": false
+            }
+          }
+        },
+        "purge": {
+          "params": {}
+        },
+        "restore": {
+          "params": {
+            "snapshot_id": {
+              "opts": [
+                "snapshot_id"
+              ],
+              "required": true
+            }
+          }
+        },
+        "save": {
+          "params": {
+            "content": {
+              "opts": [
+                "content"
+              ],
+              "required": true
+            },
+            "importance": {
+              "opts": [
+                "--importance",
+                "-i"
+              ],
+              "required": false
+            },
+            "namespace": {
+              "opts": [
+                "--namespace",
+                "-n"
+              ],
+              "required": false
+            },
+            "parent": {
+              "opts": [
+                "--parent",
+                "-p"
+              ],
+              "required": false
+            },
+            "source": {
+              "opts": [
+                "--source",
+                "-s"
+              ],
+              "required": false
+            },
+            "tags": {
+              "opts": [
+                "--tags"
+              ],
+              "required": false
+            },
+            "type": {
+              "opts": [
+                "--type",
+                "-t"
+              ],
+              "required": false
+            }
+          }
+        },
+        "search": {
+          "params": {
+            "include_archived": {
+              "opts": [
+                "--include-archived"
+              ],
+              "required": false
+            },
+            "json_output": {
+              "opts": [
+                "--json",
+                "-j"
+              ],
+              "required": false
+            },
+            "limit": {
+              "opts": [
+                "--limit",
+                "-l"
+              ],
+              "required": false
+            },
+            "min_importance": {
+              "opts": [
+                "--min-importance",
+                "-i"
+              ],
+              "required": false
+            },
+            "namespace": {
+              "opts": [
+                "--namespace",
+                "-n"
+              ],
+              "required": false
+            },
+            "query": {
+              "opts": [
+                "query"
+              ],
+              "required": false
+            },
+            "tags": {
+              "opts": [
+                "--tags"
+              ],
+              "required": false
+            },
+            "type": {
+              "opts": [
+                "--type",
+                "-t"
+              ],
+              "required": false
+            }
+          }
+        },
+        "show": {
+          "params": {}
+        },
+        "snapshot": {
+          "params": {
+            "name": {
+              "opts": [
+                "name"
+              ],
+              "required": true
+            }
+          }
+        },
+        "snapshots": {
+          "params": {}
+        },
+        "stats": {
+          "params": {}
+        },
+        "unarchive": {
+          "params": {
+            "memory_id": {
+              "opts": [
+                "memory_id"
+              ],
+              "required": true
+            }
+          }
+        },
+        "update": {
+          "params": {
+            "content": {
+              "opts": [
+                "--content",
+                "-c"
+              ],
+              "required": false
+            },
+            "importance": {
+              "opts": [
+                "--importance",
+                "-i"
+              ],
+              "required": false
+            },
+            "memory_id": {
+              "opts": [
+                "memory_id"
+              ],
+              "required": true
+            },
+            "tags": {
+              "opts": [
+                "--tags",
+                "-t"
+              ],
+              "required": false
+            }
+          }
+        }
+      },
+      "params": {}
+    },
+    "orchestrate": {
+      "commands": {
+        "history": {
+          "params": {
+            "limit": {
+              "opts": [
+                "--limit"
+              ],
+              "required": false
+            },
+            "plan_id": {
+              "opts": [
+                "plan_id"
+              ],
+              "required": false
+            }
+          }
+        },
+        "plan": {
+          "params": {
+            "file": {
+              "opts": [
+                "--file",
+                "-f"
+              ],
+              "required": false
+            },
+            "interval": {
+              "opts": [
+                "--interval"
+              ],
+              "required": false
+            },
+            "max_runs": {
+              "opts": [
+                "--max-runs"
+              ],
+              "required": false
+            },
+            "pipeline": {
+              "opts": [
+                "pipeline"
+              ],
+              "required": false
+            },
+            "schedule_mode": {
+              "opts": [
+                "--schedule-mode"
+              ],
+              "required": false
+            }
+          }
+        },
+        "resume": {
+          "params": {
+            "checkpoint_id": {
+              "opts": [
+                "--checkpoint-id"
+              ],
+              "required": false
+            },
+            "plan_id": {
+              "opts": [
+                "plan_id"
+              ],
+              "required": true
+            }
+          }
+        },
+        "retry": {
+          "params": {
+            "plan_id": {
+              "opts": [
+                "plan_id"
+              ],
+              "required": true
+            }
+          }
+        },
+        "rollback": {
+          "params": {
+            "plan_id": {
+              "opts": [
+                "plan_id"
+              ],
+              "required": true
+            },
+            "reason": {
+              "opts": [
+                "--reason"
+              ],
+              "required": false
+            }
+          }
+        },
+        "start": {
+          "params": {
+            "file": {
+              "opts": [
+                "--file",
+                "-f"
+              ],
+              "required": false
+            },
+            "interval": {
+              "opts": [
+                "--interval"
+              ],
+              "required": false
+            },
+            "max_runs": {
+              "opts": [
+                "--max-runs"
+              ],
+              "required": false
+            },
+            "pipeline": {
+              "opts": [
+                "pipeline"
+              ],
+              "required": false
+            },
+            "schedule_mode": {
+              "opts": [
+                "--schedule-mode"
+              ],
+              "required": false
+            }
+          }
+        },
+        "status": {
+          "params": {
+            "plan_id": {
+              "opts": [
+                "plan_id"
+              ],
+              "required": false
+            }
+          }
+        }
+      },
+      "params": {}
+    },
+    "registry": {
+      "commands": {
+        "list": {
+          "params": {}
+        },
+        "show": {
+          "params": {
+            "name": {
+              "opts": [
+                "name"
+              ],
+              "required": false
+            }
+          }
+        },
+        "verify": {
+          "params": {}
+        }
+      },
+      "params": {}
+    },
+    "report": {
+      "commands": {
+        "generate": {
+          "params": {
+            "report_type": {
+              "opts": [
+                "report_type"
+              ],
+              "required": false
+            }
+          }
+        }
+      },
+      "params": {}
+    },
+    "runtime": {
+      "commands": {
+        "diagnostics": {
+          "params": {
+            "config_dir": {
+              "opts": [
+                "--config-dir"
+              ],
+              "required": false
+            }
+          }
+        },
+        "health": {
+          "params": {
+            "config_dir": {
+              "opts": [
+                "--config-dir"
+              ],
+              "required": false
+            }
+          }
+        },
+        "metrics": {
+          "params": {
+            "config_dir": {
+              "opts": [
+                "--config-dir"
+              ],
+              "required": false
+            }
+          }
+        },
+        "reload": {
+          "params": {
+            "config_dir": {
+              "opts": [
+                "--config-dir"
+              ],
+              "required": false
+            }
+          }
+        },
+        "restart": {
+          "params": {
+            "config_dir": {
+              "opts": [
+                "--config-dir"
+              ],
+              "required": false
+            },
+            "reason": {
+              "opts": [
+                "--reason"
+              ],
+              "required": false
+            }
+          }
+        },
+        "start": {
+          "params": {
+            "config_dir": {
+              "opts": [
+                "--config-dir"
+              ],
+              "required": false
+            }
+          }
+        },
+        "status": {
+          "params": {
+            "config_dir": {
+              "opts": [
+                "--config-dir"
+              ],
+              "required": false
+            }
+          }
+        },
+        "stop": {
+          "params": {
+            "config_dir": {
+              "opts": [
+                "--config-dir"
+              ],
+              "required": false
+            },
+            "force": {
+              "opts": [
+                "--force"
+              ],
+              "required": false
+            },
+            "reason": {
+              "opts": [
+                "--reason"
+              ],
+              "required": false
+            }
+          }
+        }
+      },
+      "params": {}
+    },
+    "serve": {
+      "params": {
+        "config_dir": {
+          "opts": [
+            "--config-dir"
+          ],
+          "required": false
+        },
+        "hash_at_rest": {
+          "opts": [
+            "--hash-at-rest"
+          ],
+          "required": false
+        },
+        "host": {
+          "opts": [
+            "--host"
+          ],
+          "required": false
+        },
+        "port": {
+          "opts": [
+            "--port"
+          ],
+          "required": false
+        },
+        "require_loopback_token": {
+          "opts": [
+            "--require-loopback-token"
+          ],
+          "required": false
+        }
+      }
+    },
+    "status": {
+      "params": {}
+    },
+    "targets": {
+      "params": {}
+    },
+    "validate": {
+      "params": {}
+    }
+  },
+  "version": 1
+}
