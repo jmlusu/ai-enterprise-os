@@ -156,10 +156,15 @@ b6d5a26        feat: Phase 1 wave 1 — dashboard API server (read-only contract
    `ollama/llama3.1:8b`), R4 → `[PARTIALLY MITIGATED]`. Both logged in
    `docs/dashboard/initiative.md` + `.ai/decisions.md` (uncommitted so far).
 
-3. **Follow-up risk mitigation in progress (post-sprint)** — **R12** canonical
-   status service (CLI/API/dashboard currently format `RuntimeStatus`
-   separately), **R8** CI gate for the CLI additive-only rule (ADR 0006),
-   **R3** parity coverage milestone, **R11** persona onboarding scope decision.
+3. **Dashboard-initiative follow-up risks (2026-08-02 batch)** — **R12
+   MITIGATED**: canonical status service (`services/status_service.py`, four
+   states + timestamp, phase-state-machine derived) unifies CLI/API/dashboard;
+   root cause of misleading "unhealthy" flags fixed (`HeartbeatSender` liveness
+   worker + read-model `check_same_thread=False`). **R8**: CLI surface integrity
+   gate live in CI (`integrity/check_cli_surface.py` vs committed contract;
+   additive-only, exit 1 on removal/rename/change, `--update` for additive
+   drift). **R3**: parity milestone ≥40/71 rows by Phase 3 close-out. **R11**:
+   D10 persona onboarding **drafted [PROPOSED] — awaiting CEO/COO sign-off**.
 
 4. **R5 telemetry is live** — runtime metrics persist every 30s to
    `runtime/metrics_history.jsonl`, provider usage to
@@ -184,9 +189,18 @@ b6d5a26        feat: Phase 1 wave 1 — dashboard API server (read-only contract
 
 9. **Parity test suite is seeded** — `tests/golden/test_parity_read.py`
    (golden CLI output == API JSON) plus `tests/golden/test_parity_wave2b.py`
-   (generate/backup contract + shared guard parity). Every new read command
-   must add a parity row + parity test (Phase 4 demotion trigger depends on
-   it). Wave 2b flipped all remaining safe-write rows to `1+2`.
+   (generate/backup contract + shared guard parity) plus
+   `tests/golden/test_parity_status.py` (canonical status CLI == API, 2026-08-02).
+   Every new read command must add a parity row + parity test (Phase 4 demotion
+   trigger depends on it). Wave 2b flipped all remaining safe-write rows to `1+2`.
+
+10. **Known CI flake (ubuntu `test` job, 2026-08-02)** — intermittent native
+    `Segmentation fault` (exit 139) right after
+    `tests/integration/test_runtime_boot.py` finishes (~15% mark; thread
+    teardown boundary; HeartbeatSender/health-monitor threads + SQLite).
+    Same-commit rerun passes; `test-windows` never hit it; not introduced by
+    the R8/R12 batches (reproduced on a docs-only commit). If CI shows this,
+    re-run the failed job before investigating code.
 
 ---
 
