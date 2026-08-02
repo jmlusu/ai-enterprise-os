@@ -12,7 +12,7 @@
 | **Current Sprint** | Sprint 5.4 — Telemetry: durable, bounded, actionable (SQLite store, retention/rollup, isolation alerting, recovery metric) |
 | **Status** | 🔄 **IN PROGRESS** — T1 (SQLite live telemetry store) shipped; T2–T4 pending; T5 stretch |
 | **Goal** | Complete the R5/R2 telemetry story before Phase 3: (T1) SQLite **live** telemetry store (incremental sync, read path = ADR 0004 projection), (T2) retention + rollup policies (config-driven, rollup-then-truncate, scheduler job), (T3) isolation alerting (`runtime.engine_isolated` → alerts → dashboard), (T4) recovery-success metric (counters + KPI rate). Zero CLI-surface changes (ADR 0006); R3 parity rows for new reads |
-| **Commit** | Sprint 5.3: `de9c851` · Wave 2b: `2244497` · Wave 2a: `131d9d9` |
+| **Commit** | Sprint 5.4 T1: `294e107` · Sprint 5.3: `de9c851` · Wave 2b: `2244497` · Wave 2a: `131d9d9` |
 | **Created** | 2026-08-02 |
 | **Completed** | — |
 | **Follow-up (in progress)** | Post-Sprint 5.3 risk mitigation completed: R12/R8/R3/R11/R4 — see "Dashboard Initiative Follow-up" below |
