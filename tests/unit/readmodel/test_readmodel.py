@@ -76,8 +76,15 @@ METRIC_LINES = [
                 "engine_healthy": 6,
                 "engine_degraded": 0,
                 "engine_failed": 0,
+                "recovery_success_rate": 66.7,
             },
-            "counters": {"jobs_executed": 5, "jobs_failed": 1},
+            "counters": {
+                "jobs_executed": 5,
+                "jobs_failed": 1,
+                "recovery_attempts": 3,
+                "recovery_successes": 2,
+                "recovery_failures": 1,
+            },
         },
     },
 ]
@@ -158,8 +165,15 @@ def _append_metric(path: Path) -> None:
                             "engine_healthy": 6,
                             "engine_degraded": 0,
                             "engine_failed": 0,
+                            "recovery_success_rate": 50.0,
                         },
-                        "counters": {"jobs_executed": 7, "jobs_failed": 0},
+                        "counters": {
+                            "jobs_executed": 7,
+                            "jobs_failed": 0,
+                            "recovery_attempts": 2,
+                            "recovery_successes": 1,
+                            "recovery_failures": 1,
+                        },
                     },
                 },
                 ensure_ascii=False,
@@ -298,6 +312,12 @@ class TestReadModelStore:
         assert summary["last_timestamp"] == "2026-08-01T10:05:00+00:00"
         assert summary["trend"]["cpu_percent"] == 9.8
         assert summary["trend"]["jobs_failed"] == 1
+        # T4 — recovery-outcome fields surface in the store-side summary
+        # (parity with ``telemetry.metrics.metrics_summary``).
+        assert summary["trend"]["recovery_attempts"] == 3
+        assert summary["trend"]["recovery_successes"] == 2
+        assert summary["trend"]["recovery_failures"] == 1
+        assert summary["trend"]["recovery_success_rate"] == 66.7
         store.close()
 
     def test_provider_usage_by_model(

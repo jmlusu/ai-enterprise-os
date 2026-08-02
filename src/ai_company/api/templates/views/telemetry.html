@@ -6,7 +6,7 @@
 {% block content %}
 <div class="card mb-1">
   <h2>KPI snapshot <span class="subtitle">runtime/metrics_history.jsonl</span></h2>
-  <div class="grid cols-4">
+  <div class="grid cols-5">
     <div class="card">
       <h2>Samples</h2>
       <div class="big-number">{{ metrics_summary.get("samples", 0) }}<small>persisted</small></div>
@@ -26,6 +26,11 @@
       <h2>Jobs</h2>
       <div class="big-number">{{ trend.get("jobs_executed", 0) }}<small>executed</small></div>
       <p class="subtitle">{{ trend.get("jobs_failed", 0) }} failed · {{ trend.get("failed_events", 0) }} events</p>
+    </div>
+    <div class="card">
+      <h2>Self-healing</h2>
+      <div class="big-number">{{ trend.get("recovery_success_rate", 0) }}<small>% success</small></div>
+      <p class="subtitle">{{ trend.get("recovery_successes", 0) }} recovered · {{ trend.get("recovery_failures", 0) }} failed · {{ trend.get("recovery_attempts", 0) }} attempts</p>
     </div>
   </div>
   <div class="write-actions mt-1">

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ai_company.runtime.metrics import MetricsRegistry
 from ai_company.runtime.models import RecoveryPolicy
 from ai_company.runtime.recovery import RecoveryManager
 
@@ -153,3 +154,90 @@ def test_snapshot() -> None:
     )
     snapshot = manager.snapshot()
     assert snapshot["policies"] == ["engine-a"]
+
+
+# ── T4 — recovery-outcome metrics ──────────────────────────────────
+
+
+def _metric_tracking_manager(config: dict) -> tuple[RecoveryManager, MetricsRegistry]:
+    """Build a RecoveryManager wired to a fresh MetricsRegistry."""
+    registry = MetricsRegistry()
+    manager = RecoveryManager(config=config, metrics=registry)
+    return manager, registry
+
+
+def test_no_metrics_registry_is_noop() -> None:
+    manager = RecoveryManager(
+        config={"policies": {"engine-a": {"actions": ["restart"]}}}
+    )
+    result = manager.recover("engine-a")
+    assert result.success is False
+    # No registry wired — recovery still behaves exactly as before.
+    assert manager.metrics is None
+
+
+def test_recovery_attempts_recorded_once_per_call() -> None:
+    manager, registry = _metric_tracking_manager(
+        {"policies": {"engine-a": {"actions": ["restart"]}}}
+    )
+    manager.recover("engine-a")  # failure (no restart mechanism)
+    manager.recover("engine-a")  # failure again
+    assert registry.counter("recovery_attempts") == 2
+    assert registry.counter("recovery_successes") == 0
+    assert registry.counter("recovery_failures") == 2
+
+
+def test_successful_restart_records_success() -> None:
+    calls: list[str] = []
+
+    def factory() -> None:
+        calls.append("recreated")
+
+    manager, registry = _metric_tracking_manager(
+        {"policies": {"engine-a": {"actions": ["restart"]}}}
+    )
+    manager.register_factory("engine-a", factory)
+    result = manager.recover("engine-a")
+    assert result.success is True
+    assert registry.counter("recovery_attempts") == 1
+    assert registry.counter("recovery_successes") == 1
+    assert registry.counter("recovery_failures") == 0
+
+
+def test_success_rate_gauge_derived_from_counters() -> None:
+    calls: list[str] = []
+
+    def factory() -> None:
+        calls.append("recreated")
+
+    manager, registry = _metric_tracking_manager(
+        {"policies": {"engine-a": {"actions": ["restart"]}}}
+    )
+    # One failure (no mechanism) then one success.
+    manager.recover("engine-a")
+    assert registry.gauge("recovery_success_rate") == 0.0
+    manager.register_factory("engine-a", factory)
+    manager.recover("engine-a")
+    assert registry.counter("recovery_attempts") == 2
+    assert registry.counter("recovery_successes") == 1
+    assert registry.gauge("recovery_success_rate") == 50.0
+
+
+def test_isolate_outcome_counts_as_failure() -> None:
+    from ai_company.runtime.process_manager import ProcessManager
+
+    process_manager = ProcessManager()
+    process_manager.register("engine-a")
+    registry = MetricsRegistry()
+    manager = RecoveryManager(
+        config={"policies": {"engine-a": {"actions": ["isolate"]}}},
+        process_manager=process_manager,
+        metrics=registry,
+    )
+    result = manager.recover("engine-a")
+    # Isolating stops the process but does NOT restore health → failure (T4).
+    assert result.success is True  # legacy semantics: action was taken
+    assert result.actions_taken == ["isolate"]
+    assert registry.counter("recovery_attempts") == 1
+    assert registry.counter("recovery_successes") == 0
+    assert registry.counter("recovery_failures") == 1

@@ -23,6 +23,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Self
 
+from ai_company.runtime.metrics import metrics_trend
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_DB_RELATIVE_PATH = Path("runtime") / "dashboard.db"
@@ -517,25 +519,12 @@ class ReadModelStore:
             }
         latest_record = records[-1]
         snapshot = latest_record.get("snapshot", {})
-        gauges = snapshot.get("gauges", {})
-        counters = snapshot.get("counters", {})
         return {
             "samples": len(records),
             "latest": latest_record,
             "first_timestamp": records[0].get("timestamp"),
             "last_timestamp": latest_record.get("timestamp"),
-            "trend": {
-                "cpu_percent": gauges.get("cpu_percent"),
-                "memory_percent": gauges.get("memory_percent"),
-                "engine_healthy": int(gauges.get("engine_healthy", 0)),
-                "engine_degraded": int(gauges.get("engine_degraded", 0)),
-                "engine_failed": int(gauges.get("engine_failed", 0)),
-                "jobs_executed": int(counters.get("jobs_executed", 0)),
-                "jobs_failed": int(counters.get("jobs_failed", 0)),
-                "failed_events": int(counters.get("failed_events", 0)),
-                "restarts": int(counters.get("restarts", 0)),
-                "uptime_seconds": snapshot.get("uptime_seconds"),
-            },
+            "trend": metrics_trend(snapshot),
         }
 
     def provider_usage_by_model(self, limit: int = 500) -> dict[str, Any]:

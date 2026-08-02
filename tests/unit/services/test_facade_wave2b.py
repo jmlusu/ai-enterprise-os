@@ -444,10 +444,20 @@ class TestTelemetryFacade:
         result = facade.metrics_persist()
         assert result["success"] is True
         assert isinstance(result["snapshot"], dict)
+        # T4 — recovery-outcome fields flow through the persisted snapshot
+        # (defaults of zero with no recovery activity in this fixture).
+        snapshot = result["snapshot"]
+        assert snapshot["recovery_attempts"] == 0
+        assert snapshot["recovery_successes"] == 0
+        assert snapshot["recovery_failures"] == 0
+        assert snapshot["recovery_success_rate"] == 0.0
 
         summary = facade.metrics_history_summary()
         assert summary["success"] is True
         assert summary["summary"]["samples"] >= 1
+        trend = summary["summary"]["trend"]
+        assert "recovery_attempts" in trend
+        assert "recovery_success_rate" in trend
 
     def test_provider_usage_summary(
         self,

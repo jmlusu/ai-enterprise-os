@@ -127,6 +127,7 @@ class RuntimeEngine:
             process_manager=self.process_manager,
             event_bus=self.event_bus,
             is_engine=lambda name: name in self.engines,
+            metrics=self.metrics_registry,
         )
         self.supervisor = Supervisor(
             config=self._section("monitoring"),

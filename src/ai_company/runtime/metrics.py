@@ -19,6 +19,12 @@ from ai_company.runtime.models import RuntimeMetrics
 
 logger = logging.getLogger(__name__)
 
+# Recovery-outcome metric names (T4 — self-healing success rate).
+RECOVERY_ATTEMPTS = "recovery_attempts"
+RECOVERY_SUCCESSES = "recovery_successes"
+RECOVERY_FAILURES = "recovery_failures"
+RECOVERY_SUCCESS_RATE = "recovery_success_rate"
+
 
 class MetricsRegistry:
     """Thread-safe runtime metrics registry."""
@@ -135,6 +141,51 @@ class MetricsRegistry:
             jobs_executed=int(counters.get("jobs_executed", 0)),
             jobs_failed=int(counters.get("jobs_failed", 0)),
             restarts=int(counters.get("restarts", 0)),
+            recovery_attempts=int(counters.get(RECOVERY_ATTEMPTS, 0)),
+            recovery_successes=int(counters.get(RECOVERY_SUCCESSES, 0)),
+            recovery_failures=int(counters.get(RECOVERY_FAILURES, 0)),
+            recovery_success_rate=round(
+                float(gauges.get(RECOVERY_SUCCESS_RATE, 0.0)), 1
+            ),
             counters=counters,
             timers=self.timers(),
         )
+
+
+def metrics_trend(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Derive the dashboard trend dict from one persisted metrics snapshot.
+
+    Tolerates both persisted shapes (T1/T4): registry-shaped records with
+    ``gauges`` and ``counters`` dicts (the telemetry log fixture shape), and
+    flattened ``RuntimeMetrics`` model dumps where gauge-like fields sit at
+    the top level (the facade ``metrics_persist`` write path). Reads fall
+    back so a field survives either shape — required so the recovery
+    success-rate gauge and CPU/engine gauges render on the KPI panel.
+    """
+    raw_gauges = snapshot.get("gauges")
+    gauges = raw_gauges if isinstance(raw_gauges, dict) else {}
+    raw_counters = snapshot.get("counters")
+    counters = raw_counters if isinstance(raw_counters, dict) else {}
+
+    def gauge(name: str, default: Any = 0.0) -> Any:
+        return gauges.get(name, snapshot.get(name, default))
+
+    def counter(name: str, default: int = 0) -> int:
+        return int(counters.get(name, snapshot.get(name, default)))
+
+    return {
+        "cpu_percent": gauge("cpu_percent", None),
+        "memory_percent": gauge("memory_percent", None),
+        "engine_healthy": int(gauge("engine_healthy")),
+        "engine_degraded": int(gauge("engine_degraded")),
+        "engine_failed": int(gauge("engine_failed")),
+        "jobs_executed": counter("jobs_executed"),
+        "jobs_failed": counter("jobs_failed"),
+        "failed_events": counter("failed_events"),
+        "restarts": counter("restarts"),
+        "recovery_attempts": counter(RECOVERY_ATTEMPTS),
+        "recovery_successes": counter(RECOVERY_SUCCESSES),
+        "recovery_failures": counter(RECOVERY_FAILURES),
+        "recovery_success_rate": round(float(gauge(RECOVERY_SUCCESS_RATE)), 1),
+        "uptime_seconds": snapshot.get("uptime_seconds"),
+    }

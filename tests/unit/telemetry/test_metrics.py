@@ -33,12 +33,16 @@ def _snapshot() -> dict[str, Any]:
             "engine_healthy": 8,
             "engine_degraded": 1,
             "engine_failed": 0,
+            "recovery_success_rate": 66.7,
         },
         "counters": {
             "jobs_executed": 42,
             "jobs_failed": 1,
             "failed_events": 0,
             "restarts": 0,
+            "recovery_attempts": 3,
+            "recovery_successes": 2,
+            "recovery_failures": 1,
         },
     }
 
@@ -62,6 +66,47 @@ def test_metrics_summary_derives_trend(tmp_path: Any) -> None:
     assert trend["memory_percent"] == 41.0
     assert trend["engine_healthy"] == 8
     assert trend["jobs_executed"] == 42
+    # T4 — recovery-outcome fields surface in the dashboard summary.
+    assert trend["recovery_attempts"] == 3
+    assert trend["recovery_successes"] == 2
+    assert trend["recovery_failures"] == 1
+    assert trend["recovery_success_rate"] == 66.7
+
+
+def test_metrics_summary_handles_flattened_model_dump_shape(
+    tmp_path: Any,
+) -> None:
+    """The facade ``metrics_persist`` path writes a flattened RuntimeMetrics
+    dump (fields at top level, no ``gauges`` key); the trend reader must
+    still surface gauges + counters (latent T1 shape bug, fixed for T4)."""
+    log_metrics_snapshot(
+        {
+            "uptime_seconds": 120.0,
+            "cpu_percent": 12.5,
+            "memory_percent": 41.0,
+            "engine_healthy": 8,
+            "engine_degraded": 1,
+            "engine_failed": 0,
+            "jobs_executed": 42,
+            "jobs_failed": 1,
+            "recovery_attempts": 3,
+            "recovery_successes": 2,
+            "recovery_failures": 1,
+            "recovery_success_rate": 66.7,
+            "counters": {
+                "jobs_executed": 42,
+                "recovery_attempts": 3,
+                "recovery_successes": 2,
+                "recovery_failures": 1,
+            },
+            "timers": {},
+        }
+    )
+    trend = metrics_summary()["trend"]
+    assert trend["cpu_percent"] == 12.5
+    assert trend["engine_healthy"] == 8
+    assert trend["recovery_attempts"] == 3
+    assert trend["recovery_success_rate"] == 66.7
 
 
 def test_metrics_summary_empty_when_no_history(tmp_path: Any) -> None:

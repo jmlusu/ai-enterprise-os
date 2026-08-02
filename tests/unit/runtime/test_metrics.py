@@ -63,6 +63,10 @@ def test_to_metrics_maps_fields() -> None:
     registry.increment("jobs_executed", 4)
     registry.increment("jobs_failed", 1)
     registry.increment("failed_events", 2)
+    registry.increment("recovery_attempts", 5)
+    registry.increment("recovery_successes", 3)
+    registry.increment("recovery_failures", 2)
+    registry.set_gauge("recovery_success_rate", 60.0)
     registry.set_gauge("active_engines", 5)
     registry.set_gauge("engine_healthy", 5)
     registry.set_gauge("queue_sizes", {"pending": 2})
@@ -73,6 +77,20 @@ def test_to_metrics_maps_fields() -> None:
     assert metrics.active_engines == 5
     assert metrics.engine_healthy == 5
     assert metrics.queue_sizes == {"pending": 2}
+    # T4 — recovery-outcome fields map through to RuntimeMetrics.
+    assert metrics.recovery_attempts == 5
+    assert metrics.recovery_successes == 3
+    assert metrics.recovery_failures == 2
+    assert metrics.recovery_success_rate == 60.0
+
+
+def test_to_metrics_recovery_defaults_to_zero() -> None:
+    registry = MetricsRegistry()
+    metrics = registry.to_metrics()
+    assert metrics.recovery_attempts == 0
+    assert metrics.recovery_successes == 0
+    assert metrics.recovery_failures == 0
+    assert metrics.recovery_success_rate == 0.0
 
 
 def test_reset_clears_everything() -> None:

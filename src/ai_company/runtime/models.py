@@ -443,6 +443,10 @@ class RuntimeMetrics(_SerializableModel):
     jobs_executed: int = Field(default=0, ge=0)
     jobs_failed: int = Field(default=0, ge=0)
     restarts: int = Field(default=0, ge=0)
+    recovery_attempts: int = Field(default=0, ge=0)
+    recovery_successes: int = Field(default=0, ge=0)
+    recovery_failures: int = Field(default=0, ge=0)
+    recovery_success_rate: float = Field(default=0.0, ge=0)
     counters: dict[str, int] = Field(default_factory=dict)
     timers: dict[str, float] = Field(default_factory=dict)
 

@@ -22,6 +22,12 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
+from ai_company.runtime.metrics import (
+    RECOVERY_ATTEMPTS,
+    RECOVERY_FAILURES,
+    RECOVERY_SUCCESS_RATE,
+    RECOVERY_SUCCESSES,
+)
 from ai_company.runtime.models import (
     RecoveryError,
     RecoveryPolicy,
@@ -45,6 +51,10 @@ class RecoveryManager:
         component_factory: Optional callable ``(name) -> component`` used to
             re-create components whose factory is registered.
         event_bus: Optional event bus for ``escalate`` actions.
+        metrics: Optional metrics registry. When provided, every recovery
+            outcome is recorded exactly once as ``recovery_attempts`` /
+            ``recovery_successes`` / ``recovery_failures`` counters plus a
+            ``recovery_success_rate`` gauge (T4 — self-healing success rate).
     """
 
     def __init__(
@@ -54,6 +64,7 @@ class RecoveryManager:
         component_factory: Callable[[str], Any] | None = None,
         event_bus: Any | None = None,
         is_engine: Callable[[str], bool] | None = None,
+        metrics: Any | None = None,
     ) -> None:
         self.config = config or {}
         self.default_max_attempts = int(self.config.get("default_max_attempts", 3))
@@ -63,6 +74,8 @@ class RecoveryManager:
         # Optional predicate used to fall back to the "engine"/"process"
         # category policies for components without an exact-name policy.
         self.is_engine = is_engine
+        # Optional metrics registry for recovery-outcome recording (T4).
+        self.metrics = metrics
         self._policies: dict[str, RecoveryPolicy] = {}
         self._attempts: dict[str, int] = {}
         self._results: dict[str, list[RecoveryResult]] = {}
@@ -129,42 +142,70 @@ class RecoveryManager:
             attempts = self._attempts[component]
         policy = self.policy_for(component)
         if policy is None or not policy.enabled:
-            return RecoveryResult(
+            result = RecoveryResult(
                 component=component,
                 success=False,
                 attempts=attempts,
                 message="No enabled recovery policy configured",
                 recovered_at=_utcnow(),
             )
-        max_attempts = (
-            int(policy.max_attempts)
-            if policy.max_attempts is not None
-            else self.default_max_attempts
-        )
-        logger.warning(
-            "Recovering %s (attempt %d/%d, actions=%s, reason=%s)",
-            component,
-            attempts,
-            max_attempts,
-            policy.actions,
-            reason,
-        )
-        if attempts > max_attempts:
-            result = RecoveryResult(
-                component=component,
-                success=False,
-                attempts=attempts,
-                message=(
-                    f"Max attempts ({max_attempts}) exceeded; "
-                    f"actions attempted: {', '.join(policy.actions)}"
-                ),
-                recovered_at=_utcnow(),
-            )
         else:
-            result = self._execute(component, policy, reason, attempts)
+            max_attempts = (
+                int(policy.max_attempts)
+                if policy.max_attempts is not None
+                else self.default_max_attempts
+            )
+            logger.warning(
+                "Recovering %s (attempt %d/%d, actions=%s, reason=%s)",
+                component,
+                attempts,
+                max_attempts,
+                policy.actions,
+                reason,
+            )
+            if attempts > max_attempts:
+                result = RecoveryResult(
+                    component=component,
+                    success=False,
+                    attempts=attempts,
+                    message=(
+                        f"Max attempts ({max_attempts}) exceeded; "
+                        f"actions attempted: {', '.join(policy.actions)}"
+                    ),
+                    recovered_at=_utcnow(),
+                )
+            else:
+                result = self._execute(component, policy, reason, attempts)
         with self._lock:
             self._results.setdefault(component, []).append(result)
+        self._record_outcome(result)
         return result
+
+    def _record_outcome(self, result: RecoveryResult) -> None:
+        """Record one recovery outcome into the metrics registry (T4).
+
+        Called exactly once per :meth:`recover` — attempts always increment;
+        the outcome is a **success** only when the component was genuinely
+        recovered via a concrete action (``restart`` / ``reload_state``).
+        Escalated, isolated, exhausted, and all-actions-failed outcomes are
+        counted as **failures** (self-healing did not restore the component).
+        The success-rate gauge is derived from the recorded counters.
+        """
+        if self.metrics is None:
+            return
+        self.metrics.increment(RECOVERY_ATTEMPTS)
+        recovered = bool(
+            result.actions_taken
+            and any(a in ("restart", "reload_state") for a in result.actions_taken)
+        )
+        if recovered:
+            self.metrics.increment(RECOVERY_SUCCESSES)
+        else:
+            self.metrics.increment(RECOVERY_FAILURES)
+        attempts = float(self.metrics.counter(RECOVERY_ATTEMPTS))
+        successes = float(self.metrics.counter(RECOVERY_SUCCESSES))
+        rate = round(successes / attempts * 100.0, 1) if attempts else 0.0
+        self.metrics.set_gauge(RECOVERY_SUCCESS_RATE, rate)
 
     def _execute(
         self,
