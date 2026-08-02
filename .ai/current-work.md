@@ -235,5 +235,5 @@ python -m ai_company.cli.command_map validate
 
 ---
 
-*Updated: 2026-08-02 — Sprint 5.3 committed (`de9c851`) + pushed; CI green end-to-end (run 30743095405, 8/8 jobs) after parity-test ANSI fix (`936f9ea`); D5 north-star + D9 fallback sign-offs recorded (initiative.md + decisions.md); **R12 MITIGATED — canonical status service + HeartbeatSender liveness fix committed (`147540b` + `75e0595`) + pushed, CI green (run 30747089240, 8/8), suite 1265 → 1281**; **R8 CI gate implemented (CLI surface contract), R3 parity milestone set, R11 D10 drafted pending sign-off — commit+push+CI pending**; next: sign-off on D10, then next sprint*
+*Updated: 2026-08-02 — Sprint 5.3 (`de9c851`) + R12 batch (`147540b` + `75e0595`) + R8/R3/R11 batch (`38a3d7f` + typer-group fix `935beeb`) all committed + pushed, **CI green end-to-end (runs 30747089240 + 30747852831, 8/8 jobs)**; D5 north-star + D9 fallback sign-offs recorded; R12 `[MITIGATED]`; R8 gate live (CLI surface contract, additive-only); R3 parity milestone set (≥40/71 rows by Phase 3); **D10 persona onboarding drafted — `[PROPOSED]`, awaiting CEO/COO sign-off (R11 → MITIGATED on sign-off)**; suite 1265 → **1289 green**; remaining follow-ups: D10 sign-off, R4 end-to-end fallback test (R4 → MITIGATED), then next sprint*
 *Next update: after the risk-mitigation commits (R8/R3/R11) or when the next sprint starts*
