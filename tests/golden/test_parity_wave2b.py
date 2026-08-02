@@ -33,6 +33,16 @@ _MISSING_CONFIG = "__missing__"
 _TOKEN = "test-write-token-0123456789abcdef"
 _CSRF = "test-csrf-token-0123456789abcdef"
 
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _strip_ansi(text: str) -> str:
+    """CI runners set ``FORCE_COLOR``, so rich wraps tokens in ANSI codes
+    (e.g. ``--dry-run`` renders as ``[1;36m-dry[0m[1;36m-run[0m``). Asserting
+    on raw output would be runner-dependent; strip styling first."""
+    return _ANSI_ESCAPE.sub("", text)
+
+
 runner = CliRunner()
 
 ARTIFACTS = ("yaml", "registry", "templates", "manifest", "output")
@@ -134,10 +144,11 @@ def test_parity_generate_contract(client: TestClient) -> None:
     help_out = runner.invoke(
         cli_app, ["generate", "--help"], catch_exceptions=False
     ).stdout
+    help_plain = _strip_ansi(help_out)
     # Typer renders the positional argument as ``target`` (usage line +
     # arguments table); assert the contract surface, not a metavar case.
-    assert "target" in help_out
-    assert "--dry-run" in help_out
+    assert "target" in help_plain
+    assert "--dry-run" in help_plain
 
     schema = _post_schema(_openapi(client), "/api/generate")
     assert "target" in schema["required"]
