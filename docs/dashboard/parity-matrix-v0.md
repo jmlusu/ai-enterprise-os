@@ -1,6 +1,6 @@
 # Parity Matrix v0 — CLI ↔ API ↔ Dashboard ↔ OpenCode desktop
 
-Status: **v0 baseline (2026-08-01) — Phase 1 complete (all read rows SHIPPED); Phase 2 Wave 2a shipped (write rows below flipped to `1+2`)** · Owner: Chief Architect
+Status: **v0 baseline (2026-08-01) — Phase 1 complete (all read rows SHIPPED); Phase 2 complete (Waves 2a + 2b SHIPPED 2026-08-02 — all safe-write rows `1+2`)** · Owner: Chief Architect
 Purpose: **Scope contract.** Maps every CLI command and capability to its API
 endpoint and GUI path. The Phase 4 demotion trigger requires **100%
 parity-matrix coverage** with the parity test suite green.
@@ -19,8 +19,8 @@ contract), 0009 (API contract), 0010 (Phase 2 write auth — ratified 2026-08-01
 | **`1`** | Read path SHIPPED (Phase 1) |
 | **`2`** | Write path not yet implemented (Phase 2) |
 | **`1/2`** | Read SHIPPED, write still Phase 2 |
-| **`1+2`** | **Both read and write SHIPPED** (Phase 2 Wave 2a, ADR 0010) |
-| **`2b`** | Write deferred to Phase 2 Wave 2b (generate dispatch / approval inbox) |
+| **`1+2`** | **Both read and write SHIPPED** (Phase 2: Wave 2a subset + Wave 2b close-out, ADR 0010) |
+| **`2b`** | Historical marker — write deferred to Phase 2 Wave 2b (all such rows shipped `1+2` on 2026-08-02) |
 
 ## Category rule (Risk R11)
 
@@ -41,16 +41,16 @@ contract), 0009 (API contract), 0010 (Phase 2 write auth — ratified 2026-08-01
 | Bootstrap / scaffold | `ai-company bootstrap` | `POST /api/bootstrap` | Setup wizard | **SHIPPED** (Wave 2a, ADR 0010) |
 | Build artifacts | `ai-company build` | `POST /api/build` | Build panel | **SHIPPED** (Wave 2a, ADR 0010) |
 | Validate registry | `ai-company validate` | `GET/POST /api/validate` | Health/validate view | **SHIPPED** (read Phase 1 + write Wave 2a) |
-| Generate via OpenCode | `ai-company generate <target>` | `POST /api/generate` | Generate panel (prompt + agent) | SHIPPED (Phase 1 targets) / PLANNED (P2, Wave 2b) |
+| Generate via OpenCode | `ai-company generate <target>` | `GET/POST /api/generate` + `/api/generate/runs\|start\|cancel\|log` | Generate panel (prompt + agent, live logs, history) | **SHIPPED** (`1+2`, Wave 2b) |
 | List generate targets | `ai-company targets` | `GET /api/generate/targets` | Generate panel | **SHIPPED** (Phase 1) |
 | Doctor / diagnostics | `ai-company doctor` | `GET /api/diagnostics` | Diagnostics view | **SHIPPED** (Phase 1) |
 | System status | `ai-company status` | `GET /api/status` | Overview dashboard | **SHIPPED** (Phase 1 — Pulse view) |
 | Serve dashboard API | `ai-company serve` | Serves all `/api/*` + `WS /api/ws` | Hosts the dashboard backend (loopback only) | SHIPPED (Phase 2 flags: `--hash-at-rest`, `--require-loopback-token`) |
-| Company CRUD | `ai-company company ...` | `GET/PUT /api/company` | Company editor | SHIPPED (read) / PLANNED (P2, Wave 2b write) |
+| Company CRUD | `ai-company company ...` | `GET/PUT /api/company` + `/api/company/departments` | Company editor | **SHIPPED** (`1+2`, Wave 2b write) |
 | Executive artifacts | `ai-company exec ...` | `GET /api/executives` | Executive view | **SHIPPED** (Phase 1 — Agents view) |
 | Registry browse | `ai-company registry list/show` | `GET /api/registry` | Registry explorer | **SHIPPED** (Phase 1 — Registry view) |
 | Memory browse | `ai-company memory show` | `GET /api/memory` | Memory view | **SHIPPED** (Phase 1 — Memory view) |
-| Graph export | `ai-company graph show/stats` | `GET /api/graph` | Org graph (Mermaid) | **SHIPPED** (Phase 1 — Org graph in Registry view) |
+| Graph export | `ai-company graph show/stats` | `GET /api/graph` + `POST /api/graph/export` | Org graph (Mermaid) | **SHIPPED** (`1+2`, Wave 2b export write) |
 | Reports | `ai-company report generate summary` | `GET /api/reports` + `POST /api/reports/generate` | Reports view | **SHIPPED** (read Phase 1 + generate write Wave 2a) |
 | Orchestration | `ai-company orchestrate ...` | `POST /api/orchestrate/*` | Pipelines view | **SHIPPED** (read Phase 1 + write Wave 2a) |
 | Runtime control | `ai-company runtime ...` | `POST /api/runtime/*` | Runtime control | **SHIPPED** (start/stop/restart/reload Wave 2a) |
@@ -59,23 +59,24 @@ contract), 0009 (API contract), 0010 (Phase 2 write auth — ratified 2026-08-01
 | Runtime metrics | `ai-company runtime metrics` | `GET /api/runtime/metrics` | Metrics charts | **SHIPPED** (Phase 1 — System Health view) |
 | Runtime events | `ai-company serve` (WS feed) | `WS /api/ws?since=` (replay-then-live) | Live event feed | **SHIPPED** (Phase 1 — Pulse live feed, auto-reconnect + replay) |
 | Runtime recovery | `ai-company runtime recover` | `POST /api/runtime/recover` | Recovery view | **SHIPPED** (recover/unisolate Wave 2a, high-impact + reason) |
-| Agent sync | `python -m ai_company.agents sync` | `POST /api/agents/sync` | Agents view | SHIPPED / PLANNED (P2, Wave 2b) |
-| Backups | `python -m ai_company.backup` | `POST /api/backup` | Backups view | SHIPPED / PLANNED (P2, Wave 2b) |
-| CLI telemetry | `runtime/cli_telemetry.jsonl` | `GET /api/telemetry/cli` | Model/command usage | SHIPPED / PLANNED (P2, Wave 2b) |
+| Agent sync | `python -m ai_company.agents sync` | `POST /api/agents/sync` | Agents view | **SHIPPED** (`1+2`, Wave 2b) |
+| Backups | `python -m ai_company.backup` | `GET/POST /api/backup` + `/api/backup/status` | Backups view + pulse tile | **SHIPPED** (`1+2`, Wave 2b) |
+| CLI telemetry | `runtime/cli_telemetry.jsonl` | `GET /api/telemetry/*` | Model/command usage | **SHIPPED** (`1+2`, Wave 2b telemetry panels) |
 | Dashboards (sprint) | (static `dashboards/sprint_dashboard.html`) | `GET /api/dashboard/sprint` | Sprint dashboard | DEFERRED — replaced by the new dashboard (finding #3) |
 
 ---
 
 ## Part B — Command-exhaustive matrix
 
-> **Phase column meaning (updated 2026-08-01, Phase 2 Wave 2a close-out):**
+> **Phase column meaning (updated 2026-08-02, Phase 2 Wave 2b close-out):**
 > `1` = read path **SHIPPED** (API endpoint + dashboard view live and CI-tested);
 > `2` = Phase 2 write work; `1/2` = read half shipped, write half Phase 2;
-> `1+2` = **both read and write SHIPPED** (Wave 2a, ADR 0010 — write actions
-> behind bearer token + CSRF, audited as `audit.write`); `2b` = write deferred
-> to Wave 2b (OpenCode generate dispatch, approval inbox). Write actions added
-> GUI buttons in Wave 2a with confirm dialogs (high-impact ones require a
-> reason).
+> `1+2` = **both read and write SHIPPED** (Wave 2a subset + Wave 2b close-out,
+> ADR 0010 — write actions behind bearer token + CSRF, audited as
+> `audit.write`); `2b` = historical marker for rows shipped with Wave 2b
+> (OpenCode generate dispatch, approval inbox, telemetry, backup). Write actions
+> added GUI buttons in Wave 2a with confirm dialogs (high-impact ones require a
+> reason). **All safe-write rows are `1+2` as of 2026-08-02.**
 
 ### Top-level
 
@@ -83,7 +84,7 @@ contract), 0009 (API contract), 0010 (Phase 2 write auth — ratified 2026-08-01
 |-------------|----------|----------|-------|
 | `ai-company bootstrap` | Safe write | Run artifact: one-click bootstrap (confirm) | **1+2** |
 | `ai-company build` | Safe write | Build panel (confirm) | **1+2** |
-| `ai-company generate <target>` | Safe write | Dispatch panel → OpenCode, run history, live logs | 2b |
+| `ai-company generate <target>` | Safe write | Dispatch panel → OpenCode, run history, live logs | **1+2** |
 | `ai-company validate` | Safe write | Validation gate view + "Run validator" | **1+2** |
 | `ai-company doctor` | Read | System Health → diagnostics | 1 |
 | `ai-company targets` | Read | Dispatch panel target list | 1 |
@@ -94,24 +95,24 @@ contract), 0009 (API contract), 0010 (Phase 2 write auth — ratified 2026-08-01
 
 | CLI command | Category | GUI path | Phase |
 |-------------|----------|----------|-------|
-| `company generate` | Safe write | Dispatch panel (company) + run history | 2b |
+| `company generate` | Safe write | Dispatch panel (company) + run history | **1+2** |
 | `company validate` | Safe write | Validation gate + run action | **1+2** |
 | `company report` | Read | Reports view (Markdown/Mermaid in-page) | 1 |
-| `company board-generate` | Safe write | Dispatch panel (board) | 2b |
-| `company board-validate` | Safe write | Validation gate | 1/2 |
+| `company board-generate` | Safe write | Dispatch panel (board) | **1+2** |
+| `company board-validate` | Safe write | Validation gate | **1+2** |
 | `company board-report` | Read | Reports view | 1 |
-| `company exec-generate` | Safe write | Dispatch panel (exec) | 2b |
-| `company exec-validate` | Safe write | Validation gate | 1/2 |
-| `company dept-generate` | Safe write | Dispatch panel (dept) | 2b |
-| `company dept-validate` | Safe write | Validation gate | 1/2 |
-| `company specialist-generate` | Safe write | Dispatch panel (specialist) | 2b |
-| `company specialist-validate` | Safe write | Validation gate | 1/2 |
-| `company workflow-generate` | Safe write | Dispatch panel (workflow) | 2b |
-| `company workflow-validate` | Safe write | Validation gate | 1/2 |
-| `company prompt-generate` | Safe write | Dispatch panel (prompt) | 2b |
-| `company prompt-validate` | Safe write | Validation gate | 1/2 |
-| `company docs-generate` | Safe write | Dispatch panel (docs) | 2b |
-| `company doc-validate` | Safe write | Validation gate | 1/2 |
+| `company exec-generate` | Safe write | Dispatch panel (exec) | **1+2** |
+| `company exec-validate` | Safe write | Validation gate | **1+2** |
+| `company dept-generate` | Safe write | Dispatch panel (dept) | **1+2** |
+| `company dept-validate` | Safe write | Validation gate | **1+2** |
+| `company specialist-generate` | Safe write | Dispatch panel (specialist) | **1+2** |
+| `company specialist-validate` | Safe write | Validation gate | **1+2** |
+| `company workflow-generate` | Safe write | Dispatch panel (workflow) | **1+2** |
+| `company workflow-validate` | Safe write | Validation gate | **1+2** |
+| `company prompt-generate` | Safe write | Dispatch panel (prompt) | **1+2** |
+| `company prompt-validate` | Safe write | Validation gate | **1+2** |
+| `company docs-generate` | Safe write | Dispatch panel (docs) | **1+2** |
+| `company doc-validate` | Safe write | Validation gate | **1+2** |
 
 ### `ai-company exec` group
 
@@ -159,7 +160,7 @@ contract), 0009 (API contract), 0010 (Phase 2 write auth — ratified 2026-08-01
 |-------------|----------|----------|-------|
 | `graph show` | Read | Registry/Org graph (Mermaid in-page) | 1 |
 | `graph stats` | Read | Org graph stats | 1 |
-| `graph export` | Safe write | Export button (confirm) | 2 |
+| `graph export` | Safe write | Export button (confirm) | **1+2** |
 
 ### `ai-company report` group
 
@@ -214,14 +215,19 @@ view live (`ai-company serve`), verified by `tests/unit/api/test_api_domain.py`
 (31 tests) and the parity suite seed `tests/golden/test_parity_read.py`
 (9 tests, golden CLI output == API JSON).
 
-**Phase 2 Wave 2a status (ADR 0010 ratified 2026-08-01):** the safe-write rows
-below flipped to **`1+2`** (both surfaces live, behind bearer token + CSRF +
-`audit.write`; high-impact actions require a reason). Rows still `2`/`1/2`:
-graph export, per-artifact company validators (`board-validate` … `doc-validate`).
-Rows moved to **`2b`** (Wave 2b): `generate` + all `*-generate` dispatch rows,
-company CRUD write. Remaining P2 surfaces not touched by Wave 2a: agent sync,
-backup, CLI telemetry. Suite grew 1142 → **1171 tests** (18 auth + 11 write-endpoint
-tests added).
+**Phase 2 status (Waves 2a + 2b, ADR 0010 ratified 2026-08-01, close-out
+2026-08-02):** **all safe-write rows are `1+2`** — both surfaces live, behind
+bearer token + CSRF + `audit.write` (shared `api/guards.py` `WriteGuard`;
+high-impact actions require a reason). Wave 2a shipped the runtime/orchestrate/
+memory/validate/reports/build/bootstrap writes; **Wave 2b** closed the rest:
+`generate` + all `*-generate` dispatch rows (streaming `generate_runner`),
+the decision/approval inbox, per-artifact company validators
+(`board-validate` … `doc-validate`), graph export, company CRUD write, agent
+sync, backup, and telemetry persist. Parity suite grew with
+`tests/golden/test_parity_wave2b.py` (per-artifact validate reports == CLI
+`validate` lines, generate + backup OpenAPI contract, shared guard parity
+401/403 on both wave 2a and wave 2b endpoints). Suite grew 1142 → **1252
+tests**.
 
 **Guarantees:**
 - Every read and every safe write has a GUI path (no "no GUI path" escalations possible → feeds Phase 4 trigger).

@@ -9,12 +9,24 @@
 
 | Field | Value |
 |---|---|
-| **Current Sprint** | Sprint 5.2 — Phase 2 Wave 2a: Write Auth (ADR 0010) + Operational Writes |
-| **Status** | ✅ **COMPLETED** (2026-08-01) — Wave 2a shipped; Wave 2b (generate dispatcher + approval inbox) is next |
-| **Goal** | Enable mutating endpoints with full security (bearer token + CSRF + mandatory write audit) — the "operational dashboard" pivot |
-| **Commit** | `131d9d9` (ADR 0010 ratified in the same change) |
+| **Current Sprint** | Sprint 5.2 — Phase 2 Waves 2a+2b: Write Auth (ADR 0010) + Generate→Review→Validate→Approve Loop |
+| **Status** | ✅ **COMPLETED** (2026-08-02) — Waves 2a AND 2b shipped; **Phase 2 exit criterion met** (full generate → review → validate → approve loop from the browser) |
+| **Goal** | Complete the operational dashboard pivot: guarded mutation endpoints + the full governance loop (generate dispatcher, decision inbox, per-artifact validation, graph export, company CRUD, agent sync, backup) + R5 telemetry live panels |
+| **Commit** | Wave 2a: `131d9d9` · Wave 2b: `(see Recently Completed)` |
 | **Created** | 2026-08-01 |
-| **Completed** | 2026-08-01 |
+| **Completed** | 2026-08-02 |
+
+### Sprint 5.2 Wave 2b Deliverables — All Done
+
+- [x] `services/generate_runner.py` — thread-safe streaming OpenCode dispatcher (`start/cancel/get/list_runs/log_tail`), child stdout streamed to `runtime/generate_logs/<run_id>.log`, runs persisted to `runtime/generate_runs.jsonl`, boot replay marks queued/running as `interrupted by restart`, shell=False, fail-open
+- [x] `api/guards.py` — shared `WriteGuard` (`guard()/require_reason()/audited()/reject()`) + `HIGH_IMPACT_ACTIONS`; `write_endpoints.py` migrated to it (ADR 0010 semantics unchanged)
+- [x] Decision/approval inbox — `decisions_list/get/create/approve/reject/escalate/cancel` facade adapters; inbox survives restarts via `DecisionHistory.import_decisions()`; `engine.reject()` added; `create_decision`/`make_decision` record-once (no facade double-record)
+- [x] Per-artifact company validators via API (`validate_artifacts` wraps per-artifact `ValidationReport` in `ValidatorResult`)
+- [x] Remaining P2 write surfaces: graph export write, company CRUD write (files/departments/manifest), agent sync (`AgentSyncEngine(config=...)`), backup create/status, telemetry persist
+- [x] Frontend: `/generate` (dispatch + live logs + history), `/decisions` (approval inbox), `/telemetry` (KPI / Model Usage / Agent Health live panels), pulse backup tile; CSP-safe `data-write`/`data-action` wire helpers
+- [x] R5 telemetry workstream: `telemetry/metrics.py` + `telemetry/provider.py` (JSONL persistence, aggregated summaries) + `providers/usage.py` `UsageTrackingProvider` + `ProviderFactory(..., track_usage=False)`; 30s persistence ticker in app lifespan
+- [x] WS `?token=` enforcement for non-loopback (close 1008, ADR 0010 §1)
+- [x] Tests: telemetry (10), generate runner (9), facade wave 2b (24), API wave 2b (24 incl. page renders + guard/audit parity), golden parity wave 2b; suite 1171 → **1252 green**; ruff/mypy/format/command-map clean
 
 ### Sprint 5.2 Wave 2a Deliverables — All Done
 
@@ -66,25 +78,13 @@
 
 ## Next Sprint Candidates (Prioritized)
 
-### 1. Sprint 5.2 Wave 2b — Generate Dispatcher + Approval Inbox ⭐ **Next**
-**ADR:** 0010 (Accepted) · **Scope:** complete the Phase 2 exit criterion: a full generate → review → validate → approve loop from the browser.
-
-| Task | Status | Notes |
-|---|---|---|
-| `POST /api/generate` — OpenCode dispatch (streaming subprocess, exit code, files touched) + run history + live logs | ⬜ | `opencode_runner` refactor; parity `generate` rows → `1+2` |
-| Generate panel frontend (targets, prompt input, live log stream) | ⬜ | |
-| Decision/approval inbox — risk cards, approval matrix, escalation | ⬜ | Renderer over existing decision engine |
-| Per-artifact company validators via API (`board-validate` … `doc-validate`) | ⬜ | Parity rows → `1+2` |
-| Graph export write, company CRUD write (`PUT /api/company`), agent sync, backup, telemetry write | ⬜ | Remaining P2 surfaces |
-| WS `?token=` enforcement for non-loopback | ⬜ | ADR 0010 §1 |
-
-### 2. Sprint 5.3 — SQLite derived read model (ADR 0004) 📊
+### 1. Sprint 5.3 — SQLite derived read model (ADR 0004) 📊
 **ADR:** 0004 (Accepted) — rebuildable SQLite (WAL) projection for dashboard reads; rebuild trigger decision needed (startup? watcher? CLI?).
 
-### 3. Sprint 5.4 — Telemetry workstream (R5 closure) 📡
-Runtime metrics persistence + provider usage instrumentation so KPI / Model Usage / Agent Health panels go live (currently "data pending").
+### 2. Sprint 5.4 — Telemetry follow-ups 📡
+R5 core (metrics + provider usage persistence) shipped with Wave 2b. Follow-ups: SQLite telemetry store, retention/rollup policies, alerting on isolation (R2 backlog), recovery-success metric.
 
-### 4. Sprint 5.5 — Svelte 5 Migration (Phase 4) 🔮
+### 3. Sprint 5.5 — Svelte 5 Migration (Phase 4) 🔮
 **ADR:** 0008 (v2 deferred) — richer UX with Svelte 5 + Vite when budget allows.
 
 ---
@@ -97,7 +97,6 @@ Runtime metrics persistence + provider usage instrumentation so KPI / Model Usag
 | **Agent sync `--scope` default** | Currently defaults to `global` | Default to `both` for new users? |
 | **Dashboard port binding** | Hardcoded `127.0.0.1:8000` | Make configurable via `config/runtime/*.yaml`? |
 | **Windows CI matrix** | Only test job runs on Windows | Should lint/typecheck also run on Windows? |
-| **Wave 2b generate dispatch scope** | Q2 open: CLI `generate` dispatches to OpenCode via blocking subprocess today | Stream from dashboard in Wave 2b — confirm blocking → streaming plan |
 
 ---
 
@@ -119,17 +118,20 @@ b6d5a26        feat: Phase 1 wave 1 — dashboard API server (read-only contract
 
 ## Key Context for Next Session
 
-1. **Phase 2 Wave 2a (ADR 0010) is SHIPPED** — commit `131d9d9`. The dashboard
-   now has 20 guarded mutation endpoints (runtime/orchestrate/memory/validate/
-   reports/build/bootstrap) behind bearer token + CSRF + `audit.write`; Write
-   History page at `/writes`; token CLI at `ai-company dashboard token`.
-   Non-loopback Hosts fail closed; loopback is token-optional unless
-   `--require-loopback-token`. **Suite: 1171 tests green.**
+1. **Phase 2 Waves 2a+2b (ADR 0010) are SHIPPED** — Wave 2a commit `131d9d9`;
+   Wave 2b committed with this update. The dashboard now runs the full
+   **generate → review → validate → approve loop**: `/generate` streams an
+   OpenCode run with live logs + history, `/decisions` renders the approval
+   inbox (risk cards, approve/reject/escalate), per-artifact validators run
+   from the API, and graph export / company CRUD / agent sync / backup /
+   telemetry all have guarded, audited write endpoints. **Phase 2 exit
+   criterion met. Suite: 1252 tests green.**
 
-2. **Next work is Wave 2b**: `POST /api/generate` (OpenCode streaming
-   dispatcher + run history + live logs) and the decision/approval inbox —
-   that completes the Phase 2 exit criterion ("a full generate → review →
-   validate → approve loop without opening a terminal").
+2. **R5 telemetry is live** — runtime metrics persist every 30s to
+   `runtime/metrics_history.jsonl`, provider usage to
+   `runtime/provider_usage.jsonl` (aggregated by model). KPI / Model Usage /
+   Agent Health panels on `/telemetry` render real data (no more "data
+   pending").
 
 3. **`.ai/` knowledge base is complete** — 8 files, committed. **Rule: update
    the relevant `.ai/` file after every commit** so agents never re-discover
@@ -140,15 +142,17 @@ b6d5a26        feat: Phase 1 wave 1 — dashboard API server (read-only contract
 
 5. **CLI is frozen** — the Typer command tree is a contract (ADR 0006). New
    features must back-port CLI commands; CI validates the command map.
-   Wave 2a token CLI was additive-only (`dashboard token` sub-group).
+   Wave 2a token CLI was additive-only (`dashboard token` sub-group); Wave 2b
+   made no CLI surface changes.
 
 6. **Workspace resets to HEAD** — commit work promptly; uncommitted files
    (including `.ai/`) get wiped.
 
 7. **Parity test suite is seeded** — `tests/golden/test_parity_read.py`
-   (golden CLI output == API JSON). Every new read command must add a parity
-   row + parity test (Phase 4 demotion trigger depends on it). Write parity
-   coverage grows with Wave 2b.
+   (golden CLI output == API JSON) plus `tests/golden/test_parity_wave2b.py`
+   (generate/backup contract + shared guard parity). Every new read command
+   must add a parity row + parity test (Phase 4 demotion trigger depends on
+   it). Wave 2b flipped all remaining safe-write rows to `1+2`.
 
 ---
 
@@ -197,5 +201,5 @@ python -m ai_company.cli.command_map validate
 
 ---
 
-*Updated: 2026-08-01 — Phase 2 Wave 2a (ADR 0010 write auth + 20 mutation endpoints) committed (`131d9d9`), 1171 tests green*
-*Next update: When Phase 2 Wave 2b (generate dispatcher + approval inbox) starts or after the next commit*
+*Updated: 2026-08-02 — Phase 2 Waves 2a+2b committed; exit criterion met (generate → review → validate → approve loop), R5 telemetry live panels, 1252 tests green*
+*Next update: When Sprint 5.3 (SQLite read model, ADR 0004) starts or after the next commit*

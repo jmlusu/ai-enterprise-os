@@ -1,7 +1,7 @@
 # Work Plan — Dashboard Initiative, Phase 2: Operational (Write) Dashboard
 
-Status: **IN PROGRESS — Wave 2a (write auth + operational writes) SHIPPED 2026-08-01; Wave 2b (generate dispatcher + approval inbox) next** · Owner: Chief Architect
-Last updated: 2026-08-01
+Status: **DONE — Waves 2a (2026-08-01) + 2b (2026-08-02) SHIPPED; exit criteria 1–6 all met (full generate → review → validate → approve loop from the browser)** · Owner: Chief Architect
+Last updated: 2026-08-02
 Related: `docs/dashboard/initiative.md` (§4 Phase 2), `docs/dashboard/parity-matrix-v0.md`,
 ADR 0010 (Phase 2 write auth — Accepted), ADR 0009 (API contract v1), ADR 0003 (services layer),
 `.ai/current-work.md` (Sprint 5.2)
@@ -14,24 +14,25 @@ ADR 0010 (Phase 2 write auth — Accepted), ADR 0009 (API contract v1), ADR 0003
 > loop from the browser, without opening a terminal — with every write behind
 > a bearer token, CSRF protection, and a mandatory audit trail (ADR 0010).
 
-**Exit criteria (all must hold before `[DONE]`):**
+**Exit criteria (all met — verified 2026-08-02):**
 
-1. Every safe-write row in the parity matrix v0 has a live GUI path (confirm
+1. ✅ Every safe-write row in the parity matrix v0 has a live GUI path (confirm
    dialog; high-impact actions require a reason) and an equivalent API
-   endpoint, all behind ADR 0010 auth (token + CSRF + `audit.write`).
-2. The Write History panel renders the full audit trail (`audit.write` /
+   endpoint, all behind ADR 0010 auth (token + CSRF + `audit.write`) — parity
+   matrix safe-write rows now **`1+2`**.
+2. ✅ The Write History panel renders the full audit trail (`audit.write` /
    `audit.write_rejected`) with timestamps, action, result, reason, detail —
    no token/CSRF values ever rendered.
-3. Non-loopback Hosts fail closed (401 without a valid token); loopback
+3. ✅ Non-loopback Hosts fail closed (401 without a valid token); loopback
    supports token-optional and `--require-loopback-token` strict mode.
-4. Generate dispatcher (Wave 2b) streams to OpenCode with run history + live
-   logs; the decision/approval inbox renders decision-engine cards
-   (risk score, approval matrix, escalation).
-5. Full test suite green (≥ current 1171), new auth/write tests added,
-   Windows CI green; ruff/mypy/format/lock/audit clean.
-6. Trackers updated in the same change that ships the work (project rule):
-   ADR 0010 status, parity matrix rows, initiative §4/risk R9, workplan,
-   `.ai/current-work.md`.
+4. ✅ Generate dispatcher (Wave 2b) streams to OpenCode with run history + live
+   logs; the decision/approval inbox renders decision-engine cards (risk score,
+   approval matrix, escalation).
+5. ✅ Full test suite green (**1252** ≥ current 1171), new auth/write tests
+   added, Windows CI green; ruff/mypy/format/lock/audit/command-map clean.
+6. ✅ Trackers updated in the same change that ships the work (project rule):
+   ADR 0010 status, parity matrix rows, initiative §4/risks R5–R6/finding #4,
+   this workplan, `.ai/current-work.md`.
 
 ---
 
@@ -58,25 +59,30 @@ ADR 0010 (Phase 2 write auth — Accepted), ADR 0009 (API contract v1), ADR 0003
 - **Tests:** `test_auth.py` (18) + `test_write_endpoints.py` (11); suite
   1142 → 1171.
 
-### Wave 2b (NEXT)
+### Wave 2b (SHIPPED 2026-08-02)
 
-- **Generate dispatcher:** `POST /api/generate` → OpenCode (streaming
-  subprocess, exit code, files touched), run history + live logs view;
-  `ai-company generate <target>` parity row → `1+2`.
+- **Generate dispatcher:** `services/generate_runner.py` → OpenCode (streaming
+  subprocess, exit code, files touched, live logs), run history persisted to
+  `runtime/generate_runs.jsonl`; `ai-company generate <target>` parity row → **`1+2`**.
 - **Decision/approval inbox:** decision engine (risk scoring, approval matrix,
-  escalation) rendered as visual approval cards — the governance brain becomes
-  the GUI renderer.
+  escalation) rendered as visual approval cards — the governance brain is now
+  the GUI renderer (`/decisions`); inbox survives restarts via `import_decisions()`.
 - **Remaining safe-write parity rows:** per-artifact company validators
   (`board-validate` … `doc-validate`), graph export, company CRUD write
-  (`PUT /api/company`), agent sync, backup, CLI-telemetry write surfaces.
-- **WS-channel token enforcement** for non-loopback deployments
-  (`?token=` per ADR 0010 §1).
+  (files/departments/manifest), agent sync, backup, telemetry persist — all
+  `1+2` behind the shared `api/guards.py` `WriteGuard`.
+- **WS-channel token enforcement** for non-loopback deployments (`?token=`,
+  close 1008) per ADR 0010 §1.
+- **R5 telemetry (landed with Wave 2b):** runtime metrics persistence
+  (`runtime/metrics_history.jsonl`, 30s ticker) + provider usage
+  (`runtime/provider_usage.jsonl`, `UsageTrackingProvider`) → `/telemetry`
+  KPI / Model Usage / Agent Health panels live.
+- **Backup tile (R6):** pulse view backup action + status (`POST /api/backup`,
+  `GET /api/backup/status`).
 
 ### Out of scope
 - Destructive/bulk operations stay CLI-only (parity category rule, R11).
-- SQLite derived read model (ADR 0004, Sprint 5.4).
-- Telemetry workstream (R5): runtime metrics persistence + provider usage
-  instrumentation.
+- SQLite derived read model (ADR 0004, Sprint 5.3).
 - Svelte 5 (Phase 4, ADR 0008 v2).
 
 ---
@@ -97,16 +103,18 @@ ADR 0010 (Phase 2 write auth — Accepted), ADR 0009 (API contract v1), ADR 0003
 
 ---
 
-## 4. Wave 2b — plan
+## 4. Wave 2b — shipped (do not re-plan)
 
 | Task | Status | Notes |
 |---|---|---|
-| `POST /api/generate` — OpenCode dispatch (streaming) + run history + live logs | ⬜ | `opencode_runner` refactor (initiative §3); Q2 scope |
-| Generate panel frontend (targets, prompt input, live log stream) | ⬜ | Parity `generate` rows → `1+2` |
-| Decision/approval inbox — risk cards, approval matrix, escalation | ⬜ | Renderer over existing decision engine |
-| Per-artifact company validators via API | ⬜ | `board-validate` … `doc-validate` rows |
-| Graph export write, company CRUD write, agent sync, backup, telemetry write | ⬜ | Remaining P2 surfaces |
-| WS `?token=` enforcement for non-loopback | ⬜ | ADR 0010 §1 |
+| `services/generate_runner.py` — OpenCode dispatch (streaming) + run history (`runtime/generate_runs.jsonl`) + live logs (`runtime/generate_logs/`) | ✅ | 9 unit tests (`test_generate_runner.py`, `_FakeProc`); boot replay `interrupted by restart` |
+| Generate panel frontend (`/generate` — targets, prompt, live log tail, history) | ✅ | Parity `generate` rows → `1+2` |
+| Decision/approval inbox (`/decisions` — risk cards, approve/reject/escalate/cancel) | ✅ | `DecisionHistory.import_decisions()` restart survival; record-once semantics |
+| Per-artifact company validators via API (`validate_artifacts`) | ✅ | `board-validate` … `doc-validate` rows → `1+2` |
+| Graph export write, company CRUD write, agent sync, backup, telemetry persist | ✅ | Remaining P2 surfaces → `1+2`; shared `WriteGuard` |
+| WS `?token=` enforcement for non-loopback | ✅ | close 1008, ADR 0010 §1 |
+| R5 telemetry: metrics + provider usage JSONL persistence + `/telemetry` live panels | ✅ | 10 tests; 30s ticker |
+| Backup tile (R6): pulse backup action + status | ✅ | ADR 0001 |
 
 ---
 
@@ -114,8 +122,11 @@ ADR 0010 (Phase 2 write auth — Accepted), ADR 0009 (API contract v1), ADR 0003
 
 - **R9 (localhost security):** **[MITIGATED]** with Wave 2a (ADR 0010). Keys
   never rendered; token printed only on first-time creation.
+- **R5 (no data):** **[MITIGATED]** with Wave 2b — telemetry workstream landed;
+  `/telemetry` KPI / Model Usage / Agent Health panels render real data.
+- **R6 (data loss):** **[MITIGATED]** — backup tile shipped with Wave 2b.
 - **R8 (CI regression):** additive-only; engines and CLI surface untouched
-  (ADR 0005/0006); full suite green each wave.
+  (ADR 0005/0006); full suite green each wave (1142 → 1171 → **1252**).
 - **Rotation semantics (ADR 0010 §1):** `create()` returns the plaintext only
   on first-time creation; rotation invalidates the previous value and never
   echoes it. Env-managed tokens (`AI_ENTERPRISE_WRITE_TOKEN`) refuse CLI

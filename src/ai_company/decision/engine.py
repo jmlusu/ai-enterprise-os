@@ -292,9 +292,31 @@ class DecisionEngine:
         decision.status = DecisionStatus.CANCELLED
         decision.updated_at = datetime.now()
         decision.metadata["cancel_reason"] = cancel_reason
-
         self.decision_history.record(decision)
         self.logger.info(f"Decision cancelled: {decision.id} - {cancel_reason}")
+
+        return decision
+
+    def reject(self, decision: Decision, reject_reason: str) -> Decision:
+        """Reject a pending decision.
+
+        Mirrors :meth:`cancel` — flips the status, records the reason in
+        metadata, and persists through the decision history (append-only
+        JSONL). ``reject_reason`` is required and stored for the audit trail.
+
+        Args:
+            decision: Decision to reject
+            reject_reason: Reason for rejection
+
+        Returns:
+            Updated Decision
+        """
+        decision.status = DecisionStatus.REJECTED
+        decision.updated_at = datetime.now()
+        decision.resolved_at = decision.resolved_at or datetime.now()
+        decision.metadata["reject_reason"] = reject_reason
+        self.decision_history.record(decision)
+        self.logger.info(f"Decision rejected: {decision.id} - {reject_reason}")
 
         return decision
 

@@ -17,16 +17,19 @@
         <div class="nav-group-title">Overview</div>
         <a class="nav-item {{ 'active' if active == 'pulse' }}" href="/">Pulse</a>
         <a class="nav-item {{ 'active' if active == 'health' }}" href="/health">System Health</a>
+        <a class="nav-item {{ 'active' if active == 'telemetry' }}" href="/telemetry">Telemetry</a>
       </div>
       <div class="nav-group">
         <div class="nav-group-title">Operations</div>
         <a class="nav-item {{ 'active' if active == 'agents' }}" href="/agents">Agents</a>
+        <a class="nav-item {{ 'active' if active == 'generate' }}" href="/generate">Generate</a>
         <a class="nav-item {{ 'active' if active == 'runs' }}" href="/runs">Runs &amp; History</a>
         <a class="nav-item {{ 'active' if active == 'memory' }}" href="/memory">Memory</a>
         <a class="nav-item {{ 'active' if active == 'writes' }}" href="/writes">Write History</a>
       </div>
       <div class="nav-group">
         <div class="nav-group-title">Governance</div>
+        <a class="nav-item {{ 'active' if active == 'decisions' }}" href="/decisions">Decision Inbox</a>
         <a class="nav-item {{ 'active' if active == 'reports' }}" href="/reports">Reports</a>
         <a class="nav-item {{ 'active' if active == 'validation' }}" href="/validation">Validation</a>
         <a class="nav-item {{ 'active' if active == 'registry' }}" href="/registry">Registry &amp; Org Graph</a>

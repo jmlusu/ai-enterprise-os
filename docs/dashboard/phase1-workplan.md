@@ -4,7 +4,7 @@ Status: **DONE** (2026-08-01) — all 8 views live, parity P1 rows SHIPPED, CI g
 Last updated: 2026-08-01
 Related: `docs/dashboard/initiative.md` (§4 Phase 1), `docs/dashboard/parity-matrix-v0.md`,
 ADR 0002 (FastAPI backend), ADR 0003 (services layer), ADR 0008 (Jinja2+htmx v1),
-ADR 0009 (read-only API contract v1), `.ai/current-work.md` (Sprint 5.2 candidate list)
+ADR 0009 (read-only API contract v1), `.ai/current-work.md` (Sprint 5.2 — Phase 2 Waves 2a+2b shipped 2026-08-02, superseding this phase)
 
 ---
 

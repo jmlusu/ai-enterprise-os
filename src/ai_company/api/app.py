@@ -34,6 +34,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ai_company.api.auth import CsrfService, WriteTokenService
+from ai_company.api.operational_endpoints import register_operational_endpoints
 from ai_company.api.write_endpoints import register_write_endpoints
 from ai_company.events import Event, ReplayRequest
 from ai_company.services.dashboard_events import DashboardEventBridge
@@ -205,9 +206,30 @@ def create_app(
         bridge = DashboardEventBridge(bus)
         bridge.attach(asyncio.get_running_loop())
         bridge_state["bridge"] = bridge
+
+        # R5: persist a runtime metrics snapshot on a cadence while the
+        # runtime is up (fail-open; the telemetry module never raises).
+        # The KPI panel reads this persisted history via /api/telemetry/metrics.
+        _metrics_interval = 30.0
+        _stop_metrics = asyncio.Event()
+
+        async def _persist_metrics() -> None:
+            while not _stop_metrics.is_set():
+                try:
+                    await asyncio.wait_for(
+                        _stop_metrics.wait(), timeout=_metrics_interval
+                    )
+                except TimeoutError:
+                    pass
+                if facade.is_running:
+                    await run_in_threadpool(facade.metrics_persist)
+
+        metrics_task = asyncio.create_task(_persist_metrics())
         try:
             yield
         finally:
+            _stop_metrics.set()
+            metrics_task.cancel()
             await bridge.close()
             if auto_start:
                 await run_in_threadpool(facade.close)
@@ -248,6 +270,7 @@ def create_app(
         status = await _safe(facade.status, default={}) or {}
         engine_states = await _safe(facade.engine_states, default=[]) or []
         memory_stats = await _safe(facade.memory_stats, default={}) or {}
+        backups = await _safe(facade.backup_status, default={}) or {}
         unhealthy = summary.get("unhealthy", 0)
         degraded = summary.get("degraded", 0)
         overall = "unhealthy" if unhealthy else ("degraded" if degraded else "ok")
@@ -271,6 +294,7 @@ def create_app(
                     1 for e in engine_states if e.get("phase") == "running"
                 ),
                 memory_stats=memory_stats,
+                backups=backups,
             ),
         )
 
@@ -357,6 +381,54 @@ def create_app(
             _view_context(request, "writes"),
         )
 
+    @app.get("/generate", response_class=HTMLResponse, include_in_schema=False)
+    async def generate_view(request: Request) -> HTMLResponse:
+        """Generate panel (Phase 2 wave 2b — dispatch + live logs + history)."""
+        targets = await _safe(facade.generate_targets, default={}) or {}
+        return templates.TemplateResponse(
+            request,
+            "views/generate.html",
+            _view_context(
+                request,
+                "generate",
+                targets=targets.get("targets", []),
+            ),
+        )
+
+    @app.get("/decisions", response_class=HTMLResponse, include_in_schema=False)
+    async def decisions_view(request: Request) -> HTMLResponse:
+        """Decision / approval inbox (Phase 2 wave 2b)."""
+        inbox = await _safe(facade.decisions_list, default={}) or {}
+        return templates.TemplateResponse(
+            request,
+            "views/decisions.html",
+            _view_context(
+                request,
+                "decisions",
+                decisions=inbox.get("decisions", []),
+            ),
+        )
+
+    @app.get("/telemetry", response_class=HTMLResponse, include_in_schema=False)
+    async def telemetry_view(request: Request) -> HTMLResponse:
+        """Telemetry page (risk R5 — KPI / Model Usage / Agent Health panels)."""
+        metrics = await _safe(facade.metrics_history_summary, default={}) or {}
+        providers = await _safe(facade.provider_usage_summary, default={}) or {}
+        status = await _safe(facade.status, default={}) or {}
+        metrics_summary = metrics.get("summary", {})
+        return templates.TemplateResponse(
+            request,
+            "views/telemetry.html",
+            _view_context(
+                request,
+                "telemetry",
+                metrics_summary=metrics_summary,
+                trend=metrics_summary.get("trend", {}),
+                providers=providers.get("summary", {}),
+                status=status,
+            ),
+        )
+
     @app.get("/reports", response_class=HTMLResponse, include_in_schema=False)
     async def reports_view(request: Request) -> HTMLResponse:
         """Reports page."""
@@ -420,6 +492,13 @@ def create_app(
                 "reports": "/api/reports/generate",
                 "build": "/api/build",
                 "bootstrap": "/api/bootstrap",
+                "generate": "/api/generate + /api/generate/{run_id}/cancel",
+                "decisions": "/api/decisions + /api/decisions/{id}/{approve|reject|escalate|cancel}",
+                "graph_export": "/api/graph/export",
+                "company": "/api/company/departments + /api/company/manifest",
+                "agents_sync": "/api/agents/sync",
+                "backup": "/api/backup",
+                "telemetry_metrics": "/api/telemetry/metrics",
             },
             "endpoints": {
                 "health": "/api/health",
@@ -442,10 +521,19 @@ def create_app(
                 "reports": "/api/reports",
                 "report_generate": "/api/reports/{type}",
                 "validate": "/api/validate",
+                "validate_artifact": "/api/validate/{artifact}",
                 "diagnostics": "/api/diagnostics",
                 "orchestrate_status": "/api/orchestrate/status",
                 "orchestrate_history": "/api/orchestrate/history",
                 "generate_targets": "/api/generate/targets",
+                "generate_runs": "/api/generate/runs",
+                "generate_run": "/api/generate/runs/{run_id}",
+                "generate_log": "/api/generate/runs/{run_id}/log",
+                "decisions": "/api/decisions",
+                "decision_get": "/api/decisions/{decision_id}",
+                "company_files": "/api/company",
+                "telemetry_metrics": "/api/telemetry/metrics",
+                "telemetry_providers": "/api/telemetry/providers",
                 "websocket": "/api/ws?since=<iso8601>",
                 "docs": "/api/docs",
             },
@@ -651,8 +739,20 @@ def create_app(
     async def websocket_endpoint(
         ws: WebSocket,
         since: str | None = Query(default=None, description="ISO-8601 timestamp"),
+        token: str | None = Query(default=None, description="write token (ADR 0010)"),
     ) -> None:
-        """Live event feed: replay (``?since=``) then stream, with heartbeats."""
+        """Live event feed: replay (``?since=``) then stream, with heartbeats.
+
+        The feed is read-only, but every event is business telemetry — on
+        non-loopback hosts (or when loopback enforcement is on) a valid write
+        token is required via ``?token=`` so the event stream is never exposed
+        to anonymous clients (Wave 2b WS token enforcement).
+        """
+        host = ws.headers.get("host", "")
+        token_required = (not _host_allowed(host)) or require_loopback_token
+        if token_required and (token is None or not tokens.verify(token)):
+            await ws.close(code=1008)
+            return
         bridge = bridge_state["bridge"]
         if bridge is None:
             await ws.close(code=1011)
@@ -687,6 +787,17 @@ def create_app(
     # Registered last: the read-only routes above keep their paths, and the
     # mutation routes use POST (no method collisions with the GET contract).
     register_write_endpoints(
+        app,
+        facade=facade,
+        tokens=tokens,
+        csrf=csrf,
+        require_loopback_token=require_loopback_token,
+    )
+
+    # ── Phase 2 (WS-2.2, wave 2b): operational endpoints ──────────────────
+    # Generate loop, approval inbox, validators, company CRUD, agent sync,
+    # backup, and R5 telemetry — same guard/audit contract as wave 2a.
+    register_operational_endpoints(
         app,
         facade=facade,
         tokens=tokens,

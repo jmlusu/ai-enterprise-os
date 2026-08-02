@@ -29,7 +29,7 @@
 | 0007 | Supervisor self-healing: restart before isolate | Accepted | Software Engineering, Cloud Architecture | Engines get restart attempts (w/ fresh heartbeat) before isolation; `isolate` raises if no process record |
 | 0008 | Dashboard frontend: Jinja2 + htmx (v1), Svelte 5 (v2) | Accepted (v1) | Chief Architect, CTO, SWE, Cloud Architecture | v1: Jinja2+htmx (no Node toolchain, fastest). v2: Svelte 5 + Vite (richer UX, budgeted in Phase 4) |
 | 0009 | Dashboard API contract: REST + WebSocket, replay-based reconnect | Accepted | Chief Architect, SWE, Cybersecurity Architecture | Read-only v1: REST JSON + WS push. Reconnect via `?since=`. Write endpoints deferred to Phase 2 with auth+CSRF+audit |
-| 0010 | Phase 2 write auth: bearer token + CSRF + mandatory write audit | Accepted | Chief Architect, CISO, Cybersecurity Architecture, SWE | Opaque bearer token (256-bit); double-submit CSRF token; `audit.write` event on every mutation; fail-closed on non-loopback. **Ratified + shipped with Phase 2 Wave 2a (2026-08-01):** `api/auth.py` + `api/write_endpoints.py` (20 mutation POSTs), hash-at-rest, `--require-loopback-token`, `dashboard token` CLI |
+| 0010 | Phase 2 write auth: bearer token + CSRF + mandatory write audit | Accepted | Chief Architect, CISO, Cybersecurity Architecture, SWE | Opaque bearer token (256-bit); double-submit CSRF token; `audit.write` event on every mutation; fail-closed on non-loopback. **Ratified + shipped with Phase 2 Wave 2a (2026-08-01):** `api/auth.py` + `api/write_endpoints.py` (20 mutation POSTs), hash-at-rest, `--require-loopback-token`, `dashboard token` CLI. **Wave 2b (2026-08-02):** semantics centralized in shared `api/guards.py` `WriteGuard`, extended to generate/decisions/graph-export/company-CRUD/agents-sync/backup/telemetry writes; WS `?token=` enforcement for non-loopback |
 
 ## Key Decisions (beyond formal ADRs)
 
@@ -47,6 +47,10 @@
 | **Agent files omit `model` frontmatter** | Opencode subagents without a model inherit the active model of the invoking agent. Pinning a model would break model promotion/demotion. | `agents/sync.py` docstring |
 | **Dashboard API is loopback-only (v1)** | The dashboard binds `127.0.0.1` only with Host-header allowlist. Non-loopback exposure (Phase 2) requires the full write-auth scheme (ADR 0010). | `api/app.py` `_ALLOWED_HOSTS`, `_SecurityMiddleware` |
 | **Telemetry is fail-open** | CLI invocation is recorded as JSONL; if persistence fails, the CLI continues. Never let observability break the user's command. | `cli/main.py`, `telemetry/cli.py` |
+| **Telemetry persistence = JSONL first** | Runtime metrics (`runtime/metrics_history.jsonl`) and provider usage (`runtime/provider_usage.jsonl`) are append-only JSONL — the same source-of-truth pattern as events/audit; SQLite (ADR 0004) remains a later derived projection. | `telemetry/metrics.py`, `telemetry/provider.py` |
+| **Generate dispatch = streaming runner** | `services/generate_runner.py` runs OpenCode as a shell=False subprocess, streams stdout to a per-run log file, persists run records, and replays interrupted runs on boot — dashboard live logs without a blocking request. | `services/generate_runner.py` |
+| **Shared write guard module** | `api/guards.py` `WriteGuard` centralizes the ADR 0010 check sequence (host → token → CSRF → audit) so wave 2a and wave 2b endpoints can never drift; `HIGH_IMPACT_ACTIONS` lives in one place. | `api/guards.py` |
+| **Decision engine records once** | `DecisionEngine.create_decision()` / `make_decision()` already record to history — facade adapters must not double-record; the inbox survives restarts via `DecisionHistory.import_decisions()`. | `decision/engine.py`, `decision/history.py`, `services/runtime_facade.py` |
 | **EventBus uses JSONL persistence** | Events persist to `events/store.jsonl` for replay. Dead-letter events go to `events/dead_letter.jsonl`. Simple, grep-able, no extra dependencies. | `events/bus.py`, `events/persistence.py` |
 | **Memory tiered storage** | Working (in-memory) → Short-term (JSONL) → Long-term (JSONL) → Archived. Tier management runs as a scheduled job. Importance thresholds drive promotion/demotion. | `memory/engine.py` |
 | **Pre-commit excludes generated/.ai-company** | Generated output and `.ai-company/` state change frequently and are gitignored from lint/format hooks. Source code in `src/` is always checked. | `.pre-commit-config.yaml` |
@@ -87,3 +91,17 @@
   repo-map, system-overview, decisions, agent-roles, current-work) so agents
   stop re-discovering the system.
 - **Rule: update the relevant `.ai/` file after every commit.**
+
+### 2026-08-02 — Phase 2 Wave 2b (generate→review→validate→approve loop) + R5
+- **Generate dispatcher** shipped: `services/generate_runner.py` (streaming
+  subprocess → `runtime/generate_logs/<run_id>.log`, `runtime/generate_runs.jsonl`,
+  boot replay `interrupted by restart`); `/generate` panel + `/api/generate*`.
+- **Decision/approval inbox** live: facade adapters over the existing decision
+  engine (record-once; `import_decisions()` restart survival; `engine.reject()`
+  added); `/decisions` renders risk cards.
+- **ADR 0010 centralized:** shared `api/guards.py` `WriteGuard` + high-impact
+  reasons; extended to all Wave 2b writes (decisions, graph export, company
+  CRUD, agent sync, backup, telemetry persist); WS `?token=` enforcement.
+- **R5 telemetry closed:** metrics + provider usage JSONL persistence,
+  `UsageTrackingProvider`, live `/telemetry` panels (finding #4 → DONE).
+- **Suite:** 1171 → **1252 green**; parity safe-write rows → `1+2`.

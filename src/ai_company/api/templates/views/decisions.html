@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Decision Inbox — AI Enterprise OS{% endblock %}
+{% block heading %}Decision Inbox{% endblock %}
+{% block subtitle %}Wave 2b — review, approve, reject, escalate (persisted, audited){% endblock %}
+
+{% block content %}
+<div class="card mb-1">
+  <h2>New decision</h2>
+  <p class="subtitle">
+    Decisions persist to <span class="mono">runtime/decisions.jsonl</span> and each
+    action is audited (<span class="mono">decision.*</span> in Write History).
+  </p>
+  <div class="form-grid">
+    <label>Title
+      <input id="decision-title" type="text" class="input" maxlength="200" placeholder="e.g. Approve Q3 model budget">
+    </label>
+    <label>Category
+      <select id="decision-category" class="select">
+        <option value="strategic">strategic</option>
+        <option value="operational" selected>operational</option>
+        <option value="financial">financial</option>
+        <option value="technical">technical</option>
+        <option value="compliance">compliance</option>
+        <option value="governance">governance</option>
+        <option value="risk">risk</option>
+      </select>
+    </label>
+    <label>Priority
+      <select id="decision-priority" class="select">
+        <option value="low">low</option>
+        <option value="medium" selected>medium</option>
+        <option value="high">high</option>
+        <option value="critical">critical</option>
+      </select>
+    </label>
+    <label>Description
+      <textarea id="decision-description" class="input" maxlength="4000" rows="3" placeholder="What is being decided?"></textarea>
+    </label>
+    <label>Options <span class="subtitle">one per line: label — description</span>
+      <textarea id="decision-options" class="input" rows="3" placeholder="Adopt opencode — default, no cost&#10;Adopt cursor — higher cost"></textarea>
+    </label>
+  </div>
+  <div class="write-actions mt-1">
+    <button id="decision-create" type="button" class="btn">Create decision</button>
+  </div>
+  <span id="decision-status" class="write-status"></span>
+</div>
+
+<div class="card">
+  <h2>Approval queue</h2>
+  <div id="decision-list">
+    {% if decisions %}
+    <div class="grid cols-2">
+      {% for decision in decisions %}
+      <div class="card decision-card" data-decision-id="{{ decision.id }}">
+        <h3>{{ decision.title }}</h3>
+        <p class="mono subtitle">{{ decision.id }}</p>
+        <p>
+          <span class="chip {{ decision.status }}">{{ decision.status }}</span>
+          <span class="chip">{{ decision.category }}</span>
+          <span class="chip">{{ decision.priority }}</span>
+          {% if decision.risk_score is not none %}
+          <span class="chip watch">risk {{ decision.risk_score }}</span>
+          {% endif %}
+        </p>
+        <p>{{ decision.description }}</p>
+        {% if decision.options %}
+        <table>
+          <thead><tr><th>Option</th><th>Description</th></tr></thead>
+          <tbody>
+            {% for option in decision.options %}
+            <tr><td class="mono">{{ option.get("label", option.get("id", "")) }}</td><td>{{ option.get("description", "") }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+        {% if decision.status in ("pending", "in_review") %}
+        <div class="decision-actions mt-1">
+          <button type="button" class="btn" data-decision-approve="1">Approve</button>
+          <button type="button" class="btn btn-danger" data-decision-reject="1">Reject</button>
+          <button type="button" class="btn" data-decision-escalate="1">Escalate</button>
+          <button type="button" class="btn" data-decision-cancel="1">Cancel</button>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty">No decisions yet — create one above.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

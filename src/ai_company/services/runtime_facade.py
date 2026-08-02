@@ -64,6 +64,60 @@ def _registry_errors(result: Any) -> list[str]:
     return errors
 
 
+def _decision_from_history_entry(entry: dict[str, Any]) -> Any | None:
+    """Reconstruct a :class:`Decision` from a persisted history entry.
+
+    ``DecisionHistory._load_from_disk`` only rebuilds the raw history list, so
+    the queryable index is empty after a restart. This helper rebuilds a
+    :class:`Decision` (best-effort) from one JSONL entry so the approval inbox
+    stays useful across restarts.
+    """
+    from datetime import datetime as _datetime
+
+    from ai_company.decision.models import (
+        Decision,
+        DecisionCategory,
+        DecisionPriority,
+        DecisionStatus,
+    )
+
+    try:
+        data = dict(entry)
+        data.pop("recorded_at", None)
+        for key in ("created_at", "updated_at", "resolved_at"):
+            value = data.get(key)
+            data[key] = _datetime.fromisoformat(value) if value else None
+        data["category"] = DecisionCategory(data.get("category") or "other")
+        data["status"] = DecisionStatus(data.get("status") or "pending")
+        data["priority"] = DecisionPriority(int(data.get("priority") or 2))
+        return Decision(**data)
+    except Exception:
+        return None
+
+
+def _load_yaml(path: Path) -> dict[str, Any]:
+    """Load a YAML mapping file; missing/corrupt files yield ``{}``."""
+    import yaml
+
+    if not path.is_file():
+        return {}
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            data = yaml.safe_load(handle) or {}
+    except yaml.YAMLError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _save_yaml(path: Path, data: dict[str, Any]) -> None:
+    """Write a YAML mapping file, preserving key order and unicode."""
+    import yaml
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        yaml.safe_dump(data, handle, sort_keys=False, allow_unicode=True)
+
+
 class RuntimeFacade:
     """Thin, shared adapter over the enterprise runtime engine.
 
@@ -82,6 +136,10 @@ class RuntimeFacade:
         self._runtime = (
             runtime if runtime is not None else create_runtime(config_dir=config_dir)
         )
+        # Lazy, facade-owned singletons for wave 2b surfaces (kept off the
+        # hot read path; created on first use).
+        self._generate_runner: Any | None = None
+        self._decision_engine: Any | None = None
 
     @property
     def runtime(self) -> RuntimeEngine:
@@ -1239,6 +1297,530 @@ class RuntimeFacade:
     def bootstrap_run(self) -> dict[str, Any]:
         """Scaffold + generate the full company (parity with ``bootstrap``)."""
         return self.build_run()
+
+    # ── Phase 2 (WS-2.2): wave 2b operations ─────────────────────────────────
+    # Generate loop, decision/approval inbox, per-artifact validators, graph
+    # export write, company CRUD, agent sync, backup, and R5 telemetry.
+    # Reads are dependency-free; writes are auth-guarded by the API layer.
+
+    # ── generate loop ────────────────────────────────────────────────────────
+
+    def _generate_runner_instance(self) -> Any:
+        """Lazily build the shared :class:`GenerateRunner`."""
+        if self._generate_runner is None:
+            from ai_company.services.generate_runner import GenerateRunner
+
+            self._generate_runner = GenerateRunner()
+        return self._generate_runner
+
+    def generate_runs(self, limit: int = 50) -> dict[str, Any]:
+        """Recent generate runs (newest first)."""
+        try:
+            runs = self._generate_runner_instance().list_runs(limit=limit)
+            return {
+                "success": True,
+                "errors": [],
+                "runs": [run.to_dict() for run in runs],
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "runs": []}
+
+    def generate_run(self, run_id: str) -> dict[str, Any]:
+        """One generate run by id."""
+        run = self._generate_runner_instance().get(run_id)
+        if run is None:
+            return {
+                "success": False,
+                "errors": [f"run not found: {run_id}"],
+                "run": None,
+            }
+        return {"success": True, "errors": [], "run": run.to_dict()}
+
+    def generate_log(self, run_id: str, max_lines: int = 400) -> dict[str, Any]:
+        """Tail of one run's streamed log."""
+        try:
+            lines = self._generate_runner_instance().log_tail(
+                run_id, max_lines=max_lines
+            )
+            return {"success": True, "errors": [], "lines": lines}
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "lines": []}
+
+    def generate_start(self, target: str, reason: str = "") -> dict[str, Any]:
+        """Dispatch one generate run (mirrors ``ai-company generate <target>``)."""
+        try:
+            run = self._generate_runner_instance().start(target, reason=reason)
+        except ValueError as exc:
+            return {"success": False, "errors": [str(exc)], "run": None}
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "run": None}
+        return {"success": True, "errors": [], "run": run.to_dict()}
+
+    def generate_cancel(self, run_id: str) -> dict[str, Any]:
+        """Cancel a running generate dispatch."""
+        run = self._generate_runner_instance().cancel(run_id)
+        if run is None:
+            return {
+                "success": False,
+                "errors": [f"run not found: {run_id}"],
+                "run": None,
+            }
+        return {"success": True, "errors": [], "run": run.to_dict()}
+
+    # ── decisions / approval inbox ───────────────────────────────────────────
+
+    def _decision_engine_instance(self) -> Any:
+        """Lazily build the shared :class:`DecisionEngine` (history-backed)."""
+        if self._decision_engine is None:
+            from ai_company.decision.engine import DecisionEngine
+            from ai_company.decision.history import DecisionHistory
+
+            history = DecisionHistory(storage_path="runtime/decisions.jsonl")
+            rebuilt = [
+                decision
+                for entry in history.get_history(limit=10**6)
+                if (decision := _decision_from_history_entry(entry)) is not None
+            ]
+            history.import_decisions(rebuilt)
+            self._decision_engine = DecisionEngine(decision_history=history)
+        return self._decision_engine
+
+    def decisions_list(
+        self,
+        status: str | None = None,
+        category: str | None = None,
+        limit: int = 100,
+    ) -> dict[str, Any]:
+        """Decisions for the approval inbox (optionally filtered)."""
+        try:
+            engine = self._decision_engine_instance()
+            decisions = engine.list_decisions(
+                status=status, category=category, limit=limit
+            )
+            return {
+                "success": True,
+                "errors": [],
+                "decisions": [d.to_dict() for d in decisions],
+                "count": len(decisions),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "decisions": []}
+
+    def decision_get(self, decision_id: str) -> dict[str, Any]:
+        """One decision plus its explainability summary."""
+        try:
+            engine = self._decision_engine_instance()
+            decision = engine.get_decision(decision_id)
+            if decision is None:
+                return {
+                    "success": False,
+                    "errors": [f"decision not found: {decision_id}"],
+                    "decision": None,
+                }
+            return {
+                "success": True,
+                "errors": [],
+                "decision": decision.to_dict(),
+                "explanation": engine.explain(decision),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "decision": None}
+
+    def decision_create(
+        self,
+        title: str,
+        description: str,
+        category: str = "operational",
+        priority: str = "medium",
+        requester: str = "dashboard",
+        owner: str = "",
+        options: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Create a decision for the approval inbox."""
+        try:
+            engine = self._decision_engine_instance()
+            # ``create_decision`` evaluates risk, resolves the approval path,
+            # and persists to the decision history itself.
+            decision = engine.create_decision(
+                title=title,
+                description=description,
+                category=category,
+                priority=priority,
+                requester=requester,
+                owner=owner,
+                options=options or [],
+            )
+            return {
+                "success": True,
+                "errors": [],
+                "decision": decision.to_dict(),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "decision": None}
+
+    def decision_approve(
+        self,
+        decision_id: str,
+        selected_option: str,
+        rationale: str,
+        approved_by: str = "dashboard-operator",
+    ) -> dict[str, Any]:
+        """Approve a decision by selecting an option (audited by the API)."""
+        try:
+            engine = self._decision_engine_instance()
+            decision = engine.get_decision(decision_id)
+            if decision is None:
+                return {
+                    "success": False,
+                    "errors": [f"decision not found: {decision_id}"],
+                }
+            if decision.status.value not in ("pending", "in_review"):
+                return {
+                    "success": False,
+                    "errors": [f"decision already resolved: {decision.status.value}"],
+                }
+            resolved = engine.make_decision(
+                decision=decision,
+                selected_option=selected_option,
+                rationale=rationale,
+                approved_by=approved_by,
+            )
+            return {"success": True, "errors": [], "decision": resolved.to_dict()}
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)]}
+
+    def decision_reject(self, decision_id: str, reason: str) -> dict[str, Any]:
+        """Reject a pending decision (requires a reason)."""
+        try:
+            engine = self._decision_engine_instance()
+            decision = engine.get_decision(decision_id)
+            if decision is None:
+                return {
+                    "success": False,
+                    "errors": [f"decision not found: {decision_id}"],
+                }
+            if decision.status.value not in ("pending", "in_review"):
+                return {
+                    "success": False,
+                    "errors": [f"decision already resolved: {decision.status.value}"],
+                }
+            rejected = engine.reject(decision, reason)
+            return {"success": True, "errors": [], "decision": rejected.to_dict()}
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)]}
+
+    def decision_escalate(self, decision_id: str, note: str = "") -> dict[str, Any]:
+        """Escalate a decision to the next approval level."""
+        try:
+            engine = self._decision_engine_instance()
+            decision = engine.get_decision(decision_id)
+            if decision is None:
+                return {
+                    "success": False,
+                    "errors": [f"decision not found: {decision_id}"],
+                }
+            escalated = engine.escalate(decision, note)
+            return {"success": True, "errors": [], "decision": escalated.to_dict()}
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)]}
+
+    def decision_cancel(self, decision_id: str, reason: str) -> dict[str, Any]:
+        """Cancel a pending decision (requires a reason)."""
+        try:
+            engine = self._decision_engine_instance()
+            decision = engine.get_decision(decision_id)
+            if decision is None:
+                return {
+                    "success": False,
+                    "errors": [f"decision not found: {decision_id}"],
+                }
+            cancelled = engine.cancel(decision, reason)
+            return {"success": True, "errors": [], "decision": cancelled.to_dict()}
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)]}
+
+    # ── per-artifact validators ──────────────────────────────────────────────
+
+    def validate_artifacts(
+        self,
+        artifact: str = "all",
+        company_dir: Path | None = None,
+        config_dir: Path | None = None,
+    ) -> dict[str, Any]:
+        """Run one (or all) of the per-artifact validation passes.
+
+        Mirrors the five ``ValidatorEngine`` passes (yaml/registry/templates/
+        manifest/output). ``artifact="all"`` runs every pass and rolls the
+        reports into one result, matching ``ai-company validate``.
+        """
+        from ai_company.validator.engine import ValidatorEngine
+        from ai_company.validator.reports import ValidatorResult
+
+        try:
+            engine = ValidatorEngine(
+                company_dir=company_dir or Path("company"),
+                manifest_path=config_dir / Path("company/company.yaml")
+                if config_dir
+                else Path("config/company/company.yaml"),
+            )
+            if artifact == "all":
+                result: ValidatorResult = engine.validate_all()
+            else:
+                method = getattr(engine, f"validate_{artifact}", None)
+                if method is None:
+                    return {
+                        "success": False,
+                        "errors": [f"unknown artifact: {artifact}"],
+                        "reports": [],
+                    }
+                # Per-artifact passes return one report; wrap it so the
+                # response shape matches ``validate_all``.
+                result = ValidatorResult(reports=[method()])
+            return {
+                "success": result.passed,
+                "errors": [],
+                "artifact": artifact,
+                "summary": result.summary(),
+                "reports": [r.model_dump(mode="json") for r in result.reports],
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "reports": []}
+
+    # ── graph export write ───────────────────────────────────────────────────
+
+    def graph_export_write(self, output_dir: str = "generated") -> dict[str, Any]:
+        """Export the company graph as Mermaid + enriched JSON.
+
+        Mirrors ``ai-company graph export`` (the CLI writes artifacts; the
+        read-only ``graph_show``/``graph_stats`` stay query surfaces).
+        """
+        from ai_company.company.graph_exporter import GraphExporter
+        from ai_company.registry.registry import RegistryEngine
+
+        try:
+            reg = (
+                RegistryEngine()
+                .load(Path("company"), config_dir=Path("config/company"))
+                .registry
+            )
+            if reg is None:
+                return {"success": False, "errors": ["registry could not load"]}
+            exporter = GraphExporter(reg)
+            errors = exporter.validate()
+            if errors:
+                return {"success": False, "errors": list(errors)}
+            result = exporter.generate()
+            created = exporter.write_artifacts(result, Path(output_dir))
+            return {
+                "success": True,
+                "errors": [],
+                "files": [str(path) for path in created],
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)]}
+
+    # ── company CRUD (declarative YAML write surface) ───────────────────────
+
+    def company_files(self) -> dict[str, Any]:
+        """List the registry YAML files that back the company."""
+        registry_dir = Path("company")
+        files = (
+            sorted(path.name for path in registry_dir.glob("*.yaml"))
+            if registry_dir.is_dir()
+            else []
+        )
+        return {"success": True, "errors": [], "files": files}
+
+    def company_department_add(
+        self,
+        name: str,
+        title: str | None = None,
+        description: str | None = None,
+    ) -> dict[str, Any]:
+        """Add a department to ``company/departments.yaml`` + the manifest."""
+        import re as _re
+
+        slug = _re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
+        if not slug:
+            return {"success": False, "errors": ["invalid department name"]}
+
+        departments_path = Path("company/departments.yaml")
+        data = _load_yaml(departments_path)
+        if slug in data:
+            return {"success": False, "errors": [f"department exists: {slug}"]}
+        role = (title or "").strip() or slug.replace("-", " ").title()
+        data[slug] = [{role: (description or "").strip() or role}]
+        _save_yaml(departments_path, data)
+
+        manifest_path = Path("config/company/company.yaml")
+        manifest = _load_yaml(manifest_path)
+        departments = manifest.get("departments")
+        if isinstance(departments, list) and slug not in departments:
+            departments.append(slug)
+            _save_yaml(manifest_path, manifest)
+
+        return {
+            "success": True,
+            "errors": [],
+            "department": slug,
+            "role": role,
+        }
+
+    def company_department_remove(self, name: str) -> dict[str, Any]:
+        """Remove a department from ``company/departments.yaml`` + manifest."""
+        import re as _re
+
+        slug = _re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
+        if not slug:
+            return {"success": False, "errors": ["invalid department name"]}
+
+        departments_path = Path("company/departments.yaml")
+        data = _load_yaml(departments_path)
+        if slug not in data:
+            return {"success": False, "errors": [f"department not found: {slug}"]}
+        del data[slug]
+        _save_yaml(departments_path, data)
+
+        manifest_path = Path("config/company/company.yaml")
+        manifest = _load_yaml(manifest_path)
+        departments = manifest.get("departments")
+        if isinstance(departments, list) and slug in departments:
+            departments[:] = [d for d in departments if d != slug]
+            _save_yaml(manifest_path, manifest)
+
+        return {"success": True, "errors": [], "department": slug}
+
+    def company_manifest_update(
+        self,
+        name: str | None = None,
+        company_name: str | None = None,
+        description: str | None = None,
+    ) -> dict[str, Any]:
+        """Update manifest metadata in ``config/company/company.yaml``."""
+        manifest_path = Path("config/company/company.yaml")
+        manifest = _load_yaml(manifest_path)
+        changed: list[str] = []
+        if name is not None and manifest.get("name") != name:
+            manifest["name"] = name
+            changed.append("name")
+        if company_name is not None and manifest.get("company_name") != company_name:
+            manifest["company_name"] = company_name
+            changed.append("company_name")
+        if description is not None and manifest.get("description") != description:
+            manifest["description"] = description
+            changed.append("description")
+        if changed:
+            _save_yaml(manifest_path, manifest)
+        return {"success": True, "errors": [], "changed": changed}
+
+    # ── agent sync ───────────────────────────────────────────────────────────
+
+    def agents_sync(
+        self, scope: str = "project", force: bool = False
+    ) -> dict[str, Any]:
+        """Sync persona agents into opencode (mirrors ``ai-company exec sync``)."""
+        from ai_company.agents.sync import AgentSyncConfig, AgentSyncEngine
+
+        if scope not in ("project", "global", "both"):
+            return {
+                "success": False,
+                "errors": [f"invalid scope: {scope}"],
+            }
+        try:
+            engine = AgentSyncEngine(config=AgentSyncConfig(scope=scope, force=force))
+            result = engine.run()
+            return {
+                "success": not result.errors,
+                "errors": list(result.errors),
+                "created": list(result.created),
+                "updated": list(result.updated),
+                "skipped": list(result.skipped),
+                "conflicts": list(result.conflicts),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)]}
+
+    # ── backup ───────────────────────────────────────────────────────────────
+
+    def backup_create(self, dest_dir: str = "backups") -> dict[str, Any]:
+        """Create a timestamped backup archive (mirrors ``python -m ai_company.backup``)."""
+        from ai_company.backup.backup import create_backup
+
+        try:
+            created = create_backup(dest_dir=dest_dir)
+            return {"success": True, "errors": [], "path": str(created)}
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "path": None}
+
+    def backup_status(self, limit: int = 10) -> dict[str, Any]:
+        """List existing backup archives (newest first) for the R6 tile."""
+        from datetime import datetime as _datetime
+
+        backup_dir = Path("backups")
+        if not backup_dir.is_dir():
+            return {"success": True, "errors": [], "backups": [], "total": 0}
+        try:
+            archives = sorted(
+                backup_dir.glob("*.tar.gz"),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+        except OSError as exc:
+            return {"success": False, "errors": [str(exc)], "backups": [], "total": 0}
+        return {
+            "success": True,
+            "errors": [],
+            "backups": [
+                {
+                    "name": path.name,
+                    "size_bytes": path.stat().st_size,
+                    "modified": _datetime.fromtimestamp(
+                        path.stat().st_mtime
+                    ).isoformat(),
+                }
+                for path in archives[:limit]
+            ],
+            "total": len(archives),
+        }
+
+    # ── telemetry (risk R5) ──────────────────────────────────────────────────
+
+    def metrics_persist(self) -> dict[str, Any]:
+        """Snapshot the current runtime metrics into the persisted history."""
+        from ai_company.telemetry.metrics import log_metrics_snapshot
+
+        try:
+            snapshot = self.metrics()
+            log_metrics_snapshot(snapshot)
+            return {"success": True, "errors": [], "snapshot": snapshot}
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)]}
+
+    def metrics_history_summary(self, limit: int = 100) -> dict[str, Any]:
+        """Dashboard summary over persisted metrics snapshots (R5)."""
+        from ai_company.telemetry.metrics import metrics_summary
+
+        try:
+            return {
+                "success": True,
+                "errors": [],
+                "summary": metrics_summary(limit=limit),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "summary": {}}
+
+    def provider_usage_summary(self, limit: int = 500) -> dict[str, Any]:
+        """Aggregated provider usage by model (R5 Model Usage panel)."""
+        from ai_company.telemetry.provider import provider_usage_summary
+
+        try:
+            return {
+                "success": True,
+                "errors": [],
+                "summary": provider_usage_summary(limit=limit),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "summary": {}}
 
     def close(self) -> None:
         """Best-effort graceful shutdown of the runtime (idempotent)."""

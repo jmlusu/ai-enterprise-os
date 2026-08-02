@@ -1,8 +1,8 @@
 # Initiative: GUI Dashboard + OpenCode Desktop as Command Centers
 
-Status: **ACTIVE — Phase 1 DONE (read-only dashboard v1 shipped 2026-08-01); Phase 2 Wave 2a (write auth + operational writes) SHIPPED 2026-08-01; Wave 2b (generate dispatcher + approval inbox) next**
+Status: **ACTIVE — Phase 1 DONE (read-only dashboard v1 shipped 2026-08-01); Phase 2 Waves 2a+2b SHIPPED 2026-08-02 — exit criterion met (full generate → review → validate → approve loop from the browser); Phase 3 next (OpenCode desktop as first-class command center)**
 Owner: Chief Architect (opencode/big-pickle) · Ratified by: CEO / CIO / CTO / CAIO / CDO / SWE
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 > This file is the **living tracker** for the initiative. Every phase, risk, and
 > decision below is updated as work lands. Status markers used:
@@ -31,7 +31,7 @@ against this repository before tracking began. Evidence paths are as found.
 | 1 | Generation dispatch map broken: `command_map.yaml` maps 11 targets to 9 prompt files that don't exist; only `bootstrap` + `registry` resolve. Real `prompts/opencode/` has **8 files, differently named** (01–08: bootstrap, registry, generator_engine, cli, document_generator, opencode_agent_generator, dashboard_generator, constitution_loader). | `src/ai_company/cli/command_map.yaml` vs `prompts/opencode/*.md` | **P0** | **[DONE]** — reconciled 2026-08-01; CI integrity test added (see §7.1) |
 | 2 | Self-healing doesn't work: all 5 engines `failed` / `heartbeat_timeout`, `restart_count: 0`. Watchdog isolates; supervisor never recovers. Active pipeline `p_recovery_test` ended fully failed. | `runtime/runtime_state.json` | **P0** | **[DONE]** — recovery fix landed (ADR 0007); drill tests green; **end-to-end live drill PASSED 2026-08-01** (§7.6) |
 | 3 | "Dashboard" is a 16-line static stub; `docs/architecture.md` lists a "Dashboard Engine" with no source; prompt `07_dashboard_generator.md` is aspirational ("Update automatically"). GUI is greenfield. | `dashboards/sprint_dashboard.html` (16 lines); `docs/architecture.md` line 14; `prompts/opencode/07_dashboard_generator.md` | **P0** | **[DONE]** — Phase 1 complete 2026-08-01: read-only dashboard v1 live on `ai-company serve` (wave 1 API `6d2654b`/`b6d5a26` + wave 2 frontend); 8 views render live data; parity P1 rows SHIPPED (§7.7) |
-| 4 | ~60% of telemetry is generated then discarded: metrics/heartbeats/health are in-memory dicts lost on restart; provider token usage is computed (`CompletionResult.usage`) and never persisted. "Model Usage" / "Agent Health" have zero upstream data. | `src/ai_company/runtime/metrics.py` (`MetricsRegistry` = plain dicts, no persistence); `src/ai_company/providers/base.py` (`usage: dict` field, unused) | **P0** | **[IN PROGRESS]** — CLI invocation telemetry LIVE (`runtime/cli_telemetry.jsonl`, fail-open, WS-0.4); runtime metrics persistence + provider usage instrumentation remain (Phase 2 telemetry workstream) |
+| 4 | ~60% of telemetry is generated then discarded: metrics/heartbeats/health are in-memory dicts lost on restart; provider token usage is computed (`CompletionResult.usage`) and never persisted. "Model Usage" / "Agent Health" have zero upstream data. | `src/ai_company/runtime/metrics.py` (`MetricsRegistry` = plain dicts, no persistence); `src/ai_company/providers/base.py` (`usage: dict` field, unused) | **P0** | **[DONE]** — telemetry workstream complete (Wave 2b, 2026-08-02): runtime metrics persist to `runtime/metrics_history.jsonl` (30s ticker + manual capture), provider usage to `runtime/provider_usage.jsonl` via `UsageTrackingProvider`; KPI / Model Usage / Agent Health panels on `/telemetry` render live data |
 | 5 | Two sources of truth drifting: `command_map.yaml` pins `opencode/north-mini-code-free` + an `architect` agent that is **not defined** in `opencode.json`; `opencode.json` uses `ollama/llama3.1:8b` with agents `build/plan/explore/general`. | `src/ai_company/cli/command_map.yaml` vs `opencode.json` | **P1** | **[DONE]** — `architect` agent added to `opencode.json` 2026-08-01 (see §7.2); command map now an **enforced contract** (ADR 0006, CI integrity gates); model variance documented as decision D4 |
 | 6 | All state gitignored, no backup: `memory/`, `events/`, `generated/`, `.ai-company/`, `runtime/`, `reports/`, `scripts/`, `slides/` excluded from git; a dead laptop = full data loss. | `.gitignore` lines 35–58 | **P1** | **[DONE]** — WS-0.5 complete 2026-08-01: nightly bundle + `restore_backup()` + live restore drill (397/397 files) + `.opencode/` template committed |
 
@@ -107,7 +107,10 @@ complete; drills run live (restore 397/397 files, recovery restart-before-isolat
 
 ### Phase 2 — Operational dashboard (4–6 wks) — the actual pivot
 
-`[IN PROGRESS]` — **Wave 2a SHIPPED 2026-08-01** (ADR 0010 ratified; §7.8).
+`[DONE]` — **Waves 2a + 2b SHIPPED 2026-08-01/02.** Exit criterion met: an
+operator runs a full generate → review → validate → approve loop without
+opening a terminal. Work plan: `docs/dashboard/phase2-workplan.md` → **DONE**.
+Parity matrix P2 rows → **`1+2`** (all safe-write rows live on both surfaces).
 
 - ✅ Write-auth security scheme live (ADR 0010): opaque 256-bit bearer token
   (`runtime/.write_token`, env override, optional SHA-256 hash-at-rest),
@@ -115,21 +118,28 @@ complete; drills run live (restore 397/397 files, recovery restart-before-isolat
   mandatory `audit.write` / `audit.write_rejected` audit on every mutation
   (fail-open JSONL; rejected payloads never leak token/CSRF). Non-loopback
   Hosts fail closed; loopback is token-optional with `--require-loopback-token`.
-- ✅ Mutation endpoints live (20 POSTs): runtime start/stop/restart/reload/
-  recover/unisolate, orchestrate plan/start/resume/retry/rollback, memory
-  save/update/snapshot/restore/export/archive/unarchive, validate, reports
-  generate, build, bootstrap. High-impact actions (stop/restart/recover/
-  unisolate/rollback) require a `reason` (422 otherwise).
-- ✅ Dashboard buttons + confirm dialogs (Write History page, reason prompts);
-  token saved per-browser (localStorage), CSRF fetched per action, CSP-safe JS.
-- ✅ Additive CLI: `ai-company dashboard token create|revoke|list|info` +
-  `serve --hash-at-rest` / `--require-loopback-token` (ADR 0006).
-- ✅ Suite 1142 → **1171 tests green**; ruff/mypy/format/lock/audit clean.
-- ⬜ **Wave 2b (next):** generate dispatcher → OpenCode with run history + live
-  logs (`POST /api/generate`, streaming), decision/approval inbox (decision
-  engine → visual approval cards), per-artifact company validators, graph
-  export, company CRUD write, WS-channel token enforcement for non-loopback.
-- **Exit:** an operator runs a full generate → review → validate → approve loop without opening a terminal.
+- ✅ Mutation endpoints live (20 POSTs, Wave 2a) + Wave 2b writes: generate
+  dispatch/run/log/cancel, decision inbox (create/approve/reject/escalate/
+  cancel), per-artifact company validators, graph export, company CRUD
+  (files/departments/manifest), agent sync, backup create/status, telemetry
+  persist. All behind the shared `api/guards.py` `WriteGuard` (ADR 0010
+  semantics unchanged; high-impact actions require a `reason`, 422).
+- ✅ **Generate dispatcher (Wave 2b):** `services/generate_runner.py` streams
+  OpenCode subprocess output to `runtime/generate_logs/<run_id>.log`, persists
+  `runtime/generate_runs.jsonl`, boot replay marks interrupted runs; `/generate`
+  panel has target select, prompt input, live log tail, history.
+- ✅ **Decision/approval inbox (Wave 2b):** `/decisions` renders decision-engine
+  cards (risk score, approval matrix) with approve / reject / escalate / cancel;
+  inbox survives restarts via `DecisionHistory.import_decisions()`.
+- ✅ **R5 telemetry (Wave 2b):** `telemetry/metrics.py` + `telemetry/provider.py`
+  JSONL persistence + `UsageTrackingProvider`; `/telemetry` KPI / Model Usage /
+  Agent Health panels live; 30s auto-persist ticker in app lifespan.
+- ✅ **Backup tile (R6):** pulse view backup action + status via `POST
+  /api/backup` / `GET /api/backup/status` (ADR 0001).
+- ✅ **WS `?token=` enforcement** for non-loopback (close 1008, ADR 0010 §1).
+- ✅ Suite 1142 → **1252 tests green** (1171 Wave 2a + wave-2b/telemetry/parity
+  additions); ruff/mypy/format/command-map/lock/audit clean.
+- **Exit:** ✅ met — full generate → review → validate → approve loop live.
 
 ### Phase 3 — OpenCode desktop as first-class command center (3–4 wks)
 
@@ -155,12 +165,12 @@ complete; drills run live (restore 397/397 files, recovery restart-before-isolat
 |---|------|----------|-----------|--------|
 | R1 | Broken generate dispatch (phantom targets) | Critical, certain | Phase 0 fix + CI integrity check | **[MITIGATED]** — 0.1 done |
 | R2 | System doesn't self-heal (watchdog isolates, no recovery) | Critical | Recovery policies in Phase 0; recovery-success metric; alert on isolation | **[MITIGATED]** — ADR 0007 + drill tests green; **live end-to-end drill PASSED (§7.6)**; recovery-success metric + isolation alerting moved to Phase 2 backlog |
-| R3 | Dual-interface drift (CLI vs dashboard re-implementing logic) | High | Single `services/` layer; contract tests (golden CLI output == API JSON); parity test suite in CI | **[PARTIALLY MITIGATED]** — ADR 0003 accepted; facade is the single surface; parity seed green (`tests/golden/test_parity_read.py`, 9 commands); full 70-command parity suite grows with Phase 2 |
+| R3 | Dual-interface drift (CLI vs dashboard re-implementing logic) | High | Single `services/` layer; contract tests (golden CLI output == API JSON); parity test suite in CI | **[PARTIALLY MITIGATED]** — ADR 0003 accepted; facade is the single surface; parity seeds green (`tests/golden/test_parity_read.py`, 9 commands + `tests/golden/test_parity_wave2b.py`, generate/backup contract + shared guard); full 70-command parity suite grows with later phases |
 | R4 | OpenCode vendor lock-in / version churn | High | Provider abstraction at dispatcher; portable Markdown prompts; pinned version + doctor probe; headless generate fallback; never fork/re-skin desktop app | **[OPEN]** |
-| R5 | Dashboard ships with no data (Model Usage/Agent Health empty) | High | Capture-first ordering: telemetry (Phases 0–1) precedes panels (Phase 2); stub honestly with "data pending," never fake | **[PARTIALLY MITIGATED]** — CLI telemetry capture live (WS-0.4); **Phase 1 views render real data** (registry/exec/graph/memory/reports/validate/health); KPI + Agent Health panels show explicit "data pending" (never fake); runtime metrics persistence + provider usage instrumentation remain (Phase 2 telemetry workstream) |
-| R6 | Data loss (all state gitignored, single machine) | High | Nightly backup bundle + quarterly restore drill + backup tile with alerting | **[PARTIALLY MITIGATED]** — nightly bundle + restore drill done 2026-08-01; backup tile with alerting is Phase 2 dashboard work |
+| R5 | Dashboard ships with no data (Model Usage/Agent Health empty) | High | Capture-first ordering: telemetry (Phases 0–1) precedes panels (Phase 2); stub honestly with "data pending," never fake | **[MITIGATED]** — telemetry workstream complete (Wave 2b, 2026-08-02): metrics persistence (`runtime/metrics_history.jsonl`, 30s ticker) + provider usage (`runtime/provider_usage.jsonl`, `UsageTrackingProvider`) + live KPI / Model Usage / Agent Health panels on `/telemetry`; Phase 1 views render real data throughout |
+| R6 | Data loss (all state gitignored, single machine) | High | Nightly backup bundle + quarterly restore drill + backup tile with alerting | **[MITIGATED]** — nightly bundle + restore drill done 2026-08-01 (WS-0.5, 397/397 files); **backup tile shipped Wave 2b (2026-08-02)**: pulse view backup action + status via `POST /api/backup` / `GET /api/backup/status` (ADR 0001) |
 | R7 | Scope creep (console becomes mini-ERP) | Medium | CEO's NOT-do list: no SaaS/multi-tenant, no visual pipeline-builder v1, no own agent runtime, ≤30% effort on UI, no new metrics until serving layer lands | **[OPEN]** |
-| R8 | Breaking 500+ tests / CI regression | High | Additive-only refactor; engines untouched; CLI surface frozen; full suite green each sprint; parity is a release blocker | **[PARTIALLY MITIGATED]** — guardrails confirmed (engines unchanged in 0.1); **Phase 1 landed additive-only: 1070 → 1142 tests green on Linux + Windows, no CLI or engine changes** |
+| R8 | Breaking 500+ tests / CI regression | High | Additive-only refactor; engines untouched; CLI surface frozen; full suite green each sprint; parity is a release blocker | **[PARTIALLY MITIGATED]** — guardrails confirmed (engines unchanged in 0.1); **Phase 1 landed additive-only: 1070 → 1142 tests green on Linux + Windows, no CLI or engine changes**; **Phase 2 Waves 2a+2b: 1142 → 1252 green, still additive-only** |
 | R9 | Localhost security (web server = new attack surface) | Medium-High | Bind 127.0.0.1 only; Host-header + CORS checks; token mode when non-loopback; keys in OS keyring, never rendered; CSP; DOMPurify on all Markdown | **[MITIGATED]** — loopback bind + Host allowlist + scoped page CSP + DOMPurify (Phase 1) **+ ADR 0010 shipped Wave 2a (2026-08-01):** fail-closed non-loopback token mode, loopback token-optional with `--require-loopback-token`, per-run CSRF, mandatory write audit, hash-at-rest option; keys never rendered (keyring intentionally not used per ADR 0010 — CISO preference, single-platform portability); token value printed only on first-time creation |
 | R10 | Windows/uvicorn issues | Medium | Plain uvicorn (no uvloop), explicit port + friendly errors, `proc.terminate()` not `os.kill`, add windows-latest CI job | **[MITIGATED]** — windows-latest CI job added 2026-08-01; plain uvicorn + `proc.terminate()` enforced; explicit port + friendly errors land with `ai-company serve` (Phase 1) |
 | R11 | User confusion during transition | High | Category rule: read = dashboard, safe write = both, destructive/bulk = CLI-only; "Equivalent CLI command" tooltips; persona onboarding (View/Operate/Develop); frozen CLI | **[PARTIALLY MITIGATED]** — category rule codified in parity matrix v0; **"Equivalent CLI command" tooltips on every Phase 1 view**; persona onboarding remains Phase 2/3 |
@@ -258,6 +268,51 @@ Root cause on record: `runtime_state.json` shows all 5 engines `failed`/`heartbe
   fail-open JSONL, audit payloads, no token/CSRF leakage, `require_loopback_token`
   mode. Full suite **1142 → 1171 green**; ruff/mypy/format/uv-lock/uv-audit
   clean; parity matrix P2 rows → `1+2` (Wave 2a subset; generate rows → `2b`).
+
+### 7.9 Phase 2 Wave 2b close-out — generate→review→validate→approve loop + R5 telemetry (2026-08-02)
+
+- **Generate dispatcher** (`services/generate_runner.py`): thread-safe
+  streaming dispatcher — `start/cancel/get/list_runs/log_tail`; child stdout
+  streams to `runtime/generate_logs/<run_id>.log`; runs persist to
+  `runtime/generate_runs.jsonl`; boot replay marks queued/running runs
+  `interrupted by restart`; `shell=False`; fail-open. 9 unit tests with a
+  `_FakeProc`.
+- **Shared guard** (`api/guards.py`): `WriteGuard` (`guard()/require_reason()/
+  audited()/reject()`) + `HIGH_IMPACT_ACTIONS` — `write_endpoints.py` migrated
+  so Wave 2a and Wave 2b endpoints share the exact ADR 0010 semantics (bearer
+  token + `X-CSRF-Token` + `audit.write`/`audit.write_rejected` fail-open
+  JSONL; high-impact reason → 422). Guard parity proven by
+  `tests/golden/test_parity_wave2b.py` (401 token-enforced loopback on both
+  wave 2a `/api/runtime/start` and wave 2b `/api/generate`; 403 missing CSRF).
+- **Decision/approval inbox:** facade `decisions_list/get/create/approve/
+  reject/escalate/cancel` over the existing decision engine; record-once
+  semantics (no facade double-record); inbox survives restarts via
+  `DecisionHistory.import_decisions()`; `engine.reject()` added. `/decisions`
+  renders risk cards with approve / reject / escalate / cancel actions.
+- **Per-artifact validators:** `validate_artifacts` wraps each per-artifact
+  `ValidationReport` (board/exec/dept/specialist/workflow/prompt/docs) in a
+  `ValidatorResult` — parity against CLI `validate` PASS/FAIL lines (5 tests).
+- **Remaining P2 write surfaces:** graph export write, company CRUD write
+  (files/departments/manifest), agent sync (`AgentSyncEngine(config=...)`),
+  backup create/status, telemetry persist — all behind the shared guard.
+- **R5 telemetry workstream (finding #4 close):** `telemetry/metrics.py`
+  (`log_metrics_snapshot`/`read_metrics_history`/`metrics_history_summary` →
+  `runtime/metrics_history.jsonl`), `telemetry/provider.py`
+  (`record_provider_usage`/`read_provider_usage`/`provider_usage_summary` →
+  `runtime/provider_usage.jsonl`, aggregated by model), `providers/usage.py`
+  `UsageTrackingProvider`, `ProviderFactory(..., track_usage=False)`. 30s
+  auto-persist ticker in app lifespan + manual "Capture now". 10 tests.
+- **Frontend:** `/generate` (targets, prompt, live log tail, run history),
+  `/decisions` (approval inbox), `/telemetry` (KPI / Model Usage / Agent
+  Health), pulse backup tile + age chip; CSP-safe `data-write`/
+  `data-action` wire helpers; nav updated; wave-2b CSS section.
+- **WS `?token=` enforcement** for non-loopback deployments (close 1008,
+  ADR 0010 §1) — verified by tests.
+- **Tests:** 10 telemetry + 9 generate-runner + 24 facade wave 2b + 24 API
+  wave 2b (incl. page renders with CSP header) + 5 golden parity wave 2b.
+  Full suite **1171 → 1252 green**; ruff/mypy/format/command-map clean;
+  parity matrix safe-write rows → **`1+2`**; R5 → **MITIGATED**, R6 →
+  **MITIGATED** (backup tile), finding #4 → **DONE**.
 
 ---
 

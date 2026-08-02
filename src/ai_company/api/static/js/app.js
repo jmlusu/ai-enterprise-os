@@ -366,7 +366,379 @@
     });
   }
 
-  /* ── Boot ────────────────────────────────────────────────────────────── */
+  /* ── Generate panel (Wave 2b) ───────────────────────────────────────── */
+  var generateStatusEl = document.getElementById("generate-status");
+  var generateRunsBody = document.getElementById("generate-runs-tbody");
+  var generateLogEl = document.getElementById("generate-log");
+  var generateTargetSelect = document.getElementById("generate-target");
+  var generateTargetDesc = document.getElementById("generate-target-desc");
+  var activeRunTimer = null;
+
+  function setGenerateStatus(text, cls) {
+    if (!generateStatusEl) return;
+    generateStatusEl.textContent = text;
+    generateStatusEl.className = "write-status " + (cls || "");
+  }
+
+  function wireGenerate() {
+    if (!generateTargetSelect) return;
+    generateTargetSelect.addEventListener("change", function () {
+      var opt = generateTargetSelect.options[generateTargetSelect.selectedIndex];
+      if (generateTargetDesc && opt) {
+        generateTargetDesc.textContent = opt.dataset.desc || "";
+      }
+    });
+    var dispatchBtn = document.getElementById("generate-dispatch");
+    if (dispatchBtn) {
+      dispatchBtn.addEventListener("click", async function () {
+        var target = generateTargetSelect.value;
+        var reason = (document.getElementById("generate-reason") || {}).value || "";
+        dispatchBtn.disabled = true;
+        setGenerateStatus("Dispatching " + target + " …", "info");
+        try {
+          var body = await performWrite("/api/generate", { target: target, reason: reason });
+          setGenerateStatus("Run " + (body.run ? body.run.run_id : "") + " queued (audited)", "ok");
+          loadGenerateRuns();
+          scheduleGenerateRefresh();
+        } catch (err) {
+          setGenerateStatus("Dispatch failed: " + err.message, "err");
+        } finally {
+          dispatchBtn.disabled = false;
+        }
+      });
+    }
+  }
+
+  function runIsActive(run) {
+    return run && (run.status === "queued" || run.status === "running");
+  }
+
+  function scheduleGenerateRefresh() {
+    if (activeRunTimer) { return; }
+    activeRunTimer = setInterval(function () {
+      loadGenerateRuns().then(function (runs) {
+        var anyActive = runs.some(runIsActive);
+        if (!anyActive) {
+          clearInterval(activeRunTimer);
+          activeRunTimer = null;
+        }
+      });
+    }, 3000);
+  }
+
+  function escAttr(value) {
+    var div = document.createElement("div");
+    div.textContent = value == null ? "" : String(value);
+    return div.innerHTML;
+  }
+
+  function generateStatusClass(status) {
+    if (status === "succeeded") { return "ok"; }
+    if (status === "failed") { return "action"; }
+    if (status === "cancelled") { return "watch"; }
+    return "watch"; // queued / running
+  }
+
+  async function loadGenerateRuns() {
+    if (!generateRunsBody) { return []; }
+    var runs = [];
+    try {
+      var resp = await fetch("/api/generate/runs?limit=25", { headers: { "Accept": "application/json" } });
+      if (resp.ok) {
+        var body = await resp.json();
+        runs = body.runs || [];
+      }
+    } catch (e) { /* keep last render */ }
+    generateRunsBody.textContent = "";
+    if (!runs.length) {
+      var tr = document.createElement("tr");
+      var td = document.createElement("td");
+      td.colSpan = 7;
+      td.className = "empty";
+      td.textContent = "No generation runs yet.";
+      tr.appendChild(td);
+      generateRunsBody.appendChild(tr);
+      return runs;
+    }
+    runs.forEach(function (run) {
+      var tr = document.createElement("tr");
+      var ts = function (v) { return (v || "").replace("T", " ").slice(0, 19); };
+      var logBtn = document.createElement("button");
+      logBtn.type = "button"; logBtn.className = "btn btn-sm";
+      logBtn.textContent = "Log";
+      logBtn.addEventListener("click", function () { showGenerateLog(run.run_id); });
+      var cancelBtn = null;
+      if (runIsActive(run)) {
+        cancelBtn = document.createElement("button");
+        cancelBtn.type = "button"; cancelBtn.className = "btn btn-sm btn-danger";
+        cancelBtn.textContent = "Cancel";
+        cancelBtn.addEventListener("click", async function () {
+          try {
+            await performWrite("/api/generate/" + run.run_id + "/cancel", {});
+            setGenerateStatus("Cancelled " + run.run_id + " (audited)", "ok");
+            loadGenerateRuns();
+          } catch (err) {
+            setGenerateStatus("Cancel failed: " + err.message, "err");
+          }
+        });
+      }
+      var actions = document.createElement("span");
+      actions.className = "write-actions inline";
+      actions.appendChild(logBtn);
+      if (cancelBtn) { actions.appendChild(cancelBtn); }
+      tr.innerHTML =
+        '<td class="mono">' + escAttr(run.run_id) + "</td>" +
+        "<td>" + escAttr(run.target) + "</td>" +
+        '<td><span class="chip ' + generateStatusClass(run.status) + '">' + escAttr(run.status) + "</span></td>" +
+        "<td>" + escAttr(ts(run.started_at)) + "</td>" +
+        "<td>" + escAttr(ts(run.finished_at)) + "</td>" +
+        "<td>" + escAttr(run.exit_code == null ? "—" : run.exit_code) + "</td>";
+      var tdActions = document.createElement("td");
+      tdActions.appendChild(actions);
+      tr.appendChild(tdActions);
+      generateRunsBody.appendChild(tr);
+      if (run.error) {
+        var trErr = document.createElement("tr");
+        var tdErr = document.createElement("td");
+        tdErr.colSpan = 7;
+        tdErr.className = "mono error-text";
+        tdErr.textContent = run.error;
+        trErr.appendChild(tdErr);
+        generateRunsBody.appendChild(trErr);
+      }
+    });
+    if (runs.some(runIsActive)) { scheduleGenerateRefresh(); }
+    return runs;
+  }
+
+  async function showGenerateLog(runId) {
+    if (!generateLogEl) { return; }
+    generateLogEl.textContent = "Loading log for " + runId + " …";
+    try {
+      var resp = await fetch("/api/generate/runs/" + runId + "/log?max_lines=500", { headers: { "Accept": "application/json" } });
+      if (!resp.ok) {
+        generateLogEl.textContent = "Log unavailable (HTTP " + resp.status + ").";
+        return;
+      }
+      var body = await resp.json();
+      var lines = body.lines || [];
+      generateLogEl.textContent = lines.length
+        ? lines.join("\n")
+        : "Run has no log output yet (still starting, or output was empty).";
+      generateLogEl.scrollTop = generateLogEl.scrollHeight;
+    } catch (e) {
+      generateLogEl.textContent = "Log unavailable (network error).";
+    }
+  }
+
+  /* ── Decision inbox (Wave 2b) ───────────────────────────────────────── */
+  var decisionStatusEl = document.getElementById("decision-status");
+
+  function setDecisionStatus(text, cls) {
+    if (!decisionStatusEl) return;
+    decisionStatusEl.textContent = text;
+    decisionStatusEl.className = "write-status " + (cls || "");
+  }
+
+  function decisionDialog(titleText, fields) {
+    /* fields: [{key, label, type: 'text'|'select'|'textarea', required, options}] */
+    return new Promise(function (resolve) {
+      var dialog = document.createElement("dialog");
+      dialog.className = "write-dialog";
+      var title = document.createElement("p");
+      title.textContent = titleText;
+      dialog.appendChild(title);
+      var inputs = {};
+      fields.forEach(function (field) {
+        var label = document.createElement("label");
+        label.className = "write-dialog-label";
+        label.textContent = field.label + (field.required ? " (required)" : "");
+        dialog.appendChild(label);
+        var input;
+        if (field.type === "select") {
+          input = document.createElement("select");
+          (field.options || []).forEach(function (opt) {
+            var option = document.createElement("option");
+            option.value = opt.value;
+            option.textContent = opt.label;
+            input.appendChild(option);
+          });
+        } else if (field.type === "textarea") {
+          input = document.createElement("textarea");
+          input.className = "write-dialog-reason";
+          input.placeholder = field.placeholder || "";
+        } else {
+          input = document.createElement("input");
+          input.type = "text";
+          input.className = "write-dialog-reason";
+          input.placeholder = field.placeholder || "";
+        }
+        dialog.appendChild(input);
+        inputs[field.key] = input;
+      });
+      var actions = document.createElement("div");
+      actions.className = "write-dialog-actions";
+      var cancelBtn = document.createElement("button");
+      cancelBtn.type = "button"; cancelBtn.className = "btn"; cancelBtn.textContent = "Cancel";
+      var confirmBtn = document.createElement("button");
+      confirmBtn.type = "button"; confirmBtn.className = "btn btn-danger"; confirmBtn.textContent = "Confirm";
+      actions.appendChild(cancelBtn);
+      actions.appendChild(confirmBtn);
+      dialog.appendChild(actions);
+      function closeWith(value) {
+        try { dialog.close(); } catch (e) { /* already closed */ }
+        if (dialog.parentNode) { dialog.parentNode.removeChild(dialog); }
+        resolve(value);
+      }
+      cancelBtn.addEventListener("click", function () { closeWith(null); });
+      confirmBtn.addEventListener("click", function () {
+        var result = {};
+        var valid = true;
+        fields.forEach(function (field) {
+          var value = inputs[field.key].value.trim();
+          if (field.required && !value) {
+            inputs[field.key].setAttribute("aria-invalid", "true");
+            valid = false;
+          }
+          result[field.key] = value;
+        });
+        if (!valid) { return; }
+        closeWith(result);
+      });
+      dialog.addEventListener("cancel", function () { closeWith(null); });
+      document.body.appendChild(dialog);
+      dialog.showModal();
+      confirmBtn.focus();
+    });
+  }
+
+  async function createDecision() {
+    var titleEl = document.getElementById("decision-title");
+    var descEl = document.getElementById("decision-description");
+    var catEl = document.getElementById("decision-category");
+    var prioEl = document.getElementById("decision-priority");
+    var optsEl = document.getElementById("decision-options");
+    var title = titleEl.value.trim();
+    var description = descEl.value.trim();
+    if (!title || !description) {
+      setDecisionStatus("Title and description are required.", "err");
+      return;
+    }
+    var options = [];
+    optsEl.value.split("\n").forEach(function (line, idx) {
+      line = line.trim();
+      if (!line) { return; }
+      var parts = line.split(/\s*—\s*|\s*-\s*/, 2);
+      options.push({
+        id: "opt" + (idx + 1),
+        label: parts[0].trim(),
+        description: (parts[1] || "").trim()
+      });
+    });
+    try {
+      var body = await performWrite("/api/decisions", {
+        title: title,
+        description: description,
+        category: catEl.value,
+        priority: prioEl.value,
+        requester: "dashboard",
+        options: options
+      });
+      setDecisionStatus("Decision " + (body.decision ? body.decision.id : "") + " created (audited)", "ok");
+      titleEl.value = ""; descEl.value = ""; optsEl.value = "";
+      setTimeout(function () { window.location.reload(); }, 800);
+    } catch (err) {
+      setDecisionStatus("Create failed: " + err.message, "err");
+    }
+  }
+
+  function decisionOptions(card) {
+    var options = [];
+    var rows = card.querySelectorAll("tbody tr");
+    rows.forEach(function (row) {
+      var cells = row.querySelectorAll("td");
+      if (cells.length >= 2) {
+        options.push({ value: cells[0].textContent.trim(), label: cells[0].textContent.trim() });
+      }
+    });
+    return options;
+  }
+
+  async function decisionAction(action, card) {
+    var decisionId = card.getAttribute("data-decision-id");
+    var payload;
+    if (action === "approve") {
+      var opts = decisionOptions(card);
+      if (!opts.length) {
+        setDecisionStatus("This decision has no options to approve.", "err");
+        return;
+      }
+      var res = await decisionDialog("Approve " + decisionId, [
+        { key: "selected_option", label: "Option", type: "select", required: true, options: opts },
+        { key: "rationale", label: "Rationale", type: "textarea", required: true },
+        { key: "approved_by", label: "Approved by", type: "text", required: true, placeholder: "dashboard-operator" }
+      ]);
+      if (!res) { return; }
+      payload = { selected_option: res.selected_option, rationale: res.rationale, approved_by: res.approved_by || "dashboard-operator" };
+    } else if (action === "reject" || action === "cancel") {
+      var res = await decisionDialog((action === "reject" ? "Reject " : "Cancel ") + decisionId, [
+        { key: "reason", label: "Reason", type: "textarea", required: true }
+      ]);
+      if (!res) { return; }
+      payload = { reason: res.reason };
+    } else { // escalate
+      var res = await decisionDialog("Escalate " + decisionId, [
+        { key: "note", label: "Escalation note", type: "textarea", required: false }
+      ]);
+      if (!res) { return; }
+      payload = { note: res.note };
+    }
+    try {
+      await performWrite("/api/decisions/" + decisionId + "/" + action, payload);
+      setDecisionStatus(decisionId + " → " + action + " (audited)", "ok");
+      setTimeout(function () { window.location.reload(); }, 800);
+    } catch (err) {
+      setDecisionStatus(action + " failed: " + err.message, "err");
+    }
+  }
+
+  function wireDecisionActions() {
+    var createBtn = document.getElementById("decision-create");
+    if (createBtn) { createBtn.addEventListener("click", createDecision); }
+    document.addEventListener("click", function (evt) {
+      var btn = evt.target && evt.target.closest ? evt.target.closest("[data-decision-approve], [data-decision-reject], [data-decision-escalate], [data-decision-cancel]") : null;
+      if (!btn) { return; }
+      evt.preventDefault();
+      var card = btn.closest(".decision-card");
+      if (!card) { return; }
+      var action = btn.hasAttribute("data-decision-approve") ? "approve"
+        : btn.hasAttribute("data-decision-reject") ? "reject"
+        : btn.hasAttribute("data-decision-escalate") ? "escalate" : "cancel";
+      decisionAction(action, card);
+    });
+  }
+
+  /* ── Backup tile age (R6) ────────────────────────────────────────────── */
+  function updateBackupAge() {
+    var el = document.getElementById("backup-age");
+    if (!el) { return; }
+    var latest = el.getAttribute("data-latest") || "";
+    if (!latest) {
+      el.textContent = "none";
+      el.className = "mono chip action";
+      return;
+    }
+    var modified = new Date(latest).getTime();
+    if (isNaN(modified)) { return; }
+    var hours = Math.max(0, Math.floor((Date.now() - modified) / 3600000));
+    var text = hours < 1
+      ? Math.max(0, Math.floor((Date.now() - modified) / 60000)) + "m ago"
+      : hours + "h ago";
+    el.textContent = text;
+    el.className = "mono chip " + (hours > 48 ? "watch" : "ok");
+  }
+
+  /* ── Write actions (Phase 2, ADR 0010: token + CSRF + audit) ────────── */
   document.addEventListener("DOMContentLoaded", function () {
     pollHealth();
     setInterval(pollHealth, POLL_MS);
@@ -377,5 +749,10 @@
     wireTokenInput();
     wireWriteActions();
     loadWriteHistory();
+    wireGenerate();
+    loadGenerateRuns();
+    wireDecisionActions();
+    updateBackupAge();
+    setInterval(updateBackupAge, 30000);
   });
 })();

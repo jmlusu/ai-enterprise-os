@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Generate — AI Enterprise OS{% endblock %}
+{% block heading %}Generate{% endblock %}
+{% block subtitle %}Wave 2b — dispatch opencode runs, stream logs, review output{% endblock %}
+
+{% block content %}
+<div class="card mb-1">
+  <h2>Dispatch a generation run</h2>
+  <p class="subtitle">
+    Mirrors <span class="mono">ai-company generate &lt;target&gt;</span>: resolves the
+    command-map prompt file, renders it, and streams the opencode run here.
+    Results land in <span class="mono">generated/</span> and the run is audited
+    (<span class="mono">generate.start</span> in Write History).
+  </p>
+  <div class="write-token-row">
+    <label for="generate-target">Target</label>
+    <select id="generate-target" class="select">
+      {% for target in targets %}
+      <option value="{{ target.key }}" data-desc="{{ target.description | e }}">{{ target.key }} — {{ target.description }}</option>
+      {% endfor %}
+    </select>
+    <input id="generate-reason" type="text" class="input" placeholder="Reason (optional)" autocomplete="off" maxlength="500">
+    <button id="generate-dispatch" type="button" class="btn">Dispatch</button>
+  </div>
+  <p id="generate-target-desc" class="subtitle mt-1">Select a target to dispatch.</p>
+  <span id="generate-status" class="write-status"></span>
+</div>
+
+<div class="card mb-1">
+  <h2>Run history <span class="subtitle">runtime/generate_runs.jsonl</span></h2>
+  <table>
+    <thead>
+      <tr><th>Run</th><th>Target</th><th>Status</th><th>Started</th><th>Finished</th><th>Exit</th><th>Actions</th></tr>
+    </thead>
+    <tbody id="generate-runs-tbody"></tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Live log <span class="subtitle">tailed from runtime/generate_logs/</span></h2>
+  <pre id="generate-log" class="log-box">Run log appears here — dispatch a run and click "Log".</pre>
+</div>
+{% endblock %}

@@ -16,11 +16,10 @@ Also registers the read helpers the operational dashboard needs:
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Query
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
@@ -28,25 +27,12 @@ from ai_company.api.auth import (
     DEFAULT_AUDIT_FAILED_FILE,
     CsrfService,
     WriteTokenService,
-    host_allowed,
-    publish_write_audit,
-    publish_write_rejected,
 )
+from ai_company.api.guards import HIGH_IMPACT_ACTIONS, WriteGuard
 from ai_company.events import Event, EventType, ReplayRequest
 from ai_company.services.runtime_facade import RuntimeFacade
 
 __all__ = ["HIGH_IMPACT_ACTIONS", "register_write_endpoints"]
-
-#: Actions that must carry a human-provided reason (ADR 0010 §5).
-HIGH_IMPACT_ACTIONS: frozenset[str] = frozenset(
-    {
-        "runtime.stop",
-        "runtime.restart",
-        "runtime.recover",
-        "runtime.unisolate",
-        "orchestrate.rollback",
-    }
-)
 
 _REASON_MAX = 500
 
@@ -148,59 +134,13 @@ def register_write_endpoints(
 ) -> None:
     """Register Phase 2 (wave 2a) write endpoints on ``app``."""
     bus = facade.event_bus
-    failed_path = audit_failed_file
-
-    def _reject(action: str, reason: str, detail: str | None = None) -> None:
-        if bus is not None:
-            publish_write_rejected(
-                bus,
-                action=action,
-                reason=reason,
-                detail=detail,
-                failed_path=failed_path,
-            )
-
-    def guard_factory(action: str) -> Callable[[Request], None]:
-        """Build a dependency enforcing token + CSRF for ``action``."""
-
-        def _require_write_auth(request: Request) -> None:
-            host = request.headers.get("host", "")
-            loopback = host_allowed(host)
-            token_required = (not loopback) or require_loopback_token
-            auth_header = request.headers.get("authorization", "")
-            token = (
-                auth_header[7:].strip()
-                if auth_header.lower().startswith("bearer ")
-                else None
-            )
-            if token is not None:
-                if not tokens.verify(token):
-                    _reject(action, "unauthorized", "invalid token")
-                    raise HTTPException(status_code=401, detail="invalid write token")
-            elif token_required:
-                _reject(action, "unauthorized", "missing token")
-                raise HTTPException(status_code=401, detail="write token required")
-            csrf_value = request.headers.get("x-csrf-token")
-            if not csrf.verify(csrf_value):
-                _reject(action, "csrf_mismatch", "missing or invalid CSRF token")
-                raise HTTPException(status_code=403, detail="invalid CSRF token")
-
-        return _require_write_auth
-
-    def _require_reason(action: str, reason: str | None) -> None:
-        if action in HIGH_IMPACT_ACTIONS and (not reason or not reason.strip()):
-            if bus is not None:
-                publish_write_rejected(
-                    bus,
-                    action=action,
-                    reason="missing_reason",
-                    detail="reason is required for high-impact action",
-                    failed_path=failed_path,
-                )
-            raise HTTPException(
-                status_code=422,
-                detail=f"reason is required for high-impact action: {action}",
-            )
+    guard = WriteGuard(
+        tokens=tokens,
+        csrf=csrf,
+        bus=bus,
+        require_loopback_token=require_loopback_token,
+        audit_failed_file=audit_failed_file,
+    )
 
     def _audited(
         result: dict[str, Any],
@@ -208,21 +148,7 @@ def register_write_endpoints(
         reason: str | None = None,
         extra: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        if bus is not None:
-            status = "ok" if result.get("success") else "failed"
-            details: dict[str, Any] = dict(extra or {})
-            errors = result.get("errors")
-            if errors:
-                details["errors"] = errors
-            publish_write_audit(
-                bus,
-                action=action,
-                result=status,
-                reason=reason,
-                details=details or None,
-                failed_path=failed_path,
-            )
-        return result
+        return guard.audited(result, action, reason=reason, extra=extra)
 
     # ── synchronizer token + write history (read helpers) ────────────────
 
@@ -261,7 +187,7 @@ def register_write_endpoints(
     @app.post("/api/runtime/start", tags=["runtime", "write"])
     async def runtime_start(
         body: ReasonBody,
-        _: None = Depends(guard_factory("runtime.start")),
+        _: None = Depends(guard.guard("runtime.start")),
     ) -> dict[str, Any]:
         """Start the runtime (auth + audit, ADR 0010)."""
         result = await run_in_threadpool(facade.runtime_start)
@@ -270,20 +196,20 @@ def register_write_endpoints(
     @app.post("/api/runtime/stop", tags=["runtime", "write"])
     async def runtime_stop(
         body: ReasonBody,
-        _: None = Depends(guard_factory("runtime.stop")),
+        _: None = Depends(guard.guard("runtime.stop")),
     ) -> dict[str, Any]:
         """Stop the runtime (high-impact — reason required)."""
-        _require_reason("runtime.stop", body.reason)
+        guard.require_reason("runtime.stop", body.reason)
         result = await run_in_threadpool(facade.runtime_stop, body.reason or "manual")
         return _audited(result, "runtime.stop", reason=body.reason)
 
     @app.post("/api/runtime/restart", tags=["runtime", "write"])
     async def runtime_restart(
         body: ReasonBody,
-        _: None = Depends(guard_factory("runtime.restart")),
+        _: None = Depends(guard.guard("runtime.restart")),
     ) -> dict[str, Any]:
         """Restart the runtime (high-impact — reason required)."""
-        _require_reason("runtime.restart", body.reason)
+        guard.require_reason("runtime.restart", body.reason)
         result = await run_in_threadpool(
             facade.runtime_restart, body.reason or "manual"
         )
@@ -292,7 +218,7 @@ def register_write_endpoints(
     @app.post("/api/runtime/reload", tags=["runtime", "write"])
     async def runtime_reload(
         body: ReasonBody,
-        _: None = Depends(guard_factory("runtime.reload")),
+        _: None = Depends(guard.guard("runtime.reload")),
     ) -> dict[str, Any]:
         """Hot-reload runtime configuration."""
         result = await run_in_threadpool(facade.runtime_reload)
@@ -301,10 +227,10 @@ def register_write_endpoints(
     @app.post("/api/runtime/recover", tags=["runtime", "write"])
     async def runtime_recover(
         body: EngineActionBody,
-        _: None = Depends(guard_factory("runtime.recover")),
+        _: None = Depends(guard.guard("runtime.recover")),
     ) -> dict[str, Any]:
         """Recover one engine (high-impact — reason required)."""
-        _require_reason("runtime.recover", body.reason)
+        guard.require_reason("runtime.recover", body.reason)
         result = await run_in_threadpool(
             facade.runtime_recover, body.engine, body.reason or "manual"
         )
@@ -315,10 +241,10 @@ def register_write_endpoints(
     @app.post("/api/runtime/unisolate", tags=["runtime", "write"])
     async def runtime_unisolate(
         body: EngineActionBody,
-        _: None = Depends(guard_factory("runtime.unisolate")),
+        _: None = Depends(guard.guard("runtime.unisolate")),
     ) -> dict[str, Any]:
         """Un-isolate an engine (high-impact — reason required)."""
-        _require_reason("runtime.unisolate", body.reason)
+        guard.require_reason("runtime.unisolate", body.reason)
         result = await run_in_threadpool(facade.runtime_unisolate, body.engine)
         return _audited(
             result,
@@ -332,7 +258,7 @@ def register_write_endpoints(
     @app.post("/api/orchestrate/plan", tags=["orchestration", "write"])
     async def orchestrate_plan(
         body: PlanCreateBody,
-        _: None = Depends(guard_factory("orchestrate.plan")),
+        _: None = Depends(guard.guard("orchestrate.plan")),
     ) -> dict[str, Any]:
         """Create an orchestration plan from a catalog pipeline, YAML, or dict."""
         result = await run_in_threadpool(
@@ -347,7 +273,7 @@ def register_write_endpoints(
     @app.post("/api/orchestrate/start", tags=["orchestration", "write"])
     async def orchestrate_start(
         body: PlanBody,
-        _: None = Depends(guard_factory("orchestrate.start")),
+        _: None = Depends(guard.guard("orchestrate.start")),
     ) -> dict[str, Any]:
         """Start a planned pipeline."""
         result = await run_in_threadpool(facade.orchestrate_start, body.plan_id)
@@ -356,7 +282,7 @@ def register_write_endpoints(
     @app.post("/api/orchestrate/resume", tags=["orchestration", "write"])
     async def orchestrate_resume(
         body: ResumeBody,
-        _: None = Depends(guard_factory("orchestrate.resume")),
+        _: None = Depends(guard.guard("orchestrate.resume")),
     ) -> dict[str, Any]:
         """Resume a paused pipeline."""
         result = await run_in_threadpool(
@@ -367,7 +293,7 @@ def register_write_endpoints(
     @app.post("/api/orchestrate/retry", tags=["orchestration", "write"])
     async def orchestrate_retry(
         body: PlanBody,
-        _: None = Depends(guard_factory("orchestrate.retry")),
+        _: None = Depends(guard.guard("orchestrate.retry")),
     ) -> dict[str, Any]:
         """Retry a failed pipeline."""
         result = await run_in_threadpool(facade.orchestrate_retry, body.plan_id)
@@ -376,10 +302,10 @@ def register_write_endpoints(
     @app.post("/api/orchestrate/rollback", tags=["orchestration", "write"])
     async def orchestrate_rollback(
         body: RollbackBody,
-        _: None = Depends(guard_factory("orchestrate.rollback")),
+        _: None = Depends(guard.guard("orchestrate.rollback")),
     ) -> dict[str, Any]:
         """Roll back a pipeline (high-impact — reason required)."""
-        _require_reason("orchestrate.rollback", body.reason)
+        guard.require_reason("orchestrate.rollback", body.reason)
         result = await run_in_threadpool(
             facade.orchestrate_rollback, body.plan_id, body.reason
         )
@@ -395,7 +321,7 @@ def register_write_endpoints(
     @app.post("/api/memory/save", tags=["memory", "write"])
     async def memory_save(
         body: MemorySaveBody,
-        _: None = Depends(guard_factory("memory.save")),
+        _: None = Depends(guard.guard("memory.save")),
     ) -> dict[str, Any]:
         """Save a new memory entry."""
         result = await run_in_threadpool(
@@ -412,7 +338,7 @@ def register_write_endpoints(
     @app.post("/api/memory/update", tags=["memory", "write"])
     async def memory_update(
         body: MemoryUpdateBody,
-        _: None = Depends(guard_factory("memory.update")),
+        _: None = Depends(guard.guard("memory.update")),
     ) -> dict[str, Any]:
         """Update a memory entry."""
         result = await run_in_threadpool(
@@ -427,7 +353,7 @@ def register_write_endpoints(
     @app.post("/api/memory/snapshot", tags=["memory", "write"])
     async def memory_snapshot(
         body: MemorySnapshotBody,
-        _: None = Depends(guard_factory("memory.snapshot")),
+        _: None = Depends(guard.guard("memory.snapshot")),
     ) -> dict[str, Any]:
         """Create a memory snapshot."""
         result = await run_in_threadpool(facade.memory_snapshot, body.name)
@@ -436,7 +362,7 @@ def register_write_endpoints(
     @app.post("/api/memory/restore", tags=["memory", "write"])
     async def memory_restore(
         body: MemoryRestoreBody,
-        _: None = Depends(guard_factory("memory.restore")),
+        _: None = Depends(guard.guard("memory.restore")),
     ) -> dict[str, Any]:
         """Restore memory from a snapshot."""
         result = await run_in_threadpool(facade.memory_restore, body.snapshot_id)
@@ -447,7 +373,7 @@ def register_write_endpoints(
     @app.post("/api/memory/export", tags=["memory", "write"])
     async def memory_export(
         body: ReasonBody,
-        _: None = Depends(guard_factory("memory.export")),
+        _: None = Depends(guard.guard("memory.export")),
     ) -> dict[str, Any]:
         """Export memory to a JSON file (default generated/exports/)."""
         result = await run_in_threadpool(facade.memory_export)
@@ -457,7 +383,7 @@ def register_write_endpoints(
     async def memory_archive(
         key: str,
         body: ReasonBody,
-        _: None = Depends(guard_factory("memory.archive")),
+        _: None = Depends(guard.guard("memory.archive")),
     ) -> dict[str, Any]:
         """Archive one memory entry."""
         result = await run_in_threadpool(facade.memory_archive, key)
@@ -467,7 +393,7 @@ def register_write_endpoints(
     async def memory_unarchive(
         key: str,
         body: ReasonBody,
-        _: None = Depends(guard_factory("memory.unarchive")),
+        _: None = Depends(guard.guard("memory.unarchive")),
     ) -> dict[str, Any]:
         """Un-archive one memory entry."""
         result = await run_in_threadpool(facade.memory_unarchive, key)
@@ -478,7 +404,7 @@ def register_write_endpoints(
     @app.post("/api/validate", tags=["validation", "write"])
     async def validate_run(
         body: ReasonBody,
-        _: None = Depends(guard_factory("validate.run")),
+        _: None = Depends(guard.guard("validate.run")),
     ) -> dict[str, Any]:
         """Run the validation gate as an audited operator action."""
         result = await run_in_threadpool(facade.validate_run)
@@ -487,7 +413,7 @@ def register_write_endpoints(
     @app.post("/api/reports/generate", tags=["reports", "write"])
     async def report_generate(
         body: ReportGenerateBody,
-        _: None = Depends(guard_factory("reports.generate")),
+        _: None = Depends(guard.guard("reports.generate")),
     ) -> dict[str, Any]:
         """Generate a report on demand (summary/detailed/health)."""
         result = await run_in_threadpool(facade.report_generate_write, body.report_type)
@@ -498,7 +424,7 @@ def register_write_endpoints(
     @app.post("/api/build", tags=["build", "write"])
     async def build(
         body: ReasonBody,
-        _: None = Depends(guard_factory("build.run")),
+        _: None = Depends(guard.guard("build.run")),
     ) -> dict[str, Any]:
         """Run the artifact build pipeline (parity with ``ai-company build``)."""
         result = await run_in_threadpool(facade.build_run)
@@ -507,7 +433,7 @@ def register_write_endpoints(
     @app.post("/api/bootstrap", tags=["build", "write"])
     async def bootstrap(
         body: ReasonBody,
-        _: None = Depends(guard_factory("bootstrap.run")),
+        _: None = Depends(guard.guard("bootstrap.run")),
     ) -> dict[str, Any]:
         """Scaffold + generate the full company (parity with ``bootstrap``)."""
         result = await run_in_threadpool(facade.bootstrap_run)

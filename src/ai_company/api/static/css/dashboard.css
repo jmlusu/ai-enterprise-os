@@ -177,3 +177,71 @@ tr:last-child td { border-bottom: none; }
 .mb-2 { margin-bottom: 2rem; }
 
 .diag-block { max-height: 320px; overflow: auto; display: block; white-space: pre-wrap; }
+
+/* ── Wave 2b components (generate panel, decision inbox, telemetry) ────── */
+
+.input, .select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  max-width: 100%;
+}
+.input { width: 100%; box-sizing: border-box; }
+.select { min-width: 220px; }
+.input:focus, .select:focus { border-color: var(--accent); outline: none; }
+
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.75rem; }
+.form-grid label { display: block; font-size: 0.82rem; color: var(--text-dim); }
+.form-grid textarea { resize: vertical; min-height: 60px; }
+
+.log-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem;
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+.btn-sm { padding: 0.15rem 0.5rem; font-size: 0.75rem; }
+.write-actions.inline { display: inline-flex; gap: 0.4rem; }
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+.stat-row:last-child { border-bottom: none; }
+
+ul.bare { list-style: none; margin: 0; padding: 0; }
+ul.bare li { padding: 0.3rem 0; font-size: 0.85rem; }
+
+.decision-card { display: flex; flex-direction: column; }
+.decision-actions { margin-top: auto; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.error-text { color: var(--action); }
+
+/* Status chips beyond ok/watch/action/unknown */
+.chip.approved { background: #123524; color: var(--ok); }
+.chip.succeeded { background: #123524; color: var(--ok); }
+.chip.rejected { background: #3a1616; color: var(--action); }
+.chip.failed { background: #3a1616; color: var(--action); }
+.chip.escalated { background: #3a1616; color: var(--action); }
+.chip.pending { background: #3a2d14; color: var(--watch); }
+.chip.awaiting_info { background: #3a2d14; color: var(--watch); }
+.chip.in_review { background: #3a2d14; color: var(--watch); }
+.chip.queued { background: #3a2d14; color: var(--watch); }
+.chip.running { background: #3a2d14; color: var(--watch); }
+.chip.deferred { background: #232a3a; color: var(--unknown); }
+.chip.cancelled { background: #232a3a; color: var(--unknown); }
+.chip.unknown-status { background: #232a3a; color: var(--unknown); }

@@ -11,6 +11,7 @@ from ai_company.providers.gemini import GeminiProvider
 from ai_company.providers.mock import MockProvider
 from ai_company.providers.ollama import OllamaProvider
 from ai_company.providers.openai import OpenAIProvider
+from ai_company.providers.usage import UsageTrackingProvider
 
 
 class ProviderFactory:
@@ -35,12 +36,15 @@ class ProviderFactory:
         self,
         provider_type: str,
         config: ProviderConfig | dict[str, Any] | None = None,
+        track_usage: bool = False,
     ) -> BaseProvider:
         """Create a provider instance.
 
         Args:
             provider_type: Type of provider ("openai", "anthropic", "ollama", "gemini", "mock")
             config: Provider configuration (ProviderConfig instance or dict)
+            track_usage: When True, wrap the provider in UsageTrackingProvider
+                so every call is recorded to the provider usage telemetry log.
 
         Returns:
             Provider instance
@@ -62,7 +66,9 @@ class ProviderFactory:
             config = ProviderConfig()
 
         provider_class = self.PROVIDERS[provider_type]
-        provider = provider_class(config)
+        provider: BaseProvider = provider_class(config)
+        if track_usage:
+            provider = UsageTrackingProvider(provider)
         self.logger.info(
             f"Created provider: {provider_type} ({provider_class.__name__})"
         )

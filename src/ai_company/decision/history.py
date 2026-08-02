@@ -87,6 +87,16 @@ class DecisionHistory:
         """Get all recorded decisions."""
         return list(self._decisions.values())
 
+    def import_decisions(self, decisions: list[Decision]) -> None:
+        """Load decisions into the queryable index without re-persisting.
+
+        The history log is append-only; re-``record``-ing entries at boot
+        would duplicate them on disk. This method rebuilds the in-memory
+        ``_decisions`` index from decisions reconstructed from the log.
+        """
+        for decision in decisions:
+            self._decisions[decision.id] = decision
+
     def get_history(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get raw history entries."""
         return self._history[-limit:]

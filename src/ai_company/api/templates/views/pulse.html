@@ -1,5 +1,5 @@
 ﻿{% extends "base.html" %}
-{% block title %}Pulse â€” AI Enterprise OS{% endblock %}
+{% block title %}Pulse — AI Enterprise OS{% endblock %}
 {% block heading %}Pulse{% endblock %}
 {% block subtitle %}Live operational overview{% endblock %}
 
@@ -15,7 +15,7 @@
   <div class="card">
     <h2>Health</h2>
     <div class="big-number"><span data-health-chip class="chip {{ health_overall_class }}">{{ health_overall if health_overall else "unknown" }}</span></div>
-    <p class="subtitle">{{ health_summary.get("healthy", 0) }} healthy Â· {{ health_summary.get("degraded", 0) }} degraded Â· {{ health_summary.get("unhealthy", 0) }} unhealthy</p>
+    <p class="subtitle">{{ health_summary.get("healthy", 0) }} healthy · {{ health_summary.get("degraded", 0) }} degraded · {{ health_summary.get("unhealthy", 0) }} unhealthy</p>
   </div>
   <div class="card">
     <h2>Engines</h2>
@@ -24,8 +24,8 @@
   </div>
   <div class="card">
     <h2>Memory</h2>
-    <div class="big-number">{{ memory_stats.get("total_memories", "â€”") if memory_stats else "â€”" }}<small>entries</small></div>
-    <p class="subtitle">snapshots: {{ memory_stats.get("total_snapshots", "â€”") if memory_stats else "â€”" }}</p>
+    <div class="big-number">{{ memory_stats.get("total_memories", "—") if memory_stats else "—" }}<small>entries</small></div>
+    <p class="subtitle">snapshots: {{ memory_stats.get("total_snapshots", "—") if memory_stats else "—" }}</p>
   </div>
 </div>
 
@@ -63,7 +63,47 @@
   <div class="card">
     <h2>Live events</h2>
     <div id="event-feed" class="event-feed">
-      <p class="empty">Waiting for events…</p>
+      <p class="empty">Waiting for events.</p>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-1">
+  <h2>Backups <span class="subtitle">R6 — retention + alerting</span></h2>
+  <div class="grid cols-2">
+    <div>
+      {% if backups and backups.get("backups") %}
+      <table>
+        <thead><tr><th>Archive</th><th>Size</th></tr></thead>
+        <tbody>
+          {% for backup in backups.get("backups", [])[:5] %}
+          <tr>
+            <td class="mono">{{ backup.get("name", "") }}</td>
+            <td>{{ (backup.get("size_bytes", 0) / 1024) | round(1) }} KB</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if backups.get("total", 0) > 5 %}
+      <p class="subtitle">… and {{ backups.get("total", 0) - 5 }} more archive(s).</p>
+      {% endif %}
+      {% else %}
+      <p class="pending">No backups yet — create the first one below.</p>
+      {% endif %}
+      <div class="write-actions mt-1">
+        <button type="button" class="btn" data-write="/api/backup" data-action="backup.create" data-reload="1" data-prompt="Create a backup archive now?">Create backup</button>
+      </div>
+      <p class="subtitle mt-1">Nightly backups run via <span class="mono">.github/workflows/nightly-backup.yml</span>.</p>
+    </div>
+    <div>
+      {% set latest_backup = backups.get("backups", [{}])[0].get("modified", "") if backups.get("backups") else "" %}
+      <p class="subtitle">Latest archive age drives the tile alert:
+        <span id="backup-age" class="mono" data-latest="{{ latest_backup }}">—</span></p>
+      <ul class="bare">
+        <li><span class="chip ok">backup.create</span> audited operator action (Write History)</li>
+        <li><span class="chip watch">stale &gt; 48h</span> warning state on this tile</li>
+        <li><span class="chip action">missing</span> failure state — no archive at all</li>
+      </ul>
     </div>
   </div>
 </div>

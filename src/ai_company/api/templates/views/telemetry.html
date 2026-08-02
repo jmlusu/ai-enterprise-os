@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Telemetry — AI Enterprise OS{% endblock %}
+{% block heading %}Telemetry{% endblock %}
+{% block subtitle %}R5 — persisted runtime metrics, provider usage, agent health{% endblock %}
+
+{% block content %}
+<div class="card mb-1">
+  <h2>KPI snapshot <span class="subtitle">runtime/metrics_history.jsonl</span></h2>
+  <div class="grid cols-4">
+    <div class="card">
+      <h2>Samples</h2>
+      <div class="big-number">{{ metrics_summary.get("samples", 0) }}<small>persisted</small></div>
+      <p class="subtitle">first {{ (metrics_summary.get("first_timestamp", "") or "").replace("T", " ")[:19] }}</p>
+    </div>
+    <div class="card">
+      <h2>CPU</h2>
+      <div class="big-number">{{ trend.get("cpu_percent") if trend.get("cpu_percent") is not none else "—" }}<small>%</small></div>
+      <p class="subtitle">memory {{ trend.get("memory_percent") if trend.get("memory_percent") is not none else "—" }}%</p>
+    </div>
+    <div class="card">
+      <h2>Engines</h2>
+      <div class="big-number">{{ trend.get("engine_healthy", 0) }}<small>healthy</small></div>
+      <p class="subtitle">{{ trend.get("engine_degraded", 0) }} degraded · {{ trend.get("engine_failed", 0) }} failed</p>
+    </div>
+    <div class="card">
+      <h2>Jobs</h2>
+      <div class="big-number">{{ trend.get("jobs_executed", 0) }}<small>executed</small></div>
+      <p class="subtitle">{{ trend.get("jobs_failed", 0) }} failed · {{ trend.get("failed_events", 0) }} events</p>
+    </div>
+  </div>
+  <div class="write-actions mt-1">
+    <button type="button" class="btn" data-write="/api/telemetry/metrics" data-action="telemetry.metrics.persist" data-reload="1" data-prompt="Persist a metrics snapshot now?">Capture now</button>
+  </div>
+  <p class="subtitle mt-1">
+    Snapshots persist automatically every 30s while the runtime is up. Uptime:
+    <span class="mono">{{ trend.get("uptime_seconds", 0) }}s</span>
+    · restarts: <span class="mono">{{ trend.get("restarts", 0) }}</span>.
+  </p>
+</div>
+
+<div class="card mb-1">
+  <h2>Model usage <span class="subtitle">runtime/provider_usage.jsonl — aggregated by model</span></h2>
+  {% if providers.get("models") %}
+  <table>
+    <thead>
+      <tr><th>Model</th><th>Requests</th><th>OK</th><th>Errors</th><th>Prompt tk</th><th>Completion tk</th><th>Total tk</th><th>Avg latency</th></tr>
+    </thead>
+    <tbody>
+      {% for model in providers.get("models", []) %}
+      <tr>
+        <td class="mono">{{ model.get("model", "") }}</td>
+        <td>{{ model.get("requests", 0) }}</td>
+        <td>{{ model.get("successes", 0) }}</td>
+        <td>{{ model.get("errors", 0) }}</td>
+        <td>{{ model.get("prompt_tokens", 0) }}</td>
+        <td>{{ model.get("completion_tokens", 0) }}</td>
+        <td>{{ model.get("total_tokens", 0) }}</td>
+        <td class="mono">{{ model.get("avg_latency_seconds", "—") }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="subtitle mt-1">
+    Totals: {{ providers.get("totals", {}).get("requests", 0) }} requests ·
+    {{ providers.get("totals", {}).get("total_tokens", 0) }} tokens ·
+    {{ providers.get("totals", {}).get("errors", 0) }} errors.
+  </p>
+  {% else %}
+  <p class="empty">No provider calls recorded yet. Wrap providers with
+    <span class="mono">ProviderFactory(track_usage=True)</span> to instrument calls.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Agent health <span class="subtitle">live runtime status</span></h2>
+  {% if status %}
+  <div class="grid cols-3">
+    {% for key, value in status.items() %}
+    <div class="stat-row"><span class="mono">{{ key }}</span><span>{{ value }}</span></div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="pending">Runtime status unavailable.</p>
+  {% endif %}
+</div>
+{% endblock %}
