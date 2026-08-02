@@ -67,7 +67,8 @@ startup:
       module: "ai_company.orchestration.engine"
       class: "OrchestrationEngine"
       engine: "orchestration"
-      params: {}
+      params:
+        event_bus: "@event_bus"
 
     - name: "initialize_read_model"
       description: >-

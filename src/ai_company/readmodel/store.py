@@ -109,7 +109,11 @@ class ReadModelStore:
     def __init__(self, db_path: str | Path = DEFAULT_DB_RELATIVE_PATH) -> None:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(str(self.db_path))
+        # check_same_thread=False: the projection is rebuilt on the startup
+        # thread but probed from the health-monitor/supervisor threads (and
+        # queried from FastAPI worker threads in serve mode), so the
+        # connection must not be pinned to its creating thread.
+        self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA foreign_keys=ON")

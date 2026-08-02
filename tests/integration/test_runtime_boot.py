@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 import pytest
 
 from ai_company.runtime import create_runtime
@@ -92,6 +94,7 @@ def test_runtime_stops_cleanly(runtime) -> None:
     assert runtime.scheduler.is_running() is False
     assert runtime.watchdog.is_running() is False
     assert runtime.supervisor.is_running() is False
+    assert runtime.heartbeat_sender.is_running() is False
 
 
 def test_state_recovered_across_boot(runtime) -> None:
@@ -137,6 +140,24 @@ def test_heartbeats_tracked_for_engines(runtime) -> None:
         "workflow",
         "orchestration",
     } <= components
+
+
+def test_engines_stay_healthy_and_not_isolated_after_boot(runtime) -> None:
+    """Regression: engines were heartbeat-timeouted and isolated after boot.
+
+    The heartbeat sender must keep every engine fresh past the 15s
+    staleness window and the read_model health probe must succeed from the
+    health-monitor thread (SQLite check_same_thread). No engine may be
+    flagged for recovery or isolated after a full heartbeat window.
+    """
+    runtime.start()
+    for _ in range(10):  # poll every 2s for 20s; fail fast on isolation
+        assert runtime.supervisor.isolated() == []
+        time.sleep(2)
+    assert runtime.heartbeats.heartbeat_miss_count() == 0
+    checks = runtime.health()
+    assert all(check.status is HealthStatus.HEALTHY for check in checks)
+    assert runtime.recovery.snapshot()["attempts"] == {}
 
 
 def test_runtime_restart_keeps_engines_and_jobs(runtime) -> None:

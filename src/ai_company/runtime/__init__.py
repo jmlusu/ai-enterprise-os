@@ -107,6 +107,7 @@ __all__ = [
     "ProcessManager",
     # Heartbeat / watchdog
     "HeartbeatManager",
+    "HeartbeatSender",
     "Heartbeat",
     "Watchdog",
     # Health / metrics / diagnostics

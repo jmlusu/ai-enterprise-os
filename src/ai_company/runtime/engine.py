@@ -29,7 +29,7 @@ from ai_company.runtime.configuration import RuntimeConfiguration
 from ai_company.runtime.dependency_graph import RuntimeDependencyGraph
 from ai_company.runtime.diagnostics import DiagnosticCollector
 from ai_company.runtime.health import HealthMonitor
-from ai_company.runtime.heartbeat import HeartbeatManager
+from ai_company.runtime.heartbeat import HeartbeatManager, HeartbeatSender
 from ai_company.runtime.lifecycle import RuntimeLifecycle
 from ai_company.runtime.metrics import MetricsRegistry
 from ai_company.runtime.models import (
@@ -111,6 +111,14 @@ class RuntimeEngine:
         self.heartbeats = HeartbeatManager(
             settings=self._section("heartbeat"),
             on_failure=self._on_component_failure,
+        )
+        # Liveness worker: beats for every registered engine so the
+        # heartbeat monitor never declares healthy engines stale.
+        self.heartbeat_sender = HeartbeatSender(
+            heartbeats=self.heartbeats,
+            engines=self.engines,
+            isolated=self._isolated_components,
+            interval_seconds=self.heartbeats.interval_seconds,
         )
 
         # Recovery + supervision
@@ -360,6 +368,7 @@ class RuntimeEngine:
         """Start background workers (called by the ``start_runtime`` step)."""
         self._start_event_bus()
         self._start_registered_engines()
+        self.heartbeat_sender.start()
         self.scheduler.start()
         self.watchdog.start()
         self.supervisor.start()
@@ -526,6 +535,7 @@ class RuntimeEngine:
         self.heartbeats.timeout_seconds = float(
             self.heartbeats.settings.get("timeout_seconds", 15.0)
         )
+        self.heartbeat_sender.interval_seconds = self.heartbeats.interval_seconds
         self.watchdog.settings = self._section("monitoring")
         self.supervisor.config = self._section("monitoring")
         scheduler = self._section("scheduler")
@@ -664,6 +674,12 @@ class RuntimeEngine:
         return self.process_manager.register(name, target=target, pid=pid)
 
     # ── Failure handling ───────────────────────────────────────────
+
+    def _isolated_components(self) -> list[str]:
+        """Return the names of isolated components (for the heartbeat sender)."""
+        if self.supervisor is not None:
+            return self.supervisor.isolated()
+        return []
 
     def _on_component_failure(self, component: str, reason: str) -> None:
         """Heartbeat/watchdog failure → forward to the supervisor."""

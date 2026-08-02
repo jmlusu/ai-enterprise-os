@@ -167,7 +167,7 @@ class ShutdownExecutor:
         logger.info("Stopped %d processes", len(stopped))
 
     def _stop_workers(self) -> None:
-        for attr in ("scheduler", "watchdog", "supervisor"):
+        for attr in ("heartbeat_sender", "scheduler", "watchdog", "supervisor"):
             worker = getattr(self.engine, attr, None)
             if worker is None:
                 continue

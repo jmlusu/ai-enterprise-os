@@ -20,6 +20,7 @@ from ai_company.runtime.models import HealthStatus, Heartbeat
 logger = logging.getLogger(__name__)
 
 FailureCallback = Callable[[str, str], None]
+IsolatedQuery = Callable[[], list[str]]
 
 
 def _utcnow() -> datetime:
@@ -204,3 +205,100 @@ class HeartbeatManager:
                 for component, h in self._heartbeats.items()
             },
         }
+
+
+class HeartbeatSender:
+    """Periodic liveness worker that beats for every registered engine.
+
+    The :class:`HeartbeatManager` expects every monitored component to beat
+    within ``interval_seconds``. Engines registered with the runtime are
+    largely passive objects without their own worker loops, so this
+    runtime-level worker is the source of those beats — the "heartbeat"
+    background worker the :class:`~ai_company.runtime.engine.RuntimeEngine`
+    docstring describes.
+
+    Isolated components are skipped: the supervisor unregisters them from
+    monitoring, and sending a beat for one would silently re-register it
+    (``HeartbeatManager.beat`` registers unknown components) and defeat the
+    isolation.
+
+    Args:
+        heartbeats: The shared HeartbeatManager to beat.
+        engines: The runtime's ``engines`` dict (name -> instance).
+        isolated: Optional callable returning the names of isolated
+            components (typically ``supervisor.isolated``).
+        interval_seconds: Beat cadence (defaults to the heartbeat
+            monitor's ``interval_seconds``).
+    """
+
+    def __init__(
+        self,
+        heartbeats: HeartbeatManager | None = None,
+        engines: dict[str, Any] | None = None,
+        isolated: IsolatedQuery | None = None,
+        interval_seconds: float | None = None,
+    ) -> None:
+        self.heartbeats = heartbeats
+        self.engines = engines if engines is not None else {}
+        self.isolated = isolated or (list)
+        interval = interval_seconds
+        if interval is None and heartbeats is not None:
+            interval = heartbeats.interval_seconds
+        self.interval_seconds = float(interval or 5.0)
+        self._lock = threading.Lock()
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    # ── Lifecycle ──────────────────────────────────────────────────
+
+    def start(self) -> None:
+        """Start the heartbeat sender thread."""
+        with self._lock:
+            if self._thread is not None and self._thread.is_alive():
+                return
+            self._stop_event.clear()
+            self._thread = threading.Thread(
+                target=self._run,
+                name="runtime-heartbeat-sender",
+                daemon=True,
+            )
+            self._thread.start()
+            logger.info(
+                "Heartbeat sender started (interval=%ss)", self.interval_seconds
+            )
+
+    def stop(self, timeout: float = 5.0) -> None:
+        """Stop the heartbeat sender thread."""
+        with self._lock:
+            if self._thread is None:
+                return
+            self._stop_event.set()
+            self._thread.join(timeout=timeout)
+            self._thread = None
+            logger.info("Heartbeat sender stopped")
+
+    def is_running(self) -> bool:
+        return bool(self._thread is not None and self._thread.is_alive())
+
+    # ── Loop ───────────────────────────────────────────────────────
+
+    def _run(self) -> None:
+        while not self._stop_event.is_set():
+            try:
+                self._send()
+            except Exception as exc:
+                logger.error("Heartbeat send failed: %s", exc)
+            self._stop_event.wait(self.interval_seconds)
+
+    def _send(self) -> None:
+        if self.heartbeats is None:
+            return
+        isolated = set(self.isolated() if callable(self.isolated) else self.isolated)
+        # Snapshot keys: engines may register/unregister concurrently.
+        for name in list(self.engines):
+            if name in isolated:
+                continue
+            try:
+                self.heartbeats.beat(name)
+            except Exception as exc:
+                logger.error("Heartbeat for %s failed: %s", name, exc)
