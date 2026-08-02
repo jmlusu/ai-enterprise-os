@@ -10,9 +10,9 @@
 | Field | Value |
 |---|---|
 | **Current Sprint** | Sprint 5.3 — SQLite derived read model (ADR 0004) + orphaned-decision close-out |
-| **Status** | 🔄 **IN PROGRESS** — implementation complete, trackers/docs being updated |
+| **Status** | ✅ **COMMITTED** — Sprint 5.3 shipped (`de9c851`); all four decisions resolved |
 | **Goal** | Resolve the four orphaned technical decisions: (1) read model rebuild **on startup** (ADR 0004), (2) agent sync `--scope` default **both**, (3) dashboard port stays **127.0.0.1:8000**, (4) **Windows CI** runs lint/type-check |
-| **Commit** | Wave 2a: `131d9d9` · Wave 2b: `2244497` |
+| **Commit** | Sprint 5.3: `de9c851` · Wave 2b: `2244497` · Wave 2a: `131d9d9` |
 | **Created** | 2026-08-02 |
 | **Completed** | — |
 
@@ -110,6 +110,7 @@ R5 core (metrics + provider usage persistence) shipped with Wave 2b. Follow-ups:
 ## Recently Completed (Commits)
 
 ```text
+de9c851        feat: Sprint 5.3 — SQLite read model on startup (ADR 0004), agent sync scope both, Windows CI lint/type-check
 2244497        feat: Phase 2 Wave 2b + telemetry/parity/backup close-out (generate loop, decision inbox, R5 telemetry)
 66cf7c4        chore: refresh api package exports for Phase 2 write surface (ADR 0010)
 479f5c6        chore: refresh .ai/ knowledge base for Phase 2 wave 2a (ADR 0010 ratified, write surface live)
@@ -128,12 +129,13 @@ b6d5a26        feat: Phase 1 wave 1 — dashboard API server (read-only contract
 
 ## Key Context for Next Session
 
-1. **Sprint 5.3 (SQLite read model + decision close-out) is IN PROGRESS** — the
-   four orphaned decisions from the previous session are now resolved and
-   implemented: read model rebuild **on startup** (ADR 0004,
-   `runtime/dashboard.db` WAL projection over the JSONL sources of truth),
-   agent sync `--scope` default **both**, dashboard port stays **127.0.0.1:8000**,
-   and **Windows CI** now runs lint/type-check. Suite: **1265 tests green**.
+1. **Sprint 5.3 (SQLite read model + decision close-out) is COMMITTED** (`de9c851`)
+   — the four orphaned decisions from the previous session are resolved,
+   implemented, and shipped: read model rebuild **on startup** (ADR 0004,
+   `runtime/dashboard.db` WAL projection over the JSONL sources of truth, via
+   the `initialize_read_model` boot step), agent sync `--scope` default **both**,
+   dashboard port stays **127.0.0.1:8000**, and **Windows CI** now runs
+   lint/type-check. Suite: **1265 tests green**; ruff/mypy/format clean.
 
 2. **R5 telemetry is live** — runtime metrics persist every 30s to
    `runtime/metrics_history.jsonl`, provider usage to
@@ -209,5 +211,5 @@ python -m ai_company.cli.command_map validate
 
 ---
 
-*Updated: 2026-08-02 — Sprint 5.3 in progress: SQLite read model on startup (ADR 0004), agent sync scope default both, port decision kept, Windows CI lint/type-check; 1265 tests green*
-*Next update: When Sprint 5.3 commits or completes, or after the next commit*
+*Updated: 2026-08-02 — Sprint 5.3 committed (`de9c851`): SQLite read model on startup (ADR 0004), agent sync scope default both, port decision kept, Windows CI lint/type-check; 1265 tests green*
+*Next update: When the next sprint starts or after the next commit*
