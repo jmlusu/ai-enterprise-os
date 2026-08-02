@@ -56,7 +56,7 @@
 | **Dashboard port stays hardcoded 127.0.0.1:8000** | Sprint 5.3 resolution: loopback-only default is kept (security R9); `--host/--port` remain per-invocation overrides; non-loopback exposure requires full ADR 0010 auth. | `cli/main.py` `serve()` |
 | **Windows CI runs lint/type-check too** | Sprint 5.3 resolution: `ci.yml` lint + type-check jobs use an `os: [ubuntu-latest, windows-latest]` matrix (`fail-fast: false`) — Windows-first project (risk R10). | `.github/workflows/ci.yml` |
 | **D5 north-star metric signed off** | CEO sign-off 2026-08-02: share of operator actions via Dashboard/OpenCode desktop, target ≥80% by month 6; baseline = CLI telemetry (`runtime/cli_telemetry.jsonl`); GUI/desktop action telemetry added in Phase 3 for an honest numerator; Phase 4 demotion trigger depends on it. | `docs/dashboard/initiative.md` §6 D5 |
-| **R4 fallback: free/local models (D9)** | CEO sign-off 2026-08-02: free models and local models (e.g. `ollama/llama3.1:8b`, D4) are the official fallback when OpenCode dispatch fails (pin break / outage / doctor failure) — no vendor lock-in. Remaining: end-to-end fallback test (R4 → MITIGATED). | `docs/dashboard/initiative.md` §6 D9 |
+| **R4 fallback: free/local models (D9)** | CEO sign-off 2026-08-02: free models and local models (e.g. `ollama/llama3.1:8b`, D4) are the official fallback when OpenCode dispatch fails (pin break / outage / doctor failure) — no vendor lock-in. **Proven 2026-08-02**: shared `services/generate_dispatch.py` (runner + CLI), fallback e2e green — R4 → MITIGATED. | `docs/dashboard/initiative.md` §6 D9 |
 | **EventBus uses JSONL persistence** | Events persist to `events/store.jsonl` for replay. Dead-letter events go to `events/dead_letter.jsonl`. Simple, grep-able, no extra dependencies. | `events/bus.py`, `events/persistence.py` |
 | **Memory tiered storage** | Working (in-memory) → Short-term (JSONL) → Long-term (JSONL) → Archived. Tier management runs as a scheduled job. Importance thresholds drive promotion/demotion. | `memory/engine.py` |
 | **Pre-commit excludes generated/.ai-company** | Generated output and `.ai-company/` state change frequently and are gitignored from lint/format hooks. Source code in `src/` is always checked. | `.pre-commit-config.yaml` |
@@ -141,9 +141,29 @@
   parity-tested (golden CLI == API) by Phase 3 close-out; every new command
   adds its parity test in the same change (parity-matrix-v0.md + initiative.md
   §5 R3).
-- **R11: D10 drafted** (persona onboarding scope — View/Operate/Develop, one
-  skippable first-run tour each + tooltips, no tutorial system) — **[PROPOSED,
-  pending CEO/COO sign-off]**, initiative.md §6.
+- **R11: D10 SIGNED OFF by CEO 2026-08-02** — persona onboarding scope:
+  three personas (View/Operate/Develop), one skippable first-run tour each +
+  tooltips, no tutorial system; destructive/bulk stays CLI-only. **R11 →
+  [MITIGATED]**; delivery lands with Phase 2/3 features (initiative.md §6).
+
+### 2026-08-02 — R4 mitigated: end-to-end free/local fallback (D9 close-out)
+- **Shared dispatch seam shipped** (`services/generate_dispatch.py`):
+  `dispatch_generate()` tries `opencode` first (frozen CLI contract, ADR 0006)
+  and falls back to a free/local model via `ollama` when OpenCode is missing,
+  fails to start, or exits non-zero (R4/D9). `DispatchOutcome` names the
+  provider/model that actually produced the result — honest run records (R5).
+- **Both surfaces wired to the same seam:** the streaming runner
+  (`services/generate_runner.py`) records `provider`/`model` in
+  `runtime/generate_runs.jsonl` and streams both attempts into one per-run log
+  (append, not truncate); the frozen CLI `generate` command dispatches through
+  it too (R8 surface unchanged). `config/runtime/model_fallback.yaml` tunes
+  enabled/provider/model.
+- **Cancellation preserved:** dispatch registers the live child via
+  `register_proc` so the runner can still terminate mid-run.
+- **Proven end-to-end:** runner fallback tests with stub binaries (opencode
+  fails → ollama succeeds; opencode missing; both missing; fallback disabled),
+  dispatch unit tests, and CLI wiring tests. Suite 1289 → **1308 green**;
+  ruff/mypy clean. R4 → **[MITIGATED]**.
 
 ### 2026-08-02 — Sprint 5.3 (SQLite read model + orphaned-decision close-out)
 - **ADR 0004 shipped:** `readmodel/` package — `ReadModelStore` (SQLite WAL,

@@ -1,5 +1,4 @@
 import shutil
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -19,6 +18,10 @@ from ai_company.cli.groups import report as report_group
 from ai_company.cli.groups import runtime as runtime_group
 from ai_company.cli.render import render_prompt
 from ai_company.company.generator import CompanyGenerator
+from ai_company.services.generate_dispatch import (
+    dispatch_generate,
+    load_fallback_config,
+)
 from ai_company.telemetry.cli import record_cli_invocation
 from ai_company.utils.console import configure_console, console_print
 from ai_company.validator.engine import ValidatorEngine
@@ -144,7 +147,13 @@ def generate(
         False, "--dry-run", help="Show the command without running it"
     ),
 ) -> None:
-    """Dispatch a phase to OpenCode using its mapped prompt file."""
+    """Dispatch a phase to OpenCode using its mapped prompt file.
+
+    OpenCode is the primary provider; when it is missing, fails to start, or
+    exits non-zero, the command falls back to a free/local model via ``ollama``
+    (R4, decision D9) unless the fallback is disabled in
+    ``config/runtime/model_fallback.yaml``.
+    """
     entry = resolve_target(target)
     rendered_path = render_prompt(entry.prompt_file)
 
@@ -155,39 +164,41 @@ def generate(
         console_print("[yellow]Dry run - command not executed.[/yellow]")
         return
 
-    opencode_path = shutil.which("opencode")
-    if opencode_path is None:
-        console_print(
-            "[red]Could not find 'opencode' on PATH.[/red] Is it installed and available in this shell?"
+    config = load_fallback_config()
+    if config.enabled:
+        dispatch_note = (
+            f" → {config.provider} fallback (free/local model {config.model})"
         )
-        raise typer.Exit(1)
+    else:
+        dispatch_note = " (fallback disabled)"
+    console_print(f"[dim]Dispatch: opencode primary{dispatch_note}.[/dim]")
 
-    cmd = [
-        opencode_path,
-        "run",
-        "--file",
-        str(rendered_path),
-        "--agent",
-        entry.agent,
-        "--model",
-        entry.model,
-        "Execute the attached prompt against the current company registry.",
-    ]
-
-    console_print(f"[cyan]Command:[/cyan] {' '.join(cmd)}")
-
-    console_print(
-        "[dim]Streaming opencode output below - this may take a while on a local model...[/dim]\n"
+    outcome = dispatch_generate(
+        agent=entry.agent,
+        model=entry.model,
+        prompt_path=rendered_path,
+        cwd=Path("."),
+        log_path=None,  # stream to the terminal
+        fallback_model=config.model,
+        fallback_enabled=config.enabled,
     )
 
-    result = subprocess.run(cmd, check=False, shell=False)
-    if result.returncode != 0:
+    if outcome.used_fallback:
         console_print(
-            f"\n[red]opencode exited with error code {result.returncode}[/red]"
+            f"[dim]opencode unavailable; ran with fallback provider '{outcome.provider}'"
+            f" (model {outcome.model}).[/dim]\n"
         )
-        raise typer.Exit(result.returncode)
 
-    console_print("\n[green]opencode finished successfully.[/green]")
+    if outcome.exit_code != 0:
+        console_print(
+            f"\n[red]{outcome.provider} failed with code {outcome.exit_code}[/red]"
+        )
+        for attempt in outcome.attempts:
+            if attempt.error:
+                console_print(f"  [red]✗[/red] {attempt.provider}: {attempt.error}")
+        raise typer.Exit(outcome.exit_code or 1)
+
+    console_print(f"\n[green]{outcome.provider} finished successfully.[/green]")
 
 
 @app.command()

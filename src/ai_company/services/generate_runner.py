@@ -1,10 +1,16 @@
-"""Streaming OpenCode generate dispatcher (Phase 2 Wave 2b).
+"""Streaming generate dispatcher with local-model fallback (Phase 2 Wave 2b).
 
 Implements the "generate" half of the generate -> review -> validate -> approve
 loop behind the dashboard. It mirrors the frozen CLI contract exactly
 (``ai-company generate <target>`` in ``cli/main.py``): resolve the target
 through the command map, render the mapped prompt file, and dispatch to the
 local ``opencode`` binary with the same flags.
+
+Dispatch goes through :func:`generate_dispatch.dispatch_generate`: OpenCode is
+the primary provider, and when it is missing, fails to start, or exits
+non-zero, the run falls back to a free/local model via ``ollama`` (R4, decision
+D9) unless the fallback is disabled. Run records name the provider/model that
+actually produced the result, keeping telemetry honest (R5).
 
 Unlike the CLI, this runner:
 
@@ -30,12 +36,18 @@ import logging
 import shutil
 import subprocess
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from ai_company.cli.command_map import load_command_map
+from ai_company.services.generate_dispatch import (
+    DispatchOutcome,
+    FallbackConfig,
+    dispatch_generate,
+    load_fallback_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +90,8 @@ class GenerateRun:
     error: str
     log_path: str
     output_dir: str
+    provider: str = field(default="")
+    model: str = field(default="")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -90,6 +104,8 @@ class GenerateRun:
             "error": self.error,
             "log_path": self.log_path,
             "output_dir": self.output_dir,
+            "provider": self.provider,
+            "model": self.model,
         }
 
 
@@ -99,6 +115,12 @@ def _now_iso() -> str:
 
 def _utc_now_seconds() -> int:
     return int(datetime.now(UTC).timestamp())
+
+
+def _attempt_errors(outcome: DispatchOutcome) -> str:
+    """Join the per-attempt failure reasons into one honest error string."""
+    reasons = [attempt.error for attempt in outcome.attempts if attempt.error]
+    return "; ".join(reasons) if reasons else f"{outcome.provider} failed"
 
 
 class GenerateRunner:
@@ -114,6 +136,7 @@ class GenerateRunner:
         root: str | Path = ".",
         history_path: str | Path | None = None,
         poll_interval: float = 0.5,
+        fallback: FallbackConfig | None = None,
     ) -> None:
         self._root = Path(root)
         self._history_path = (
@@ -123,6 +146,11 @@ class GenerateRunner:
         )
         self._logs_dir = self._root / GENERATE_LOGS_RELATIVE_DIR
         self._poll_interval = poll_interval
+        self._fallback = (
+            fallback
+            if fallback is not None
+            else load_fallback_config(self._root / "config")
+        )
         self._lock = threading.RLock()
         self._runs: dict[str, GenerateRun] = {}
         self._threads: dict[str, threading.Thread] = {}
@@ -161,8 +189,10 @@ class GenerateRunner:
     def start(self, target: str, reason: str = "") -> GenerateRun:
         """Queue a generate run for ``target`` and return its record.
 
-        The worker is spawned immediately. If the ``opencode`` binary is not
-        on PATH, the run fails fast (no thread) with a descriptive error.
+        The worker is spawned immediately. Dispatch tries the ``opencode``
+        binary first and falls back to the local model (R4/D9) unless the
+        fallback is disabled — in that case a missing ``opencode`` fails fast
+        (no thread) with a descriptive error, mirroring the frozen CLI.
         ``reason`` is retained for audit alignment (write endpoints record it
         in the audit log; the runner echoes it in the run record's error field
         when the dispatch is invalid).
@@ -175,10 +205,10 @@ class GenerateRunner:
                 f"Prompt file for target '{target}' not found: {resolved.prompt_file}"
             )
 
-        opencode_path = shutil.which("opencode")
-        if opencode_path is None:
+        if not self._fallback.enabled and shutil.which("opencode") is None:
             raise ValueError(
-                "Could not find 'opencode' on PATH. Is it installed and available in this shell?"
+                "Could not find 'opencode' on PATH and the fallback is disabled. "
+                "Is it installed and available in this shell?"
             )
 
         run_id = f"g{_utc_now_seconds()}-{len(self._runs) + 1}"
@@ -199,7 +229,7 @@ class GenerateRunner:
 
         thread = threading.Thread(
             target=self._execute,
-            args=(run, resolved, opencode_path),
+            args=(run, resolved),
             name=f"generate-{run_id}",
             daemon=True,
         )
@@ -256,24 +286,8 @@ class GenerateRunner:
     # ------------------------------------------------------------------ #
     # Internals
     # ------------------------------------------------------------------ #
-    def _execute(
-        self,
-        run: GenerateRun,
-        target: GenerateTarget,
-        opencode_path: str,
-    ) -> None:
+    def _execute(self, run: GenerateRun, target: GenerateTarget) -> None:
         rendered = self._render_prompt(target)
-        cmd = [
-            opencode_path,
-            "run",
-            "--file",
-            str(rendered),
-            "--agent",
-            target.agent,
-            "--model",
-            target.model,
-            "Execute the attached prompt against the current company registry.",
-        ]
 
         with self._lock:
             if run.status == "cancelled":
@@ -284,54 +298,49 @@ class GenerateRunner:
 
         log_path = self._root / self._logs_dir / f"{run.run_id}.log"
         try:
-            log_path.parent.mkdir(parents=True, exist_ok=True)
-            proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                cwd=str(self._root),
-                shell=False,
+            outcome = dispatch_generate(
+                agent=target.agent,
+                model=target.model,
+                prompt_path=rendered,
+                cwd=self._root,
+                log_path=log_path,
+                fallback_model=self._fallback.model,
+                fallback_enabled=self._fallback.enabled,
+                register_proc=lambda proc: self._set_active_proc(run.run_id, proc),
             )
-        except OSError as exc:
+        except Exception as exc:  # defensive: never leave a run dangling
             with self._lock:
                 if run.status == "cancelled":
                     return
                 run.status = _INTERRUPTED_STATUS
                 run.finished_at = _now_iso()
-                run.error = f"failed to start opencode: {exc}"
+                run.error = f"generate dispatch failed: {exc}"
                 run.exit_code = None
                 self._append_history(run)
             return
 
         with self._lock:
-            self._procs[run.run_id] = proc
-
-        try:
-            with log_path.open("w", encoding="utf-8", errors="replace") as handle:
-                if proc.stdout is not None:
-                    for line in proc.stdout:
-                        handle.write(line)
-                        handle.flush()
-            exit_code = proc.wait()
-        finally:
-            with self._lock:
-                self._procs.pop(run.run_id, None)
-
-        with self._lock:
             if run.status == "cancelled":
                 return
-            run.exit_code = exit_code
+            run.provider = outcome.provider
+            run.model = outcome.model
+            run.exit_code = outcome.exit_code
             run.finished_at = _now_iso()
-            if exit_code == 0:
+            if outcome.exit_code == 0:
                 run.status = "succeeded"
                 run.error = ""
             else:
                 run.status = _INTERRUPTED_STATUS
-                run.error = f"opencode exited with code {exit_code}"
+                run.error = _attempt_errors(outcome)
             self._append_history(run)
+
+    def _set_active_proc(self, run_id: str, proc: subprocess.Popen[str] | None) -> None:
+        """Track the live child process so ``cancel`` can terminate it."""
+        with self._lock:
+            if proc is None:
+                self._procs.pop(run_id, None)
+            else:
+                self._procs[run_id] = proc
 
     def _render_prompt(self, target: GenerateTarget) -> Path:
         """Render the target prompt file (mirrors ``cli.render.render_prompt``).
@@ -381,6 +390,8 @@ class GenerateRunner:
                         error=data.get("error", ""),
                         log_path=data.get("log_path", ""),
                         output_dir=data.get("output_dir", GENERATE_OUTPUT_DIR),
+                        provider=data.get("provider", ""),
+                        model=data.get("model", ""),
                     )
                     if run.status in ("queued", "running"):
                         run.status = _INTERRUPTED_STATUS

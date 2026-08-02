@@ -1,0 +1,17 @@
+# Generate Dispatch Fallback Configuration (R4, decision D9)
+# Primary generate dispatch uses the local `opencode` binary (frozen CLI
+# contract, ADR 0006). When OpenCode is missing from PATH, fails to start,
+# or exits non-zero (pinned-version break, outage, doctor failure), dispatch
+# falls back to a free/local model via the `ollama` CLI so generation never
+# hard-depends on OpenCode (no vendor lock-in).
+#
+# Toggle `enabled` to false to restore the previous strict behaviour: a
+# missing OpenCode binary then fails the dispatch instead of falling back.
+
+version: "1.0"
+description: "Free/local model fallback for generate dispatch (R4/D9)"
+
+fallback:
+  enabled: true
+  provider: "ollama"            # fallback CLI provider
+  model: "ollama/llama3.1:8b"   # free/local model (D4 default)

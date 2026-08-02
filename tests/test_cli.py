@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import pytest
 from typer.testing import CliRunner
@@ -45,6 +46,127 @@ def test_generate_unknown_target() -> None:
     result = runner.invoke(app, ["generate", "nope", "--dry-run"])
     assert result.exit_code == 1
     assert "Unknown target" in result.stdout
+
+
+def _patch_generate_dispatch(monkeypatch: pytest.MonkeyPatch, outcome: Any) -> None:
+    """Route the CLI generate command through a fixed dispatch outcome."""
+    monkeypatch.setattr(
+        "ai_company.cli.main.dispatch_generate",
+        lambda **kwargs: outcome,
+    )
+    monkeypatch.setattr(
+        "ai_company.cli.main.render_prompt",
+        lambda prompt_file: Path(prompt_file),
+    )
+
+
+def _outcome(
+    provider: str,
+    model: str,
+    exit_code: int | None,
+    attempts: list[tuple[str, str, int | None, str]],
+) -> Any:
+    from ai_company.services.generate_dispatch import DispatchAttempt, DispatchOutcome
+
+    return DispatchOutcome(
+        provider=provider,
+        model=model,
+        exit_code=exit_code,
+        attempts=tuple(DispatchAttempt(p, m, rc, err) for p, m, rc, err in attempts),
+    )
+
+
+def test_generate_dispatch_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_generate_dispatch(
+        monkeypatch,
+        _outcome(
+            "opencode",
+            "opencode/north-mini-code-free",
+            0,
+            [("opencode", "opencode/north-mini-code-free", 0, "")],
+        ),
+    )
+    result = runner.invoke(app, ["generate", "bootstrap"])
+    assert result.exit_code == 0
+    assert "opencode finished successfully" in result.stdout
+
+
+def test_generate_dispatch_fallback_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_generate_dispatch(
+        monkeypatch,
+        _outcome(
+            "local",
+            "ollama/llama3.1:8b",
+            0,
+            [
+                (
+                    "opencode",
+                    "opencode/north-mini-code-free",
+                    1,
+                    "opencode exited with code 1",
+                ),
+                ("local", "ollama/llama3.1:8b", 0, ""),
+            ],
+        ),
+    )
+    result = runner.invoke(app, ["generate", "bootstrap"])
+    assert result.exit_code == 0
+    assert "fallback provider 'local'" in result.stdout
+    assert "local finished successfully" in result.stdout
+
+
+def test_generate_dispatch_failure_exits_with_code(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _patch_generate_dispatch(
+        monkeypatch,
+        _outcome(
+            "opencode",
+            "opencode/north-mini-code-free",
+            7,
+            [
+                (
+                    "opencode",
+                    "opencode/north-mini-code-free",
+                    7,
+                    "opencode exited with code 7",
+                )
+            ],
+        ),
+    )
+    result = runner.invoke(app, ["generate", "bootstrap"])
+    assert result.exit_code == 7
+    assert "failed with code 7" in result.stdout
+
+
+def test_generate_dispatch_nothing_on_path_exits_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _patch_generate_dispatch(
+        monkeypatch,
+        _outcome(
+            "local",
+            "ollama/llama3.1:8b",
+            None,
+            [
+                (
+                    "opencode",
+                    "opencode/north-mini-code-free",
+                    None,
+                    "opencode not found on PATH",
+                ),
+                (
+                    "local",
+                    "ollama/llama3.1:8b",
+                    None,
+                    "fallback unavailable: 'ollama' not found on PATH",
+                ),
+            ],
+        ),
+    )
+    result = runner.invoke(app, ["generate", "bootstrap"])
+    assert result.exit_code == 1
+    assert "opencode not found on PATH" in result.stdout
 
 
 def test_validate() -> None:
