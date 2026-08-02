@@ -12,7 +12,7 @@
 | **Current Sprint** | Sprint 5.2 — Phase 2 Waves 2a+2b: Write Auth (ADR 0010) + Generate→Review→Validate→Approve Loop |
 | **Status** | ✅ **COMPLETED** (2026-08-02) — Waves 2a AND 2b shipped; **Phase 2 exit criterion met** (full generate → review → validate → approve loop from the browser) |
 | **Goal** | Complete the operational dashboard pivot: guarded mutation endpoints + the full governance loop (generate dispatcher, decision inbox, per-artifact validation, graph export, company CRUD, agent sync, backup) + R5 telemetry live panels |
-| **Commit** | Wave 2a: `131d9d9` · Wave 2b: `(see Recently Completed)` |
+| **Commit** | Wave 2a: `131d9d9` · Wave 2b: `2244497` |
 | **Created** | 2026-08-01 |
 | **Completed** | 2026-08-02 |
 
@@ -103,6 +103,9 @@ R5 core (metrics + provider usage persistence) shipped with Wave 2b. Follow-ups:
 ## Recently Completed (Commits)
 
 ```text
+2244497        feat: Phase 2 Wave 2b + telemetry/parity/backup close-out (generate loop, decision inbox, R5 telemetry)
+66cf7c4        chore: refresh api package exports for Phase 2 write surface (ADR 0010)
+479f5c6        chore: refresh .ai/ knowledge base for Phase 2 wave 2a (ADR 0010 ratified, write surface live)
 131d9d9        feat: Phase 2 wave 2a — write auth (ADR 0010), 20 mutation endpoints, audit + token CLI
 b88c0b6        chore: record Phase 1 wave 2 commit hash in current-work tracker
 d0b1385        feat: Phase 1 wave 2 — dashboard frontend v1 (8 views, scoped CSP, parity seed)
