@@ -20,11 +20,12 @@
 ### Dashboard Initiative Follow-up (post-Sprint 5.3, in progress)
 
 - [x] **D5 north-star metric signed off** — CEO approved 2026-08-02: share of operator actions via Dashboard/OpenCode desktop ≥ **80% by month 6**; baseline = CLI telemetry (`runtime/cli_telemetry.jsonl`); GUI/desktop telemetry in Phase 3 (honest numerator); Phase 4 trigger depends on it
-- [x] **R4 fallback strategy decided (D9)** — CEO approved 2026-08-02: **free/local models** (e.g. `ollama/llama3.1:8b`, D4) are the official fallback; R4 status `[PARTIALLY MITIGATED]`; remaining work: end-to-end fallback test → R4 `[MITIGATED]`
+- [x] **R4 fallback strategy decided (D9)** — CEO approved 2026-08-02: **free/local models** (e.g. `ollama/llama3.1:8b`, D4) are the official fallback
+- [x] **R4 end-to-end fallback shipped → R4 `[MITIGATED]`** — shared `services/generate_dispatch.py` (`dispatch_generate`: opencode primary → `ollama` fallback on missing / startup failure / non-zero exit); wired into the streaming runner (honest `provider`/`model` in `runtime/generate_runs.jsonl` + append-mode logs) and the frozen CLI `generate` command (surface unchanged, R8 gate still green); tunable via `config/runtime/model_fallback.yaml`; cancellation preserved (`register_proc`); proven by runner e2e tests with stub binaries + dispatch unit tests + CLI wiring tests — suite 1289 → **1308 green**
 - [x] **R12 canonical status service** — `services/status_service.py` (four-state `ok`/`watch`/`action`/`unknown` + timestamp, phase state machine; stopped → watch, never action); CLI `runtime status` Overall line, `GET /api/status` + `/api/health` canonical, dashboard views + app.js unified; golden parity `tests/golden/test_parity_status.py`; **also fixed root cause of misleading unhealthy flags — `HeartbeatSender` liveness worker (passive engines were isolated after boot) + read-model `check_same_thread=False`**; R12 → `[MITIGATED]` in initiative.md — **committed `147540b` (heartbeat fix) + `75e0595` (status service), pushed 2026-08-02, CI green**
 - [x] **R8 CI gate — CLI additive-only rule** — `integrity/check_cli_surface.py` (typer/click introspection vs committed `cli_surface_contract.json`; removal/rename/change = hard error exit 1; additive drift = exit 2, accept with `--update`); wired into both lint jobs in ci.yml next to the command-map gate; 8 unit tests (`tests/unit/integrity/test_check_cli_surface.py`); verified: real removal → exit 1
 - [x] **R3 parity coverage milestone** — explicit target in `docs/dashboard/initiative.md` §5 R3 + parity-matrix-v0.md: **≥40 of 71 command rows parity-tested by Phase 3 close-out**; every new command adds its parity test in the same change
-- [x] **R11 persona onboarding scope** — **D10 drafted** (2026-08-02) in initiative.md §6: three personas View/Operate/Develop, one skippable first-run tour each + persistent "Equivalent CLI command" tooltips; no tutorial system; proposed Phase 2/3 — **status [PROPOSED], pending CEO/COO sign-off** (R11 flips to MITIGATED on sign-off)
+- [x] **R11 persona onboarding scope — D10 SIGNED OFF** (CEO 2026-08-02) in initiative.md §6: three personas View/Operate/Develop, one skippable first-run tour each + persistent "Equivalent CLI command" tooltips; no tutorial system; destructive/bulk stays CLI-only, surfaced in Develop persona. **R11 → `[MITIGATED]`**; delivery lands with Phase 2/3 features
 
 ### Sprint 5.3 Deliverables
 
@@ -120,6 +121,7 @@ R5 core (metrics + provider usage persistence) shipped with Wave 2b. Follow-ups:
 ## Recently Completed (Commits)
 
 ```text
+1fd0c97        feat: R4 — end-to-end free/local fallback for generate dispatch (D9 close-out)
 936f9ea        fix: strip ANSI styling from CLI help in parity test (CI FORCE_COLOR wraps tokens)
 de9c851        feat: Sprint 5.3 — SQLite read model on startup (ADR 0004), agent sync scope both, Windows CI lint/type-check
 2244497        feat: Phase 2 Wave 2b + telemetry/parity/backup close-out (generate loop, decision inbox, R5 telemetry)
@@ -153,8 +155,9 @@ b6d5a26        feat: Phase 1 wave 1 — dashboard API server (read-only contract
    share of operator actions via Dashboard/OpenCode desktop **≥80% by month 6**
    (baseline = CLI telemetry `runtime/cli_telemetry.jsonl`; GUI telemetry in
    Phase 3). D9: fallback provider strategy = **free/local models** (e.g.
-   `ollama/llama3.1:8b`), R4 → `[PARTIALLY MITIGATED]`. Both logged in
-   `docs/dashboard/initiative.md` + `.ai/decisions.md` (uncommitted so far).
+   `ollama/llama3.1:8b`) — **R4 → `[MITIGATED]` 2026-08-02** via the shared
+   `services/generate_dispatch.py` fallback, proven end-to-end. Logged in
+   `docs/dashboard/initiative.md` + `.ai/decisions.md`.
 
 3. **Dashboard-initiative follow-up risks (2026-08-02 batch)** — **R12
    MITIGATED**: canonical status service (`services/status_service.py`, four
@@ -163,8 +166,11 @@ b6d5a26        feat: Phase 1 wave 1 — dashboard API server (read-only contract
    worker + read-model `check_same_thread=False`). **R8**: CLI surface integrity
    gate live in CI (`integrity/check_cli_surface.py` vs committed contract;
    additive-only, exit 1 on removal/rename/change, `--update` for additive
-   drift). **R3**: parity milestone ≥40/71 rows by Phase 3 close-out. **R11**:
-   D10 persona onboarding **drafted [PROPOSED] — awaiting CEO/COO sign-off**.
+   drift). **R3**: parity milestone ≥40/71 rows by Phase 3 close-out. **R11 →
+   MITIGATED**: D10 persona onboarding **SIGNED OFF by CEO 2026-08-02**
+   (View/Operate/Develop, one skippable first-run tour each + tooltips, no
+   tutorial system). **R4 → MITIGATED**: end-to-end free/local fallback shipped
+   (`services/generate_dispatch.py`, `config/runtime/model_fallback.yaml`).
 
 4. **R5 telemetry is live** — runtime metrics persist every 30s to
    `runtime/metrics_history.jsonl`, provider usage to
@@ -249,5 +255,5 @@ python -m ai_company.cli.command_map validate
 
 ---
 
-*Updated: 2026-08-02 — Sprint 5.3 (`de9c851`) + R12 batch (`147540b` + `75e0595`) + R8/R3/R11 batch (`38a3d7f` + typer-group fix `935beeb`) all committed + pushed, **CI green end-to-end (runs 30747089240 + 30747852831, 8/8 jobs)**; D5 north-star + D9 fallback sign-offs recorded; R12 `[MITIGATED]`; R8 gate live (CLI surface contract, additive-only); R3 parity milestone set (≥40/71 rows by Phase 3); **D10 persona onboarding drafted — `[PROPOSED]`, awaiting CEO/COO sign-off (R11 → MITIGATED on sign-off)**; suite 1265 → **1289 green**; remaining follow-ups: D10 sign-off, R4 end-to-end fallback test (R4 → MITIGATED), then next sprint*
-*Next update: after the risk-mitigation commits (R8/R3/R11) or when the next sprint starts*
+*Updated: 2026-08-02 — Sprint 5.3 (`de9c851`) + R12 batch (`147540b` + `75e0595`) + R8/R3/R11 batch (`38a3d7f` + typer-group fix `935beeb`) + **R4 fallback (`1fd0c97`)** all committed + pushed; **R4 `[MITIGATED]`** — shared `services/generate_dispatch.py` fallback (opencode → free/local `ollama`) proven end-to-end across runner/CLI; **D10 persona onboarding SIGNED OFF (R11 → `[MITIGATED]`)**; R12 `[MITIGATED]`; R8 gate live (CLI surface contract, additive-only); R3 parity milestone set (≥40/71 rows by Phase 3); suite 1265 → **1308 green**; remaining follow-ups: next sprint (Sprint 5.4 candidates: telemetry follow-ups)*
+*Next update: when the next sprint starts*
