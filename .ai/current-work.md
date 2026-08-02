@@ -10,11 +10,21 @@
 | Field | Value |
 |---|---|
 | **Current Sprint** | Sprint 5.3 — SQLite derived read model (ADR 0004) + orphaned-decision close-out |
-| **Status** | ✅ **COMMITTED** — Sprint 5.3 shipped (`de9c851`); all four decisions resolved |
+| **Status** | ✅ **COMMITTED** — Sprint 5.3 shipped (`de9c851`); all four decisions resolved; CI green on main |
 | **Goal** | Resolve the four orphaned technical decisions: (1) read model rebuild **on startup** (ADR 0004), (2) agent sync `--scope` default **both**, (3) dashboard port stays **127.0.0.1:8000**, (4) **Windows CI** runs lint/type-check |
 | **Commit** | Sprint 5.3: `de9c851` · Wave 2b: `2244497` · Wave 2a: `131d9d9` |
 | **Created** | 2026-08-02 |
-| **Completed** | — |
+| **Completed** | 2026-08-02 — shipped + pushed to origin/main; CI fully green (run 30743095405: 8/8 jobs) |
+| **Follow-up (in progress)** | Post-sprint risk mitigation: **R12** canonical status service, **R8** CI gate for CLI additive-only rule, **R3** parity coverage milestone, **R11** persona onboarding scope decision — see "Dashboard Initiative Follow-up" below |
+
+### Dashboard Initiative Follow-up (post-Sprint 5.3, in progress)
+
+- [x] **D5 north-star metric signed off** — CEO approved 2026-08-02: share of operator actions via Dashboard/OpenCode desktop ≥ **80% by month 6**; baseline = CLI telemetry (`runtime/cli_telemetry.jsonl`); GUI/desktop telemetry in Phase 3 (honest numerator); Phase 4 trigger depends on it
+- [x] **R4 fallback strategy decided (D9)** — CEO approved 2026-08-02: **free/local models** (e.g. `ollama/llama3.1:8b`, D4) are the official fallback; R4 status `[PARTIALLY MITIGATED]`; remaining work: end-to-end fallback test → R4 `[MITIGATED]`
+- [x] **R12 canonical status service** — `services/status_service.py` (four-state `ok`/`watch`/`action`/`unknown` + timestamp, phase state machine; stopped → watch, never action); CLI `runtime status` Overall line, `GET /api/status` + `/api/health` canonical, dashboard views + app.js unified; golden parity `tests/golden/test_parity_status.py`; **also fixed root cause of misleading unhealthy flags — `HeartbeatSender` liveness worker (passive engines were isolated after boot) + read-model `check_same_thread=False`**; R12 → `[MITIGATED]` in initiative.md — **committed `147540b` (heartbeat fix) + `75e0595` (status service), pushed 2026-08-02, CI green**
+- [ ] **R8 CI gate** — enforce CLI additive-only rule (ADR 0006) as a CI gate (pattern: existing `command_map validate`)
+- [ ] **R3 parity coverage milestone** — explicit milestone target in `docs/dashboard/initiative.md`
+- [ ] **R11 persona onboarding scope** — decision row on scope of persona onboarding (which personas, what flows)
 
 ### Sprint 5.3 Deliverables
 
@@ -137,29 +147,42 @@ b6d5a26        feat: Phase 1 wave 1 — dashboard API server (read-only contract
    the `initialize_read_model` boot step), agent sync `--scope` default **both**,
    dashboard port stays **127.0.0.1:8000**, and **Windows CI** now runs
    lint/type-check. Suite: **1265 tests green**; ruff/mypy/format clean.
+   **Pushed to origin/main; CI fully green (8/8 jobs).**
 
-2. **R5 telemetry is live** — runtime metrics persist every 30s to
+2. **D5 + D9 CEO sign-offs recorded (2026-08-02)** — D5: north-star metric =
+   share of operator actions via Dashboard/OpenCode desktop **≥80% by month 6**
+   (baseline = CLI telemetry `runtime/cli_telemetry.jsonl`; GUI telemetry in
+   Phase 3). D9: fallback provider strategy = **free/local models** (e.g.
+   `ollama/llama3.1:8b`), R4 → `[PARTIALLY MITIGATED]`. Both logged in
+   `docs/dashboard/initiative.md` + `.ai/decisions.md` (uncommitted so far).
+
+3. **Follow-up risk mitigation in progress (post-sprint)** — **R12** canonical
+   status service (CLI/API/dashboard currently format `RuntimeStatus`
+   separately), **R8** CI gate for the CLI additive-only rule (ADR 0006),
+   **R3** parity coverage milestone, **R11** persona onboarding scope decision.
+
+4. **R5 telemetry is live** — runtime metrics persist every 30s to
    `runtime/metrics_history.jsonl`, provider usage to
    `runtime/provider_usage.jsonl` (aggregated by model). KPI / Model Usage /
    Agent Health panels on `/telemetry` render real data (no more "data
    pending").
 
-3. **`.ai/` knowledge base is complete** — 8 files, committed. **Rule: update
+5. **`.ai/` knowledge base is complete** — 8 files, committed. **Rule: update
    the relevant `.ai/` file after every commit** so agents never re-discover
    the system.
 
-4. **Constitution is immutable** — `.ai-company/constitution/rules.md`
+6. **Constitution is immutable** — `.ai-company/constitution/rules.md`
    cannot be overridden by any agent. Read sprint state first, update it last.
 
-5. **CLI is frozen** — the Typer command tree is a contract (ADR 0006). New
+7. **CLI is frozen** — the Typer command tree is a contract (ADR 0006). New
    features must back-port CLI commands; CI validates the command map.
    Wave 2a token CLI was additive-only (`dashboard token` sub-group); Wave 2b
    made no CLI surface changes.
 
-6. **Workspace resets to HEAD** — commit work promptly; uncommitted files
+8. **Workspace resets to HEAD** — commit work promptly; uncommitted files
    (including `.ai/`) get wiped.
 
-7. **Parity test suite is seeded** — `tests/golden/test_parity_read.py`
+9. **Parity test suite is seeded** — `tests/golden/test_parity_read.py`
    (golden CLI output == API JSON) plus `tests/golden/test_parity_wave2b.py`
    (generate/backup contract + shared guard parity). Every new read command
    must add a parity row + parity test (Phase 4 demotion trigger depends on
@@ -212,5 +235,5 @@ python -m ai_company.cli.command_map validate
 
 ---
 
-*Updated: 2026-08-02 — Sprint 5.3 committed (`de9c851`) and CI green end-to-end (all 8 jobs: lint/type-check × ubuntu+windows, test ×2, validate, build) after parity-test ANSI fix (`936f9ea`); 1265 tests green*
-*Next update: When the next sprint starts or after the next commit*
+*Updated: 2026-08-02 — Sprint 5.3 committed (`de9c851`) + pushed; CI green end-to-end (run 30743095405, 8/8 jobs) after parity-test ANSI fix (`936f9ea`); D5 north-star + D9 fallback sign-offs recorded (initiative.md + decisions.md); **R12 MITIGATED — canonical status service + HeartbeatSender liveness fix committed (`147540b` + `75e0595`) + pushed, CI green, suite 1265 → 1281**; follow-up risk mitigation in progress (R8 CI gate, R3 parity milestone, R11 onboarding decision)*
+*Next update: after the risk-mitigation commits (R8/R3/R11) or when the next sprint starts*

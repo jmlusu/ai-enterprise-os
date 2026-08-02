@@ -55,6 +55,8 @@
 | **Agent sync default scope `both`** | Sprint 5.3 resolution: `--scope` (and API body / facade default) changed from `project` to `both` so new users get persona agents in both project and global opencode dirs. | `agents/sync.py`, `agents/__main__.py`, `api/operational_endpoints.py`, `services/runtime_facade.py` |
 | **Dashboard port stays hardcoded 127.0.0.1:8000** | Sprint 5.3 resolution: loopback-only default is kept (security R9); `--host/--port` remain per-invocation overrides; non-loopback exposure requires full ADR 0010 auth. | `cli/main.py` `serve()` |
 | **Windows CI runs lint/type-check too** | Sprint 5.3 resolution: `ci.yml` lint + type-check jobs use an `os: [ubuntu-latest, windows-latest]` matrix (`fail-fast: false`) — Windows-first project (risk R10). | `.github/workflows/ci.yml` |
+| **D5 north-star metric signed off** | CEO sign-off 2026-08-02: share of operator actions via Dashboard/OpenCode desktop, target ≥80% by month 6; baseline = CLI telemetry (`runtime/cli_telemetry.jsonl`); GUI/desktop action telemetry added in Phase 3 for an honest numerator; Phase 4 demotion trigger depends on it. | `docs/dashboard/initiative.md` §6 D5 |
+| **R4 fallback: free/local models (D9)** | CEO sign-off 2026-08-02: free models and local models (e.g. `ollama/llama3.1:8b`, D4) are the official fallback when OpenCode dispatch fails (pin break / outage / doctor failure) — no vendor lock-in. Remaining: end-to-end fallback test (R4 → MITIGATED). | `docs/dashboard/initiative.md` §6 D9 |
 | **EventBus uses JSONL persistence** | Events persist to `events/store.jsonl` for replay. Dead-letter events go to `events/dead_letter.jsonl`. Simple, grep-able, no extra dependencies. | `events/bus.py`, `events/persistence.py` |
 | **Memory tiered storage** | Working (in-memory) → Short-term (JSONL) → Long-term (JSONL) → Archived. Tier management runs as a scheduled job. Importance thresholds drive promotion/demotion. | `memory/engine.py` |
 | **Pre-commit excludes generated/.ai-company** | Generated output and `.ai-company/` state change frequently and are gitignored from lint/format hooks. Source code in `src/` is always checked. | `.pre-commit-config.yaml` |
@@ -95,6 +97,37 @@
   repo-map, system-overview, decisions, agent-roles, current-work) so agents
   stop re-discovering the system.
 - **Rule: update the relevant `.ai/` file after every commit.**
+
+### 2026-08-02 — D5 + D9 sign-offs (north-star metric, R4 fallback strategy)
+- **D5 (north-star metric) SIGNED OFF by CEO:** share of operator actions via
+  Dashboard/OpenCode desktop, target ≥80% by month 6; CLI telemetry is the
+  baseline, GUI/desktop action telemetry lands with Phase 3 so the ratio is
+  honest; Phase 4 demotion trigger depends on it.
+- **D9 (R4 fallback) SIGNED OFF by CEO:** free models and local models are the
+  official fallback when OpenCode dispatch fails — no vendor lock-in. Fallback
+  path to be proven by an end-to-end test before R4 flips to MITIGATED.
+- **Trackers updated:** `docs/dashboard/initiative.md` §5 R4 + §6 D5/D9.
+
+### 2026-08-02 — R12 mitigated: canonical status service + heartbeat liveness fix
+- **Canonical status service shipped** (`services/status_service.py`): one
+  four-state vocabulary (`ok`/`watch`/`action`/`unknown`) + `timestamp` on
+  every status, derived by a phase state machine (stopped/stopping → `watch`,
+  never `action` — stopped ≠ broken, R12).
+- **All surfaces unified:** CLI `runtime status` prints `Overall:`; `GET
+  /api/status` and `GET /api/health` return canonical `overall` + `timestamp`;
+  dashboard pulse/System Health views and app.js chip use the same vocabulary
+  (color+icon+text). Golden parity test `tests/golden/test_parity_status.py`
+  locks CLI == API (2 tests).
+- **Root-cause fix for misleading "unhealthy" flags:** passive engines were
+  heartbeat-timeouted and isolated after boot — new `HeartbeatSender` liveness
+  worker beats for every registered engine (skips isolated), read-model store
+  opens with `check_same_thread=False` (probed from health-monitor threads),
+  shutdown stops the sender, `startup.yaml` wires `@event_bus` into the
+  orchestration engine. Regression test
+  `test_engines_stay_healthy_and_not_isolated_after_boot` (20s window).
+- **Trackers updated:** initiative.md §5 R3/R12, parity-matrix-v0.md runtime
+  status row + R12 note, `.ai/current-work.md`. Suite 1265 → **1281 green**;
+  ruff/mypy/format clean.
 
 ### 2026-08-02 — Sprint 5.3 (SQLite read model + orphaned-decision close-out)
 - **ADR 0004 shipped:** `readmodel/` package — `ReadModelStore` (SQLite WAL,

@@ -44,6 +44,18 @@ uv run --group dev mypy src
 | `ai-company graph show` | Display company graph structure |
 | `ai-company graph stats` | Show graph statistics |
 | `ai-company report generate <type>` | Generate a report |
+| `ai-company serve` | Start the web dashboard at http://127.0.0.1:8000/ (read + guarded writes) |
+| `ai-company dashboard token create/list/revoke` | Manage the dashboard write token |
+
+## Web Dashboard
+
+```bash
+uv run ai-company serve          # http://127.0.0.1:8000/
+uv run ai-company dashboard token create  # optional write-token setup
+```
+
+Health, telemetry, generate, decisions, and guarded operator actions in a
+browser UI. Full walkthrough: [docs/DASHBOARD_GUIDE.md](docs/DASHBOARD_GUIDE.md).
 
 ## Template Engine
 

@@ -184,7 +184,7 @@ contract), 0009 (API contract), 0010 (Phase 2 write auth — ratified 2026-08-01
 
 | CLI command | Category | GUI path | Phase |
 |-------------|----------|----------|-------|
-| `runtime status` | Read | System Health | 1 |
+| `runtime status` | Read | System Health (canonical overall chip, R12) | **1** (parity-tested: `tests/golden/test_parity_status.py`) |
 | `runtime health` | Read | System Health | 1 |
 | `runtime metrics` | Read | System Health / telemetry panels | 1 |
 | `runtime diagnostics` | Read | System Health diagnostics | 1 |
@@ -214,6 +214,12 @@ contract), 0009 (API contract), 0010 (Phase 2 write auth — ratified 2026-08-01
 view live (`ai-company serve`), verified by `tests/unit/api/test_api_domain.py`
 (31 tests) and the parity suite seed `tests/golden/test_parity_read.py`
 (9 tests, golden CLI output == API JSON).
+
+**R12 status row (2026-08-02):** `runtime status` ↔ `GET /api/status` +
+`GET /api/health` now share the canonical four-state status service
+(`services/status_service.py`) — locked by `tests/golden/test_parity_status.py`
+(2 tests: running + stopped parity, CLI boots its own runtime against a
+hermetic API-side runtime).
 
 **Phase 2 status (Waves 2a + 2b, ADR 0010 ratified 2026-08-01, close-out
 2026-08-02):** **all safe-write rows are `1+2`** — both surfaces live, behind

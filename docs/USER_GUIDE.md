@@ -6,11 +6,15 @@ company registry (YAML data), generates organizational artifacts, persists
 agent memory, orchestrates declarative pipelines, and boots a supervised
 runtime that keeps every engine healthy.
 
-Two things are operated here:
+Three things are operated here:
 
 1. **The `ai-company` CLI** — the primary operator interface (build,
    validate, memory, graph, orchestrate, runtime).
-2. **Opencode** — the coding agent used to dispatch generation phases
+2. **The web dashboard** — a browser UI served by `ai-company serve`
+   (http://127.0.0.1:8000/) for health, telemetry, generate, decisions,
+   and guarded operator actions. See
+   [docs/DASHBOARD_GUIDE.md](DASHBOARD_GUIDE.md).
+3. **Opencode** — the coding agent used to dispatch generation phases
    (`ai-company generate <target>`) and to run coding sessions against the
    project (agents, constitution loading, prompt library).
 
@@ -597,7 +601,11 @@ uv run ai-company memory stats
 uv run ai-company graph show
 uv run ai-company report generate health
 
-# 6. Before pushing — quality gates (§9)
+# 6. Optional — open the web dashboard (read + guarded writes)
+uv run ai-company serve           # then browse to http://127.0.0.1:8000/
+uv run ai-company dashboard token create   # one-time write-token setup (§3.1 of the Dashboard Guide)
+
+# 7. Before pushing — quality gates (§9)
 uv run --group dev pre-commit run --all-files
 uv run --group dev pytest
 ```
@@ -607,6 +615,7 @@ uv run --group dev pytest
 ## 13. Related Documentation
 
 - [OPERATIONS_RUNBOOK](OPERATIONS_RUNBOOK.md) — runtime CLI daily operations
+- [DASHBOARD_GUIDE](DASHBOARD_GUIDE.md) — start, access, and use the web dashboard
 - [RUNTIME_ENGINE](RUNTIME_ENGINE.md) — kernel overview, engines, jobs
 - [STARTUP_SEQUENCE](STARTUP_SEQUENCE.md) — boot/shutdown steps
 - [RUNTIME_LIFECYCLE](RUNTIME_LIFECYCLE.md) — phase machine, persisted state
