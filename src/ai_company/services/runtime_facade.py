@@ -175,8 +175,16 @@ class RuntimeFacade:
             self._runtime.start()
 
     def status(self) -> dict[str, Any]:
-        """Runtime status view (phase, engines, processes, active counts)."""
-        return self._runtime.status().model_dump(mode="json")
+        """Canonical runtime status view (R12).
+
+        Phase, engines, processes, and active counts — plus the four-state
+        ``overall``, ``health_summary``, and a snapshot ``timestamp`` — from
+        the canonical status service shared with the CLI and dashboard views.
+        Legacy ``RuntimeStatus`` keys are preserved (additive change).
+        """
+        from ai_company.services.status_service import build_canonical_status
+
+        return build_canonical_status(self._runtime).model_dump(mode="json")
 
     def health(self) -> list[dict[str, Any]]:
         """Health probe results for every engine plus the system check."""

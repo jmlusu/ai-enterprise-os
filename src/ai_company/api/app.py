@@ -271,9 +271,8 @@ def create_app(
         engine_states = await _safe(facade.engine_states, default=[]) or []
         memory_stats = await _safe(facade.memory_stats, default={}) or {}
         backups = await _safe(facade.backup_status, default={}) or {}
-        unhealthy = summary.get("unhealthy", 0)
-        degraded = summary.get("degraded", 0)
-        overall = "unhealthy" if unhealthy else ("degraded" if degraded else "ok")
+        # Canonical four-state overall (R12) — never derive it inline here.
+        overall = status.get("overall", "unknown") if status else "unknown"
         return templates.TemplateResponse(
             request,
             "views/pulse.html",
@@ -284,11 +283,7 @@ def create_app(
                 checks=health_data,
                 health_summary=summary,
                 health_overall=overall,
-                health_overall_class=(
-                    "action"
-                    if overall == "unhealthy"
-                    else ("watch" if overall == "degraded" else "ok")
-                ),
+                health_overall_class=overall,
                 engines=engine_states,
                 running_engines=sum(
                     1 for e in engine_states if e.get("phase") == "running"
@@ -306,9 +301,8 @@ def create_app(
         status = await _safe(facade.status, default={}) or {}
         engine_states = await _safe(facade.engine_states, default=[]) or []
         diagnostics = await _safe(facade.diagnostics, default=None)
-        unhealthy = summary.get("unhealthy", 0)
-        degraded = summary.get("degraded", 0)
-        overall = "unhealthy" if unhealthy else ("degraded" if degraded else "ok")
+        # Canonical four-state overall (R12) — never derive it inline here.
+        overall = status.get("overall", "unknown") if status else "unknown"
         return templates.TemplateResponse(
             request,
             "views/health.html",
@@ -318,11 +312,7 @@ def create_app(
                 checks=checks,
                 health_summary=summary,
                 health_overall=overall,
-                health_overall_class=(
-                    "action"
-                    if overall == "unhealthy"
-                    else ("watch" if overall == "degraded" else "ok")
-                ),
+                health_overall_class=overall,
                 status=status,
                 engine_states=engine_states,
                 diagnostics=diagnostics,
@@ -551,19 +541,15 @@ def create_app(
 
     @app.get("/api/health", tags=["runtime"])
     async def health() -> dict[str, Any]:
-        """Aggregated runtime health (is the system healthy?)."""
+        """Aggregated runtime health — canonical four-state overall (R12)."""
+        status = await run_in_threadpool(facade.status)
         checks = await run_in_threadpool(facade.health)
-        summary = await run_in_threadpool(facade.health_summary)
-        overall = (
-            "unhealthy"
-            if summary.get("unhealthy", 0)
-            else ("degraded" if summary.get("degraded", 0) else "ok")
-        )
         return {
-            "status": overall,
-            "runtime_phase": facade.phase,
-            "summary": summary,
+            "status": status.get("overall", "unknown"),
+            "runtime_phase": status.get("phase", "unknown"),
+            "summary": status.get("health_summary", {}),
             "checks": checks,
+            "timestamp": status.get("timestamp"),
         }
 
     @app.get("/api/status", tags=["runtime"])

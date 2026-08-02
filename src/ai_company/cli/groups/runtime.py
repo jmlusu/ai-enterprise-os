@@ -21,6 +21,7 @@ from typing import Any
 import typer
 
 from ai_company.runtime import RuntimeEngine, create_runtime, main_loop
+from ai_company.services.status_service import build_canonical_status
 from ai_company.utils.console import console_print
 
 app = typer.Typer(help="Enterprise Runtime Engine (boot & supervision)")
@@ -182,9 +183,14 @@ def status(
     try:
         _ensure_running(runtime)
         info = runtime.status().to_dict()
+        canonical = build_canonical_status(runtime)
         console_print("[cyan]Runtime Status:[/cyan]")
         console_print(f"  Name: {info['name']} (v{info['version']})")
         console_print(f"  Phase: {info['phase']}")
+        console_print(
+            f"  Overall: {canonical.overall.value} "
+            f"(as of {canonical.timestamp.strftime('%Y-%m-%d %H:%M:%S')} UTC)"
+        )
         console_print(f"  Uptime: {_format_seconds(info['uptime_seconds'])}")
         console_print(f"  Message: {info['message'] or '-'}")
 

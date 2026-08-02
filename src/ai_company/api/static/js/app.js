@@ -47,8 +47,9 @@
       lastPollAt = Date.now();
       var el = document.querySelector("[data-health-chip]");
       if (el && body.status) {
+        // Canonical four-state vocabulary (R12): ok / watch / action / unknown
         el.textContent = body.status;
-        el.className = "chip " + (body.status === "ok" ? "ok" : body.status === "degraded" ? "watch" : "action");
+        el.className = "chip " + body.status;
       }
     } catch (e) {
       /* network hiccup: keep last value, staleness indicator will grow */

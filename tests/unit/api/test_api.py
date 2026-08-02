@@ -69,11 +69,14 @@ def test_health_endpoint(client: TestClient) -> None:
     resp = client.get("/api/health")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["status"] in ("ok", "degraded", "unhealthy")
+    # Canonical four-state vocabulary (R12) — no more ok/degraded/unhealthy
+    # overlapping with the dashboard's ok/watch/action/unknown.
+    assert body["status"] in ("ok", "watch", "action", "unknown")
     assert body["runtime_phase"] == "stopped"
     assert isinstance(body["checks"], list)
     assert body["checks"], "the system check always runs"
     assert "healthy" in body["summary"]
+    assert body["timestamp"], "R12: every status is time-stamped"
 
 
 def test_status_metrics_engines(client: TestClient) -> None:
