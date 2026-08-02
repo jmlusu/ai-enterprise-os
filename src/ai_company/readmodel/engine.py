@@ -96,6 +96,22 @@ class ReadModelEngine(BaseModel):
         """Rebuild the projection (used by the supervisor recovery factory)."""
         self.rebuild()
 
+    def sync(self) -> dict[str, Any]:
+        """Incrementally import JSONL rows appended since the last sync.
+
+        The live-session companion to the startup rebuild: the dashboard
+        telemetry ticker calls this on a cadence so reads are served from a
+        projection that stays current without a full rebuild (ADR 0004).
+        """
+        store = self._store
+        if store is None:
+            return {"synced": False, "error": "read model store not open"}
+        return store.sync_from_jsonl(
+            events_path=self.events_path,
+            metrics_path=self.metrics_path,
+            provider_usage_path=self.provider_usage_path,
+        )
+
     def health(self) -> dict[str, Any]:
         """Return a health probe result for the runtime HealthMonitor."""
         store = self._store

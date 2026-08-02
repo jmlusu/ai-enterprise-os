@@ -121,6 +121,77 @@ def _write_jsonl(path: Path, records: list[dict]) -> Path:
     return path
 
 
+def _append_event(path: Path, event_id: str) -> None:
+    """Append one event record to an events JSONL source."""
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(
+            json.dumps(
+                {
+                    "_type": "event",
+                    "metadata": {
+                        "event_id": event_id,
+                        "timestamp": "2026-08-01T12:00:00+00:00",
+                        "event_type": "audit.write",
+                        "source": "api",
+                        "status": "delivered",
+                    },
+                    "payload": {},
+                },
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
+
+
+def _append_metric(path: Path) -> None:
+    """Append one runtime metrics snapshot line."""
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(
+            json.dumps(
+                {
+                    "timestamp": "2026-08-01T11:00:00+00:00",
+                    "snapshot": {
+                        "uptime_seconds": 30.0,
+                        "gauges": {
+                            "cpu_percent": 5.0,
+                            "memory_percent": 42.0,
+                            "engine_healthy": 6,
+                            "engine_degraded": 0,
+                            "engine_failed": 0,
+                        },
+                        "counters": {"jobs_executed": 7, "jobs_failed": 0},
+                    },
+                },
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
+
+
+def _append_usage(path: Path) -> None:
+    """Append one provider usage record."""
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(
+            json.dumps(
+                {
+                    "timestamp": "2026-08-01T10:03:00+00:00",
+                    "provider": "OllamaProvider",
+                    "model": "llama3",
+                    "usage": {
+                        "prompt_tokens": 5,
+                        "completion_tokens": 5,
+                        "total_tokens": 10,
+                    },
+                    "latency_seconds": 0.4,
+                    "ok": True,
+                    "error": "",
+                },
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
+
+
 @pytest.fixture
 def sources(tmp_path: Path) -> dict[str, Path]:
     return {
@@ -331,3 +402,139 @@ class TestReadModelEngine:
         assert engine.event_counts_by_type()
         assert engine.metrics_summary()["samples"] == 2
         assert engine.provider_usage_by_model()["records"] == 3
+
+
+# ── incremental sync (T1 — live sessions) ───────────────────────────────
+
+
+class TestReadModelSync:
+    """sync_from_jsonl: watermark-based incremental import (T1)."""
+
+    def test_sync_appends_rows_written_since_rebuild(
+        self, sources: dict[str, Path], db_path: Path
+    ) -> None:
+        store = ReadModelStore(db_path=db_path)
+        store.rebuild(**sources)
+
+        _append_event(sources["events_path"], "evt_4")
+        _append_metric(sources["metrics_path"])
+        _append_usage(sources["provider_usage_path"])
+
+        result = store.sync_from_jsonl(**sources)
+        assert result["events_appended"] == 1
+        assert result["metrics_appended"] == 1
+        assert result["provider_usage_appended"] == 1
+        assert result["events_reset"] is False
+        assert result["metrics_reset"] is False
+
+        stats = store.stats()
+        assert stats["events"] == 4
+        assert stats["metrics_history"] == 3
+        assert stats["provider_usage"] == 4
+        assert stats["last_sync_at"]
+        assert store.recent_events(limit=1)[0]["event_id"] == "evt_4"
+        store.close()
+
+    def test_sync_is_idempotent_when_nothing_appended(
+        self, sources: dict[str, Path], db_path: Path
+    ) -> None:
+        store = ReadModelStore(db_path=db_path)
+        store.rebuild(**sources)
+
+        first = store.sync_from_jsonl(**sources)
+        assert first["events_appended"] == 0
+        assert first["metrics_appended"] == 0
+
+        second = store.sync_from_jsonl(**sources)
+        assert second["events_appended"] == 0
+        assert second["metrics_appended"] == 0
+
+        stats = store.stats()
+        assert stats["events"] == 3
+        assert stats["metrics_history"] == 2
+        assert stats["provider_usage"] == 3
+        store.close()
+
+    def test_sync_full_imports_when_never_rebuilt(
+        self, sources: dict[str, Path], db_path: Path
+    ) -> None:
+        # A fresh store (schema only, never rebuilt): watermarks are absent,
+        # so the first sync fully imports every source.
+        store = ReadModelStore(db_path=db_path)
+        result = store.sync_from_jsonl(**sources)
+        assert result["metrics_reset"] is True
+        assert store.stats()["events"] == 3
+        assert store.stats()["metrics_history"] == 2
+        assert store.stats()["provider_usage"] == 3
+        store.close()
+
+    def test_sync_mirrors_source_after_truncation(
+        self, sources: dict[str, Path], db_path: Path
+    ) -> None:
+        store = ReadModelStore(db_path=db_path)
+        store.rebuild(**sources)
+        _append_metric(sources["metrics_path"])
+        store.sync_from_jsonl(**sources)
+        assert store.stats()["metrics_history"] == 3
+
+        # Truncate + rewrite the source (rotation/retention): the projection
+        # drops the stale rows and mirrors the source exactly.
+        _write_jsonl(sources["metrics_path"], METRIC_LINES[:1])
+        result = store.sync_from_jsonl(**sources)
+        assert result["metrics_reset"] is True
+        assert store.stats()["metrics_history"] == 1
+        assert store.metrics_summary()["samples"] == 1
+        store.close()
+
+    def test_sync_dedupes_events_by_id(
+        self, sources: dict[str, Path], db_path: Path
+    ) -> None:
+        store = ReadModelStore(db_path=db_path)
+        store.rebuild(**sources)
+
+        # Duplicate of an already-imported event_id: parsed, but the primary
+        # key ignores it — no duplicates in the projection.
+        _append_event(sources["events_path"], "evt_1")
+        result = store.sync_from_jsonl(**sources)
+        assert result["events_appended"] == 1
+        assert store.stats()["events"] == 3
+        store.close()
+
+    def test_sync_missing_sources_is_a_noop(
+        self, tmp_path: Path, db_path: Path
+    ) -> None:
+        store = ReadModelStore(db_path=db_path)
+        store.rebuild(
+            events_path=tmp_path / "nope.jsonl",
+            metrics_path=tmp_path / "nope.jsonl",
+            provider_usage_path=tmp_path / "nope.jsonl",
+        )
+        result = store.sync_from_jsonl(
+            events_path=tmp_path / "nope.jsonl",
+            metrics_path=tmp_path / "nope.jsonl",
+            provider_usage_path=tmp_path / "nope.jsonl",
+        )
+        assert result["events_appended"] == 0
+        assert result["metrics_appended"] == 0
+        assert result["provider_usage_appended"] == 0
+        assert store.stats()["events"] == 0
+        assert store.stats()["metrics_history"] == 0
+        store.close()
+
+
+class TestReadModelEngineSync:
+    def test_engine_sync_appends_rows(
+        self, sources: dict[str, Path], tmp_path: Path
+    ) -> None:
+        engine = ReadModelEngine(
+            db_path=tmp_path / "runtime" / "dashboard.db", **sources
+        )
+        _append_event(sources["events_path"], "evt_10")
+        _append_usage(sources["provider_usage_path"])
+
+        result = engine.sync()
+        assert result["events_appended"] == 1
+        assert result["provider_usage_appended"] == 1
+        assert engine.stats()["events"] == 4
+        assert engine.stats()["provider_usage"] == 4
+        assert engine.recent_events(limit=1)[0]["event_id"] == "evt_10"

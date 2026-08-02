@@ -28,6 +28,15 @@ logger = logging.getLogger(__name__)
 DEFAULT_DB_RELATIVE_PATH = Path("runtime") / "dashboard.db"
 SCHEMA_VERSION = "1"
 
+#: ``meta`` keys tracking how much of each JSONL source has been imported by
+#: :meth:`ReadModelStore.sync_from_jsonl` (byte offset = size of the file at
+#: the last sync; appends are whole lines so the next record starts exactly at
+#: the watermark).
+_SYNC_OFFSET_EVENTS = "sync_offset_events"
+_SYNC_OFFSET_METRICS = "sync_offset_metrics"
+_SYNC_OFFSET_PROVIDER_USAGE = "sync_offset_provider_usage"
+_SYNC_LAST_AT = "last_sync_at"
+
 # Schema for the derived read model. Tables are dropped and re-imported on
 # every rebuild; ``meta`` records when/from-what the projection was built.
 _SCHEMA_SQL = """
@@ -94,6 +103,64 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
         logger.debug("Read failed for %s: %s", path, exc)
         return []
     return records
+
+
+def _file_size(path: Path) -> int:
+    """Byte size of a file, or 0 when missing/unreadable (fail-open)."""
+    try:
+        return path.stat().st_size if path.is_file() else 0
+    except OSError:
+        return 0
+
+
+def _read_jsonl_since(path: Path, offset: int) -> list[dict[str, Any]]:
+    """Read JSONL records whose bytes start at or after ``offset`` (fail-open).
+
+    The offset is always a line boundary (the file size recorded after a
+    previous append-only sync), so the tail decodes cleanly. Corrupt lines are
+    skipped; a missing file yields an empty list.
+    """
+    if not path.is_file():
+        return []
+    try:
+        with path.open("rb") as handle:
+            handle.seek(offset)
+            tail = handle.read().decode("utf-8", errors="replace")
+    except (OSError, ValueError) as exc:
+        logger.debug("Read failed for %s: %s", path, exc)
+        return []
+    records: list[dict[str, Any]] = []
+    for line in tail.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            records.append(json.loads(line))
+        except json.JSONDecodeError:
+            logger.debug("Skipping corrupt JSONL line in %s", path)
+    return records
+
+
+def _sync_batch(
+    path: Path, offset: int | None
+) -> tuple[list[dict[str, Any]], int, bool]:
+    """Compute (records, next_offset, needs_full_reset) for one JSONL stream.
+
+    - Missing file → no rows, offset 0.
+    - No watermark yet, or the watermark is beyond EOF (the file was truncated
+      or rotated) → full re-import of the stream and a ``needs_full_reset``
+      flag so the caller can drop stale projection rows first.
+    - Otherwise only the bytes appended since the watermark are parsed, which
+      makes a re-sync of an unchanged file a no-op (idempotent).
+    """
+    if not path.is_file():
+        return [], 0, False
+    size = _file_size(path)
+    if offset is None or offset > size:
+        return _read_jsonl(path), size, True
+    if offset == size:
+        return [], size, False
+    return _read_jsonl_since(path, offset), size, False
 
 
 class ReadModelStore:
@@ -192,6 +259,16 @@ class ReadModelStore:
                     ("events_count", str(len(event_rows))),
                     ("metrics_count", str(len(metric_rows))),
                     ("provider_usage_count", str(len(usage_rows))),
+                    # Sync watermarks: a rebuild consumes the whole sources, so
+                    # the next incremental sync only reads bytes appended after
+                    # this point (ADR 0004 — JSONL stays the source of truth).
+                    (_SYNC_OFFSET_EVENTS, str(_file_size(events_path_p))),
+                    (_SYNC_OFFSET_METRICS, str(_file_size(metrics_path_p))),
+                    (
+                        _SYNC_OFFSET_PROVIDER_USAGE,
+                        str(_file_size(provider_usage_path_p)),
+                    ),
+                    (_SYNC_LAST_AT, rebuilt_at),
                 ],
             )
         logger.info(
@@ -206,6 +283,127 @@ class ReadModelStore:
             "metrics_history": len(metric_rows),
             "provider_usage": len(usage_rows),
         }
+
+    # ── incremental sync (live sessions) ─────────────────────────────
+
+    def sync_from_jsonl(
+        self,
+        events_path: str | Path = Path("events") / "store.jsonl",
+        metrics_path: str | Path = Path("runtime") / "metrics_history.jsonl",
+        provider_usage_path: str | Path = Path("runtime") / "provider_usage.jsonl",
+    ) -> dict[str, Any]:
+        """Append rows written to the JSONL sources since the last sync.
+
+        Watermark-based incremental import (idempotent): each source's byte
+        offset at the last import is stored in ``meta``; only the bytes
+        appended since then are parsed and inserted, so a re-sync of an
+        unchanged file imports nothing. This keeps the projection current
+        during a long-lived session without a full rebuild (ADR 0004 — the
+        JSONL files remain the append-only source of truth).
+
+        - ``events`` are deduplicated by ``event_id`` (``INSERT OR IGNORE``).
+        - Metrics/provider rows carry no natural key — the watermark
+          guarantees each appended line is imported exactly once. Rows and
+          watermarks commit in **one transaction**, so a crash mid-sync rolls
+          back both and can never create duplicates.
+        - When a source is missing, truncated, or never synced, that stream
+          is fully re-imported (its projection rows are dropped first) so the
+          store always mirrors its source of truth.
+
+        Returns a stats dict (appended/reset counts + sync timestamp).
+        """
+        events_path_p = Path(events_path)
+        metrics_path_p = Path(metrics_path)
+        provider_usage_path_p = Path(provider_usage_path)
+
+        events_offset = self._sync_offset(_SYNC_OFFSET_EVENTS)
+        metrics_offset = self._sync_offset(_SYNC_OFFSET_METRICS)
+        usage_offset = self._sync_offset(_SYNC_OFFSET_PROVIDER_USAGE)
+
+        event_rows, events_size, events_reset = _sync_batch(
+            events_path_p, events_offset
+        )
+        metric_rows, metrics_size, metrics_reset = _sync_batch(
+            metrics_path_p, metrics_offset
+        )
+        usage_rows, usage_size, usage_reset = _sync_batch(
+            provider_usage_path_p, usage_offset
+        )
+
+        synced_at = _utcnow_iso()
+        with self.conn:
+            if events_reset:
+                self.conn.execute("DELETE FROM events")
+            self.conn.executemany(
+                "INSERT OR IGNORE INTO events "
+                "(event_id, timestamp, event_type, source, status, payload) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                self._parse_event_records(event_rows),
+            )
+
+            if metrics_reset:
+                self.conn.execute("DELETE FROM metrics_history")
+            self.conn.executemany(
+                "INSERT INTO metrics_history (timestamp, snapshot) VALUES (?, ?)",
+                [
+                    (
+                        r.get("timestamp", ""),
+                        json.dumps(r.get("snapshot", {}), default=str),
+                    )
+                    for r in metric_rows
+                ],
+            )
+
+            if usage_reset:
+                self.conn.execute("DELETE FROM provider_usage")
+            self.conn.executemany(
+                "INSERT INTO provider_usage "
+                "(timestamp, provider, model, prompt_tokens, completion_tokens, "
+                "total_tokens, latency_seconds, ok, error) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                [self._parse_provider_usage(r) for r in usage_rows],
+            )
+
+            self._set_meta(_SYNC_OFFSET_EVENTS, str(events_size))
+            self._set_meta(_SYNC_OFFSET_METRICS, str(metrics_size))
+            self._set_meta(_SYNC_OFFSET_PROVIDER_USAGE, str(usage_size))
+            self._set_meta(_SYNC_LAST_AT, synced_at)
+
+        logger.info(
+            "Read model synced: +%d events, +%d metrics, +%d usage rows",
+            len(event_rows),
+            len(metric_rows),
+            len(usage_rows),
+        )
+        return {
+            "synced_at": synced_at,
+            "events_appended": len(event_rows),
+            "metrics_appended": len(metric_rows),
+            "provider_usage_appended": len(usage_rows),
+            "events_reset": events_reset,
+            "metrics_reset": metrics_reset,
+            "provider_usage_reset": usage_reset,
+        }
+
+    def _sync_offset(self, key: str) -> int | None:
+        """Return a stored sync watermark, or None when never synced."""
+        row = self.conn.execute(
+            "SELECT value FROM meta WHERE key = ?", (key,)
+        ).fetchone()
+        if row is None:
+            return None
+        try:
+            return int(row[0])
+        except (TypeError, ValueError):
+            return None
+
+    def _set_meta(self, key: str, value: str) -> None:
+        """Upsert one ``meta`` row (watermarks or sync metadata)."""
+        self.conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )
 
     @staticmethod
     def _parse_event_records(
@@ -443,6 +641,7 @@ class ReadModelStore:
             "wal": self._is_wal(),
             "schema_version": meta.get("schema_version"),
             "rebuilt_at": meta.get("rebuilt_at"),
+            "last_sync_at": meta.get(_SYNC_LAST_AT),
             "events": events,
             "metrics_history": metrics,
             "provider_usage": usage,

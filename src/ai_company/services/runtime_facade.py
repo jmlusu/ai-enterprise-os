@@ -1791,19 +1791,73 @@ class RuntimeFacade:
 
     # ── telemetry (risk R5) ──────────────────────────────────────────────────
 
+    def _read_model_engine(self) -> Any | None:
+        """The runtime's ``read_model`` engine, or None (fail-open).
+
+        The read model is registered by the ``initialize_read_model`` startup
+        step. A bare facade (tests, runtime not started) has no such engine —
+        callers fall back to the JSONL sources, so telemetry never breaks.
+        """
+        try:
+            engine = self._runtime.get_engine_optional("read_model")
+        except Exception:
+            return None
+        if engine is None or not hasattr(engine, "sync"):
+            return None
+        return engine
+
+    def sync_read_model(self) -> dict[str, Any]:
+        """Incrementally sync the SQLite read model from the JSONL sources.
+
+        Fail-open: when the ``read_model`` engine is not registered this is a
+        no-op (``synced: False``) and reads fall back to JSONL. When it is,
+        rows appended since the last sync are imported (ADR 0004 — the JSONL
+        files stay the source of truth; the projection stays current during a
+        live session without a restart).
+        """
+        engine = self._read_model_engine()
+        if engine is None:
+            return {"synced": False, "reason": "read model engine unavailable"}
+        try:
+            return {"synced": True, **engine.sync()}
+        except Exception as exc:
+            logger.debug("Read model sync failed: %s", exc)
+            return {"synced": False, "reason": str(exc)}
+
     def metrics_persist(self) -> dict[str, Any]:
-        """Snapshot the current runtime metrics into the persisted history."""
+        """Snapshot the current runtime metrics into the persisted history.
+
+        Also syncs the SQLite read model (ADR 0004) from the JSONL sources so
+        dashboard reads are served from a projection that stays current during
+        a live session. Both steps are fail-open — telemetry never breaks the
+        caller's path.
+        """
         from ai_company.telemetry.metrics import log_metrics_snapshot
 
         try:
             snapshot = self.metrics()
             log_metrics_snapshot(snapshot)
+            self.sync_read_model()
             return {"success": True, "errors": [], "snapshot": snapshot}
         except Exception as exc:
             return {"success": False, "errors": [str(exc)]}
 
     def metrics_history_summary(self, limit: int = 100) -> dict[str, Any]:
-        """Dashboard summary over persisted metrics snapshots (R5)."""
+        """Dashboard summary over persisted metrics snapshots (R5).
+
+        Served from the SQLite read model (ADR 0004) when available — the
+        live projection kept current by the periodic sync — falling open to
+        the JSONL log so telemetry reads never break.
+        """
+        engine = self._read_model_engine()
+        if engine is not None:
+            try:
+                summary = engine.metrics_summary(limit=limit)
+                summary.setdefault("persistence_enabled", True)
+                return {"success": True, "errors": [], "summary": summary}
+            except Exception as exc:
+                logger.debug("Read model metrics summary failed: %s", exc)
+
         from ai_company.telemetry.metrics import metrics_summary
 
         try:
@@ -1816,7 +1870,21 @@ class RuntimeFacade:
             return {"success": False, "errors": [str(exc)], "summary": {}}
 
     def provider_usage_summary(self, limit: int = 500) -> dict[str, Any]:
-        """Aggregated provider usage by model (R5 Model Usage panel)."""
+        """Aggregated provider usage by model (R5 Model Usage panel).
+
+        Served from the SQLite read model (ADR 0004) when available — the
+        live projection kept current by the periodic sync — falling open to
+        the JSONL log so telemetry reads never break.
+        """
+        engine = self._read_model_engine()
+        if engine is not None:
+            try:
+                summary = engine.provider_usage_by_model(limit=limit)
+                summary.setdefault("persistence_enabled", True)
+                return {"success": True, "errors": [], "summary": summary}
+            except Exception as exc:
+                logger.debug("Read model provider usage failed: %s", exc)
+
         from ai_company.telemetry.provider import provider_usage_summary
 
         try:

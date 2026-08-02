@@ -210,6 +210,9 @@ def create_app(
         # R5: persist a runtime metrics snapshot on a cadence while the
         # runtime is up (fail-open; the telemetry module never raises).
         # The KPI panel reads this persisted history via /api/telemetry/metrics.
+        # metrics_persist also syncs the SQLite read model (ADR 0004) from the
+        # JSONL sources, so telemetry reads are served from a projection that
+        # stays current during this session without a restart (T1).
         _metrics_interval = 30.0
         _stop_metrics = asyncio.Event()
 

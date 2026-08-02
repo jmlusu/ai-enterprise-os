@@ -14,6 +14,7 @@ mirroring the golden parity fixture.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,7 @@ from ai_company.models.company import (
     ExecutiveEntry,
     VisionData,
 )
+from ai_company.readmodel.engine import ReadModelEngine
 from ai_company.runtime import create_runtime
 from ai_company.services.runtime_facade import RuntimeFacade
 from ai_company.telemetry.provider import record_provider_usage
@@ -473,3 +475,149 @@ class TestTelemetryFacade:
         assert "north-mini-code-free" in rows
         assert rows["north-mini-code-free"]["requests"] == 1
         assert rows["north-mini-code-free"]["total_tokens"] == 150
+
+
+def _write_metrics_and_usage(tmp_path: Path) -> dict[str, Path]:
+    """Write tiny telemetry JSONL fixtures under ``tmp_path`` (T1)."""
+    metrics_path = tmp_path / "runtime" / "metrics_history.jsonl"
+    usage_path = tmp_path / "runtime" / "provider_usage.jsonl"
+    events_path = tmp_path / "events" / "store.jsonl"
+    for path in (metrics_path, usage_path, events_path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+    metrics_path.write_text(
+        "\n".join(
+            json.dumps(
+                {
+                    "timestamp": f"2026-08-01T10:0{i}:00+00:00",
+                    "snapshot": {
+                        "uptime_seconds": 10.0 + i,
+                        "gauges": {
+                            "cpu_percent": 10.0 + i,
+                            "memory_percent": 40.0,
+                            "engine_healthy": 6,
+                            "engine_degraded": 0,
+                            "engine_failed": 0,
+                        },
+                        "counters": {"jobs_executed": i, "jobs_failed": 0},
+                    },
+                },
+                ensure_ascii=False,
+            )
+            for i in range(2)
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    usage_path.write_text(
+        "\n".join(
+            json.dumps(
+                {
+                    "timestamp": "2026-08-01T10:00:00+00:00",
+                    "provider": "OllamaProvider",
+                    "model": "llama3",
+                    "usage": {"prompt_tokens": 10, "completion_tokens": 5},
+                    "latency_seconds": 0.5,
+                    "ok": True,
+                    "error": "",
+                },
+                ensure_ascii=False,
+            )
+            for _ in range(2)
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return {
+        "events_path": events_path,
+        "metrics_path": metrics_path,
+        "provider_usage_path": usage_path,
+    }
+
+
+class TestTelemetryReadModelFacade:
+    """T1 — facade telemetry reads prefer the SQLite read model store."""
+
+    @pytest.fixture()
+    def read_model(self, facade: RuntimeFacade, tmp_path: Path) -> ReadModelEngine:
+        """Register a real ReadModelEngine on the facade's runtime."""
+        sources = _write_metrics_and_usage(tmp_path)
+        engine = ReadModelEngine(
+            db_path=tmp_path / "runtime" / "dashboard.db", **sources
+        )
+        facade.runtime.register_engine("read_model", engine)
+        return engine
+
+    def test_metrics_read_served_from_store(
+        self, facade: RuntimeFacade, read_model: ReadModelEngine
+    ) -> None:
+        summary = facade.metrics_history_summary()
+        assert summary["success"] is True
+        assert summary["summary"]["samples"] == 2
+        # Store-backed reads keep the same envelope the JSONL path produced.
+        assert summary["summary"]["persistence_enabled"] is True
+
+    def test_provider_usage_read_served_from_store(
+        self, facade: RuntimeFacade, read_model: ReadModelEngine
+    ) -> None:
+        usage = facade.provider_usage_summary()
+        assert usage["success"] is True
+        assert usage["summary"]["records"] == 2
+        by_model = {row["model"]: row for row in usage["summary"]["models"]}
+        assert by_model["llama3"]["requests"] == 2
+
+    def test_sync_read_model_catches_up_without_restart(
+        self, facade: RuntimeFacade, tmp_path: Path, read_model: ReadModelEngine
+    ) -> None:
+        # Append a third metric line to the JSONL source after the rebuild.
+        metrics_path = tmp_path / "runtime" / "metrics_history.jsonl"
+        with metrics_path.open("a", encoding="utf-8") as handle:
+            handle.write(
+                json.dumps(
+                    {
+                        "timestamp": "2026-08-01T11:00:00+00:00",
+                        "snapshot": {
+                            "uptime_seconds": 30.0,
+                            "gauges": {
+                                "cpu_percent": 3.0,
+                                "memory_percent": 41.0,
+                                "engine_healthy": 6,
+                                "engine_degraded": 0,
+                                "engine_failed": 0,
+                            },
+                            "counters": {"jobs_executed": 8, "jobs_failed": 0},
+                        },
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
+
+        # The store is stale (reads served from the projection, not JSONL)…
+        assert facade.metrics_history_summary()["summary"]["samples"] == 2
+        # …until the periodic sync — no restart needed.
+        result = facade.sync_read_model()
+        assert result["synced"] is True
+        assert facade.metrics_history_summary()["summary"]["samples"] == 3
+
+    def test_metrics_persist_syncs_read_model(
+        self, facade: RuntimeFacade, read_model: ReadModelEngine
+    ) -> None:
+        result = facade.metrics_persist()
+        assert result["success"] is True
+        # The persisted snapshot was synced into the projection.
+        assert read_model.stats()["metrics_history"] >= 1
+
+    def test_reads_fall_back_to_jsonl_without_store(
+        self, facade: RuntimeFacade, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # No read_model engine registered → JSONL path (pre-existing behavior).
+        target = tmp_path / "runtime" / "metrics_history.jsonl"
+        monkeypatch.setattr(
+            "ai_company.telemetry.metrics.METRICS_HISTORY_RELATIVE_PATH",
+            target.relative_to(tmp_path),
+        )
+        facade.metrics_persist()
+        summary = facade.metrics_history_summary()
+        assert summary["success"] is True
+        assert summary["summary"]["samples"] >= 1
+        assert summary["summary"]["persistence_enabled"] is True

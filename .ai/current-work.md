@@ -9,13 +9,36 @@
 
 | Field | Value |
 |---|---|
-| **Current Sprint** | Sprint 5.3 — SQLite derived read model (ADR 0004) + orphaned-decision close-out |
-| **Status** | ✅ **COMMITTED** — Sprint 5.3 shipped (`de9c851`); all four decisions resolved; CI green on main |
-| **Goal** | Resolve the four orphaned technical decisions: (1) read model rebuild **on startup** (ADR 0004), (2) agent sync `--scope` default **both**, (3) dashboard port stays **127.0.0.1:8000**, (4) **Windows CI** runs lint/type-check |
+| **Current Sprint** | Sprint 5.4 — Telemetry: durable, bounded, actionable (SQLite store, retention/rollup, isolation alerting, recovery metric) |
+| **Status** | 🔄 **IN PROGRESS** — T1 (SQLite live telemetry store) shipped; T2–T4 pending; T5 stretch |
+| **Goal** | Complete the R5/R2 telemetry story before Phase 3: (T1) SQLite **live** telemetry store (incremental sync, read path = ADR 0004 projection), (T2) retention + rollup policies (config-driven, rollup-then-truncate, scheduler job), (T3) isolation alerting (`runtime.engine_isolated` → alerts → dashboard), (T4) recovery-success metric (counters + KPI rate). Zero CLI-surface changes (ADR 0006); R3 parity rows for new reads |
 | **Commit** | Sprint 5.3: `de9c851` · Wave 2b: `2244497` · Wave 2a: `131d9d9` |
 | **Created** | 2026-08-02 |
-| **Completed** | 2026-08-02 — shipped + pushed to origin/main; CI fully green (run 30743095405: 8/8 jobs) |
-| **Follow-up (in progress)** | Post-sprint risk mitigation: **R12** canonical status service, **R8** CI gate for CLI additive-only rule, **R3** parity coverage milestone, **R11** persona onboarding scope decision — see "Dashboard Initiative Follow-up" below |
+| **Completed** | — |
+| **Follow-up (in progress)** | Post-Sprint 5.3 risk mitigation completed: R12/R8/R3/R11/R4 — see "Dashboard Initiative Follow-up" below |
+
+### Sprint 5.4 Backlog (committed plan — 2026-08-02)
+
+**Goal:** telemetry is durable (SQLite live store), bounded (retention/rollup), and actionable (isolation alerting + recovery-success metric) — closing the R5/R2 backlog before Phase 3.
+
+| # | Item | Pts | Acceptance summary |
+|---|---|---|---|
+| **T1** | SQLite **live** telemetry store — **SHIPPED** | 8 | `ReadModelStore.sync_from_jsonl()` — incremental, watermark-based, idempotent (no dupes on re-sync); synced on the 30s telemetry ticker (single writer via `facade.metrics_persist` → `sync_read_model`); facade `metrics_history_summary` / `provider_usage_summary` read the store with **fail-open to JSONL**; JSONL stays append-only source of truth (ADR 0004). AC met: appends during a live session appear without restart; re-sync idempotent; store-down → JSONL fallback. Suite 1308 → **1320 green** |
+| **T2** | Retention + rollup | 8 | `telemetry/retention.py` + `config/runtime/telemetry.yaml` (metrics 7d / provider_usage 90d / cli_telemetry 180d defaults); **rollup-then-truncate** hourly/daily aggregates; `telemetry_retention` recurring scheduler job (pattern: `memory_consolidation`); rollup-aware read path. AC: dry-run + apply; rollup math correct; raw never truncated before rollup |
+| **T3** | Isolation alerting (R2 backlog) | 3 | Unified `runtime.engine_isolated` event (engine, reason, attempts, ts) from supervisor `_isolate`/watchdog; fail-open `runtime/alerts.jsonl` + `telemetry/alerts.py` + `GET /api/alerts` + pulse/System Health red chip + KPI line; alert **resolved** on recovery (no spam). AC: alert visible within one health cycle; persists across restart |
+| **T4** | Recovery-success metric (R2 backlog) | 3 | Metrics counters `recovery_attempts` / `recovery_successes` / `recovery_failures` + gauge `recovery_success_rate`; `RecoveryManager` outcome recording (recovered → success; escalated/isolated → failure; **once per outcome**); `/telemetry` KPI line "Self-healing: N% success". AC: counters increment exactly once per outcome; rate persists in snapshot |
+| **T5** | CI segfault flake (STRETCH) | 5 | Root-cause the ubuntu `test` job exit-139 (~15% after `test_runtime_boot.py`; thread teardown + HeartbeatSender + SQLite) and fix, or land documented mitigation + tracking issue. AC: 10 consecutive green runs, or analysis + mitigation + issue |
+
+**Sequencing:** T1 (foundation) → T4 ‖ T3 (small, independent) → T2 (needs T1) → T5 (last, risk-isolated).
+
+**Definition of Done:** suite 1308 → ~1360 green; parity rows + golden tests for new read surfaces (alerts, rollup reads); ruff/mypy/format/command-map/CLI-surface/uv-audit clean; trackers updated with each commit.
+
+### Sprint 5.4 T1 Deliverables — SQLite live telemetry store (DONE)
+
+- [x] **`ReadModelStore.sync_from_jsonl()`** — watermark-based incremental import: per-source byte offsets stored in `meta` (`sync_offset_events/metrics/provider_usage`); only bytes appended since the last sync are parsed and inserted; events deduped by `event_id` (`INSERT OR IGNORE`); rows + watermarks commit in **one transaction** (crash-safe, no duplicates); missing/truncated/never-synced sources → full stream re-import (projection always mirrors source). `rebuild()` seeds the watermarks so startup rebuild → live incremental sync.
+- [x] **`ReadModelEngine.sync()`** — engine-level passthrough for the ticker/CLI; `stats()` now reports `last_sync_at`.
+- [x] **Facade repoint (fail-open)** — `RuntimeFacade.metrics_history_summary` / `provider_usage_summary` prefer the `read_model` engine's store (`persistence_enabled` preserved in the envelope); fall back to JSONL when the engine is absent or the store read fails. New `sync_read_model()`; `metrics_persist()` now persists **and** syncs (the 30s serve ticker drives both — single writer).
+- [x] **Tests** — `tests/unit/readmodel/test_readmodel.py` (+7): sync appends, idempotency, full-import-when-never-rebuilt, truncation mirror, event dedup, missing sources no-op, engine sync. `tests/unit/services/test_facade_wave2b.py` (+5): store-preferring reads, sync catch-up without restart, `metrics_persist` syncs the store, JSONL fallback preserved. Suite 1308 → **1320 green**; ruff/mypy/format/command-map/CLI-surface clean.
 
 ### Dashboard Initiative Follow-up (post-Sprint 5.3, in progress)
 
@@ -99,10 +122,10 @@
 
 ## Next Sprint Candidates (Prioritized)
 
-### 1. Sprint 5.4 — Telemetry follow-ups 📡
-R5 core (metrics + provider usage persistence) shipped with Wave 2b. Follow-ups: SQLite telemetry store, retention/rollup policies, alerting on isolation (R2 backlog), recovery-success metric.
+### 1. Sprint 5.5 — Phase 3: OpenCode desktop as first-class command center 🖥️
+Initiative Phase 3 `[NOT STARTED]`: session bridge (every session loads constitution/state, closes by posting telemetry → Model Usage / Agent Health become real), deep links both ways (dashboard → "continue in OpenCode"; desktop → "submit for review"), GUI/desktop action telemetry for the D5 north-star numerator. **Exit:** ≥90% of generation targets runnable desktop-first without typing a CLI command.
 
-### 2. Sprint 5.5 — Svelte 5 Migration (Phase 4) 🔮
+### 2. Sprint 5.6 — Svelte 5 Migration (Phase 4) 🔮
 **ADR:** 0008 (v2 deferred) — richer UX with Svelte 5 + Vite when budget allows.
 
 ---
@@ -255,5 +278,5 @@ python -m ai_company.cli.command_map validate
 
 ---
 
-*Updated: 2026-08-02 — Sprint 5.3 (`de9c851`) + R12 batch (`147540b` + `75e0595`) + R8/R3/R11 batch (`38a3d7f` + typer-group fix `935beeb`) + **R4 fallback (`1fd0c97`)** all committed + pushed; **R4 `[MITIGATED]`** — shared `services/generate_dispatch.py` fallback (opencode → free/local `ollama`) proven end-to-end across runner/CLI; **D10 persona onboarding SIGNED OFF (R11 → `[MITIGATED]`)**; R12 `[MITIGATED]`; R8 gate live (CLI surface contract, additive-only); R3 parity milestone set (≥40/71 rows by Phase 3); suite 1265 → **1308 green**; **CI green on main (run 30750231104: 8/8 jobs, after one documented-segfault-flake rerun of the ubuntu `test` job)**; remaining follow-ups: next sprint (Sprint 5.4 candidates: telemetry follow-ups)*
-*Next update: when the next sprint starts*
+*Updated: 2026-08-02 — **Sprint 5.4 T1 SHIPPED** (SQLite live telemetry store: `sync_from_jsonl` incremental watermark sync, facade reads prefer the store w/ JSONL fallback, sync wired into the 30s ticker via `metrics_persist`; suite 1308 → **1320 green**); Sprint 5.3 (`de9c851`) + R12 batch (`147540b` + `75e0595`) + R8/R3/R11 batch (`38a3d7f` + typer-group fix `935beeb`) + **R4 fallback (`1fd0c97`)** all committed + pushed; **R4 `[MITIGATED]`** — shared `services/generate_dispatch.py` fallback (opencode → free/local `ollama`) proven end-to-end across runner/CLI; **D10 persona onboarding SIGNED OFF (R11 → `[MITIGATED]`)**; R12 `[MITIGATED]`; R8 gate live (CLI surface contract, additive-only); R3 parity milestone set (≥40/71 rows by Phase 3); suite 1265 → **1308 green**; **CI green on main (run 30750231104: 8/8 jobs, after one documented-segfault-flake rerun of the ubuntu `test` job)**; **Sprint 5.4 PLANNED & COMMITTED — see "Sprint 5.4 Backlog" above (T1–T4 = 22 pts, T5 CI-flake stretch); next candidates: Sprint 5.5 (Phase 3 desktop), Sprint 5.6 (Svelte 5)***
+*Next update: at the next Sprint 5.4 commit (T2 retention/rollup, T3 isolation alerting, or T4 recovery metric)*

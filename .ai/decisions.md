@@ -60,6 +60,7 @@
 | **EventBus uses JSONL persistence** | Events persist to `events/store.jsonl` for replay. Dead-letter events go to `events/dead_letter.jsonl`. Simple, grep-able, no extra dependencies. | `events/bus.py`, `events/persistence.py` |
 | **Memory tiered storage** | Working (in-memory) → Short-term (JSONL) → Long-term (JSONL) → Archived. Tier management runs as a scheduled job. Importance thresholds drive promotion/demotion. | `memory/engine.py` |
 | **Pre-commit excludes generated/.ai-company** | Generated output and `.ai-company/` state change frequently and are gitignored from lint/format hooks. Source code in `src/` is always checked. | `.pre-commit-config.yaml` |
+| **Sprint 5.4 telemetry-hardening plan (committed 2026-08-02)** | R5/R2 close-out before Phase 3: (T1) SQLite **live** telemetry store — `ReadModelStore.sync_from_jsonl()` incremental sync so `/api/telemetry/*` reads the ADR 0004 projection (fail-open to JSONL, JSONL stays source of truth); (T2) retention + rollup (`config/runtime/telemetry.yaml`, rollup-then-truncate, scheduler job); (T3) isolation alerting (`runtime.engine_isolated` → `runtime/alerts.jsonl` → `/api/alerts` + dashboard chip); (T4) recovery-success metric (counters + KPI rate). Zero CLI-surface changes; 22 pts + T5 stretch (CI flake). | `.ai/current-work.md`, `.ai-company/state/current_sprint.yaml` |
 
 ## Decision Log (chronological)
 
@@ -164,6 +165,45 @@
   fails → ollama succeeds; opencode missing; both missing; fallback disabled),
   dispatch unit tests, and CLI wiring tests. Suite 1289 → **1308 green**;
   ruff/mypy clean. R4 → **[MITIGATED]**.
+
+### 2026-08-02 — Sprint 5.4 plan committed (telemetry: durable, bounded, actionable)
+- **T1 SQLite live telemetry store:** the ADR 0004 projection becomes the live
+  read path — `ReadModelStore.sync_from_jsonl()` (incremental, watermark-based,
+  idempotent) synced from the 30s telemetry ticker; facade telemetry summaries
+  read the store with fail-open to JSONL. Fixes staleness on long-lived `serve`
+  sessions and per-request JSONL re-parsing.
+- **T2 Retention + rollup:** `telemetry/retention.py` +
+  `config/runtime/telemetry.yaml` (metrics 7d / provider_usage 90d /
+  cli_telemetry 180d defaults); rollup-then-truncate (raw never deleted before
+  its rollup is written); `telemetry_retention` recurring scheduler job.
+- **T3 Isolation alerting (R2 backlog):** unified `runtime.engine_isolated`
+  event → fail-open `runtime/alerts.jsonl` → `GET /api/alerts` + dashboard
+  alert chip; alerts resolve on recovery (no spam).
+- **T4 Recovery-success metric (R2 backlog):** `recovery_attempts` /
+  `recovery_successes` / `recovery_failures` counters + `recovery_success_rate`
+  gauge recorded once per `RecoveryManager` outcome; KPI panel "Self-healing"
+  line.
+- **T5 (stretch):** CI segfault flake root-cause investigation.
+- **Commitments:** zero CLI-surface changes (ADR 0006); R3 parity rows + golden
+  tests for new read surfaces; suite 1308 → ~1360 green; trackers updated with
+  each commit. Plan recorded in `.ai-company/state/current_sprint.yaml`.
+
+### 2026-08-02 — Sprint 5.4 T1: SQLite live telemetry store (R5/R2 follow-up)
+- **`ReadModelStore.sync_from_jsonl()`** — watermark-based incremental import
+  (per-source byte offsets in `meta`; one transaction for rows + watermarks =
+  crash-safe, idempotent, no duplicates); events dedup by `event_id`; missing/
+  truncated/never-synced sources trigger a full stream re-import so the
+  projection always mirrors the JSONL source of truth. `rebuild()` seeds the
+  watermarks → startup rebuild + live incremental sync.
+- **Read path repointed (fail-open):** `RuntimeFacade.metrics_history_summary` /
+  `provider_usage_summary` prefer the `read_model` engine's store; fall back to
+  JSONL when the engine is absent or a read fails. `metrics_persist()` now also
+  syncs the projection — the 30s serve ticker is the single writer, so
+  `/api/telemetry/*` is served from a store that stays current without restart.
+- **ADR 0004 respected:** JSONL files remain the append-only source of truth;
+  SQLite is the derived, rebuildable projection.
+- **Tests:** +7 readmodel, +5 facade (store-preferring reads, sync catch-up
+  without restart, persist-syncs-store, JSONL fallback). Suite 1308 → **1320**.
 
 ### 2026-08-02 — Sprint 5.3 (SQLite read model + orphaned-decision close-out)
 - **ADR 0004 shipped:** `readmodel/` package — `ReadModelStore` (SQLite WAL,
