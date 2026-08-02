@@ -110,6 +110,7 @@ R5 core (metrics + provider usage persistence) shipped with Wave 2b. Follow-ups:
 ## Recently Completed (Commits)
 
 ```text
+936f9ea        fix: strip ANSI styling from CLI help in parity test (CI FORCE_COLOR wraps tokens)
 de9c851        feat: Sprint 5.3 — SQLite read model on startup (ADR 0004), agent sync scope both, Windows CI lint/type-check
 2244497        feat: Phase 2 Wave 2b + telemetry/parity/backup close-out (generate loop, decision inbox, R5 telemetry)
 66cf7c4        chore: refresh api package exports for Phase 2 write surface (ADR 0010)
@@ -211,5 +212,5 @@ python -m ai_company.cli.command_map validate
 
 ---
 
-*Updated: 2026-08-02 — Sprint 5.3 committed (`de9c851`): SQLite read model on startup (ADR 0004), agent sync scope default both, port decision kept, Windows CI lint/type-check; 1265 tests green*
+*Updated: 2026-08-02 — Sprint 5.3 committed (`de9c851`) and CI green end-to-end (all 8 jobs: lint/type-check × ubuntu+windows, test ×2, validate, build) after parity-test ANSI fix (`936f9ea`); 1265 tests green*
 *Next update: When the next sprint starts or after the next commit*
