@@ -486,6 +486,31 @@ class TestTelemetryFacade:
         assert rows["north-mini-code-free"]["requests"] == 1
         assert rows["north-mini-code-free"]["total_tokens"] == 150
 
+    def test_alerts_summary(
+        self,
+        facade: RuntimeFacade,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        target = tmp_path / "runtime" / "alerts.jsonl"
+        monkeypatch.setattr(
+            "ai_company.telemetry.alerts.ALERTS_RELATIVE_PATH",
+            target.relative_to(tmp_path),
+        )
+        from ai_company.telemetry.alerts import (
+            record_alert_open,
+            record_alert_resolved,
+        )
+
+        record_alert_open(component="engine-a", reason="heartbeat_timeout", attempts=2)
+        record_alert_resolved(component="engine-a", reason="unisolated")
+
+        summary = facade.alerts_summary()
+        assert summary["success"] is True
+        assert summary["summary"]["records"] == 2
+        assert summary["summary"]["open_count"] == 0
+        assert summary["summary"]["open_alerts"] == []
+
 
 def _write_metrics_and_usage(tmp_path: Path) -> dict[str, Path]:
     """Write tiny telemetry JSONL fixtures under ``tmp_path`` (T1)."""

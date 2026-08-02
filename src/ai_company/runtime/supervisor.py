@@ -30,6 +30,10 @@ from ai_company.runtime.models import (
     publish_runtime_event,
 )
 from ai_company.runtime.recovery import RecoveryManager
+from ai_company.telemetry.alerts import (
+    record_alert_open,
+    record_alert_resolved,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -101,11 +105,19 @@ class Supervisor:
             )
         result = self.recovery.recover(component, reason)
         if not result.success:
-            self.isolate(component, reason=f"recovery failed: {reason}")
+            self.isolate(
+                component,
+                reason=f"recovery failed: {reason}",
+                attempts=result.attempts,
+            )
         elif "isolate" in result.actions_taken:
             # Recovery stopped the process via an isolate action — the
             # component is dead, so stop monitoring it as well.
-            self.isolate(component, reason=f"isolated during recovery: {reason}")
+            self.isolate(
+                component,
+                reason=f"isolated during recovery: {reason}",
+                attempts=result.attempts,
+            )
         return result
 
     def _notify(self, component: str, reason: str, result: RecoveryResult) -> None:
@@ -128,8 +140,17 @@ class Supervisor:
 
     # ── Isolation ──────────────────────────────────────────────────
 
-    def isolate(self, component: str, reason: str = "manual") -> None:
-        """Stop monitoring a component and prevent recovery loops."""
+    def isolate(
+        self,
+        component: str,
+        reason: str = "manual",
+        attempts: int | None = None,
+    ) -> None:
+        """Stop monitoring a component and prevent recovery loops.
+
+        Publishes ``runtime.engine_isolated`` on the event bus and records an
+        open alert so the dashboard surfaces the isolation immediately.
+        """
         with self._lock:
             self._isolated.add(component)
         if self.heartbeats is not None:
@@ -137,18 +158,49 @@ class Supervisor:
         if self.health is not None:
             self.health.unregister(component)
         logger.warning("Component %s isolated (%s)", component, reason)
+        publish_runtime_event(
+            getattr(self, "event_bus", None),
+            "runtime.engine_isolated",
+            {
+                "component": component,
+                "reason": reason,
+                "attempts": attempts,
+            },
+            source="runtime.supervisor",
+        )
+        record_alert_open(
+            component=component,
+            reason=reason,
+            attempts=attempts,
+            source="runtime.supervisor",
+        )
 
     def _is_isolated(self, component: str) -> bool:
         with self._lock:
             return component in self._isolated
 
     def unisolate(self, component: str) -> None:
-        """Re-admit a component to supervision."""
+        """Re-admit a component to supervision.
+
+        Publishes ``runtime.engine_unisolated`` and resolves any open alert
+        for the component (alert resolved on recovery — no-spam contract).
+        """
         with self._lock:
             self._isolated.discard(component)
         if self.recovery is not None:
             self.recovery.reset(component)
         logger.info("Component %s un-isolated", component)
+        publish_runtime_event(
+            getattr(self, "event_bus", None),
+            "runtime.engine_unisolated",
+            {"component": component},
+            source="runtime.supervisor",
+        )
+        record_alert_resolved(
+            component=component,
+            reason="unisolated",
+            source="runtime.supervisor",
+        )
 
     def isolated(self) -> list[str]:
         with self._lock:

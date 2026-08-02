@@ -189,6 +189,40 @@ def test_telemetry_providers_read(
     assert body["summary"]["records"] == 0
 
 
+def test_alerts_read(
+    client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """T3 — GET /api/alerts exposes the open-alert summary for the red chip."""
+    _stub(
+        monkeypatch,
+        facade,
+        "alerts_summary",
+        {
+            "success": True,
+            "errors": [],
+            "summary": {
+                "persistence_enabled": True,
+                "records": 1,
+                "open_count": 1,
+                "open_alerts": [
+                    {
+                        "component": "engine-a",
+                        "opened_at": "2026-08-02T10:00:00+00:00",
+                        "reason": "heartbeat_timeout",
+                        "attempts": 2,
+                        "source": "runtime.supervisor",
+                    }
+                ],
+                "recent": [],
+            },
+        },
+    )
+    body = client.get("/api/alerts").json()
+    assert body["summary"]["open_count"] == 1
+    assert body["summary"]["open_alerts"][0]["component"] == "engine-a"
+    assert body["summary"]["open_alerts"][0]["attempts"] == 2
+
+
 def test_backup_status_read(
     client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
 ) -> None:

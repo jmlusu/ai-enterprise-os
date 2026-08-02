@@ -6,7 +6,30 @@
 {% block content %}
 <div class="card mb-1">
   <h2>Health summary <span class="chip {{ health_overall_class }}">{{ health_overall if health_overall else "unknown" }}</span></h2>
-  <p>runtime phase: <span class="mono">{{ status.get("phase", "unknown") if status else "unknown" }}</span></p>
+  <p>runtime phase: <span class="mono">{{ status.get("phase", "unknown") if status else "unknown" }}</span>
+    · <span class="chip {{ 'action' if alerts_summary.get('open_count', 0) > 0 else 'ok' }}">{{ alerts_summary.get("open_count", 0) }} open alerts</span></p>
+</div>
+
+<div class="card mb-1">
+  <h2>Isolation alerts <span class="subtitle">runtime/alerts.jsonl — resolved on recovery / un-isolation</span></h2>
+  {% if alerts_summary.get("open_alerts") %}
+  <table>
+    <thead><tr><th>Component</th><th>Opened</th><th>Reason</th><th>Attempts</th></tr></thead>
+    <tbody>
+      {% for alert in alerts_summary.get("open_alerts", []) %}
+      <tr>
+        <td class="mono">{{ alert.get("component", "") }}</td>
+        <td class="mono">{{ (alert.get("opened_at", "") or "").replace("T", " ")[:19] }}</td>
+        <td class="mono">{{ alert.get("reason", "") }}</td>
+        <td>{{ alert.get("attempts", "—") }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="subtitle mt-1">No-spam contract: repeated isolates collapse to one open alert per component.</p>
+  {% else %}
+  <p class="pending">No open isolation alerts — all components under supervision.</p>
+  {% endif %}
 </div>
 
 <div class="grid cols-2">

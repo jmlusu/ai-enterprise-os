@@ -39,7 +39,8 @@
   <p class="subtitle mt-1">
     Snapshots persist automatically every 30s while the runtime is up. Uptime:
     <span class="mono">{{ trend.get("uptime_seconds", 0) }}s</span>
-    · restarts: <span class="mono">{{ trend.get("restarts", 0) }}</span>.
+    · restarts: <span class="mono">{{ trend.get("restarts", 0) }}</span>
+    · open alerts: <span class="mono">{{ alerts_summary.get("open_count", 0) }}</span>.
   </p>
 </div>
 

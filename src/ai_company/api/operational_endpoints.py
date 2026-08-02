@@ -231,6 +231,13 @@ def register_operational_endpoints(
         """Provider usage aggregated by model (Model Usage panel data)."""
         return await run_in_threadpool(facade.provider_usage_summary, limit)
 
+    @app.get("/api/alerts", tags=["telemetry"])
+    async def alerts(
+        limit: int = Query(default=200, ge=1, le=1000),
+    ) -> dict[str, Any]:
+        """Open isolation alerts + recent tail (System Health red chip data)."""
+        return await run_in_threadpool(facade.alerts_summary, limit)
+
     @app.get("/api/backup", tags=["backup"])
     async def backup_status() -> dict[str, Any]:
         """Existing backup archives (newest first) for the R6 tile."""

@@ -16,6 +16,7 @@
     <h2>Health</h2>
     <div class="big-number"><span data-health-chip class="chip {{ health_overall_class }}">{{ health_overall if health_overall else "unknown" }}</span></div>
     <p class="subtitle">{{ health_summary.get("healthy", 0) }} healthy · {{ health_summary.get("degraded", 0) }} degraded · {{ health_summary.get("unhealthy", 0) }} unhealthy</p>
+    <p><span class="chip {{ 'action' if alerts_summary.get('open_count', 0) > 0 else 'ok' }}">{{ alerts_summary.get("open_count", 0) }} open alerts</span></p>
   </div>
   <div class="card">
     <h2>Engines</h2>

@@ -95,6 +95,8 @@ def test_event_map_covers_runtime_contract() -> None:
         "runtime.heartbeat_missed",
         "runtime.job_executed",
         "runtime.job_failed",
+        "runtime.engine_isolated",
+        "runtime.engine_unisolated",
     }
     assert expected <= set(RUNTIME_EVENT_MAP)
 

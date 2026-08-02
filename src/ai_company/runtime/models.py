@@ -553,8 +553,8 @@ def publish_runtime_event(
     """Publish a ``runtime.*`` event on the event bus (never raises).
 
     Maps the runtime contract event type to a built-in bus EventType and
-    records the original type in the payload, so the 12 ``runtime.*``
-    types remain observable even though the bus enum cannot carry them.
+    records the original type in the payload, so the ``runtime.*`` types
+    remain observable even though the bus enum cannot carry them.
     """
     if bus is None:
         return
@@ -598,6 +598,8 @@ def _build_runtime_event_map() -> dict[str, Any]:
         "runtime.heartbeat_missed": EventType.SYSTEM_HEALTH_CHECK,
         "runtime.job_executed": EventType.SYSTEM_HEALTH_CHECK,
         "runtime.job_failed": EventType.SYSTEM_ERROR,
+        "runtime.engine_isolated": EventType.SYSTEM_ERROR,
+        "runtime.engine_unisolated": EventType.SYSTEM_HEALTH_CHECK,
     }
     return mapping
 

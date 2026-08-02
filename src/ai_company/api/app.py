@@ -274,6 +274,7 @@ def create_app(
         engine_states = await _safe(facade.engine_states, default=[]) or []
         memory_stats = await _safe(facade.memory_stats, default={}) or {}
         backups = await _safe(facade.backup_status, default={}) or {}
+        alerts = await _safe(facade.alerts_summary, default={}) or {}
         # Canonical four-state overall (R12) — never derive it inline here.
         overall = status.get("overall", "unknown") if status else "unknown"
         return templates.TemplateResponse(
@@ -293,6 +294,7 @@ def create_app(
                 ),
                 memory_stats=memory_stats,
                 backups=backups,
+                alerts_summary=alerts.get("summary", {}),
             ),
         )
 
@@ -304,6 +306,7 @@ def create_app(
         status = await _safe(facade.status, default={}) or {}
         engine_states = await _safe(facade.engine_states, default=[]) or []
         diagnostics = await _safe(facade.diagnostics, default=None)
+        alerts = await _safe(facade.alerts_summary, default={}) or {}
         # Canonical four-state overall (R12) — never derive it inline here.
         overall = status.get("overall", "unknown") if status else "unknown"
         return templates.TemplateResponse(
@@ -319,6 +322,7 @@ def create_app(
                 status=status,
                 engine_states=engine_states,
                 diagnostics=diagnostics,
+                alerts_summary=alerts.get("summary", {}),
             ),
         )
 
@@ -407,6 +411,7 @@ def create_app(
         """Telemetry page (risk R5 — KPI / Model Usage / Agent Health panels)."""
         metrics = await _safe(facade.metrics_history_summary, default={}) or {}
         providers = await _safe(facade.provider_usage_summary, default={}) or {}
+        alerts = await _safe(facade.alerts_summary, default={}) or {}
         status = await _safe(facade.status, default={}) or {}
         metrics_summary = metrics.get("summary", {})
         return templates.TemplateResponse(
@@ -418,6 +423,7 @@ def create_app(
                 metrics_summary=metrics_summary,
                 trend=metrics_summary.get("trend", {}),
                 providers=providers.get("summary", {}),
+                alerts_summary=alerts.get("summary", {}),
                 status=status,
             ),
         )

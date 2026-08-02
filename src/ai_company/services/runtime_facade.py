@@ -1896,6 +1896,25 @@ class RuntimeFacade:
         except Exception as exc:
             return {"success": False, "errors": [str(exc)], "summary": {}}
 
+    def alerts_summary(self, limit: int = 200) -> dict[str, Any]:
+        """Current open isolation alerts + recent record tail (sprint 5.4 T3).
+
+        Fail-open JSONL read (``runtime/alerts.jsonl``) — monitoring never
+        breaks the API path. The summary collapses repeated isolates per
+        component into one open alert until a ``resolved`` record supersedes
+        it (alerts resolved on recovery / un-isolation).
+        """
+        from ai_company.telemetry.alerts import alerts_summary
+
+        try:
+            return {
+                "success": True,
+                "errors": [],
+                "summary": alerts_summary(limit=limit),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "summary": {}}
+
     def close(self) -> None:
         """Best-effort graceful shutdown of the runtime (idempotent)."""
         try:
