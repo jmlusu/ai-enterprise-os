@@ -1715,9 +1715,7 @@ class RuntimeFacade:
 
     # ── agent sync ───────────────────────────────────────────────────────────
 
-    def agents_sync(
-        self, scope: str = "project", force: bool = False
-    ) -> dict[str, Any]:
+    def agents_sync(self, scope: str = "both", force: bool = False) -> dict[str, Any]:
         """Sync persona agents into opencode (mirrors ``ai-company exec sync``)."""
         from ai_company.agents.sync import AgentSyncConfig, AgentSyncEngine
 

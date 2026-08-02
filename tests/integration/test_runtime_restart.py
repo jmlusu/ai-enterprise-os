@@ -64,7 +64,7 @@ def test_isolate_and_unisolate_engine(runtime) -> None:
 def test_engine_states_after_boot(runtime) -> None:
     runtime.start()
     states = {state.name: state for state in runtime.engine_states()}
-    assert len(states) == 5
+    assert len(states) == 6
     for name, state in states.items():
         if name != "event_bus":
             assert state.status is EngineStateStatus.RUNNING, name

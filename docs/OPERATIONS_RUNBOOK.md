@@ -24,7 +24,7 @@ ai-company runtime --help
 ai-company runtime start
 ```
 
-Boots the 10-step startup sequence, prints the boot summary (startup
+Boots the 11-step startup sequence, prints the boot summary (startup
 success, engines, scheduled jobs), then **blocks** in the main loop until
 Ctrl-C. Inspect in a second terminal while it runs:
 

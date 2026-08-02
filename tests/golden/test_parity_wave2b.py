@@ -134,7 +134,9 @@ def test_parity_generate_contract(client: TestClient) -> None:
     help_out = runner.invoke(
         cli_app, ["generate", "--help"], catch_exceptions=False
     ).stdout
-    assert "TARGET" in help_out
+    # Typer renders the positional argument as ``target`` (usage line +
+    # arguments table); assert the contract surface, not a metavar case.
+    assert "target" in help_out
     assert "--dry-run" in help_out
 
     schema = _post_schema(_openapi(client), "/api/generate")

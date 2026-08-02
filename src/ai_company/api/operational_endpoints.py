@@ -107,7 +107,7 @@ class ManifestUpdateBody(BaseModel):
 class AgentsSyncBody(BaseModel):
     """Agent sync options."""
 
-    scope: str = Field(default="project", pattern="^(project|global|both)$")
+    scope: str = Field(default="both", pattern="^(project|global|both)$")
     force: bool = False
 
 

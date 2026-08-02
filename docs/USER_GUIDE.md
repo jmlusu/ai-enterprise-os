@@ -328,7 +328,7 @@ monitors health, supervises recovery, and persists state.
 uv run ai-company runtime start
 ```
 
-Runs the 10-step startup sequence, prints the boot summary (phase, startup
+Runs the 11-step startup sequence, prints the boot summary (phase, startup
 success, engines, scheduled jobs), then **blocks** in the foreground.
 Stop with Ctrl-C (triggers a graceful shutdown).
 

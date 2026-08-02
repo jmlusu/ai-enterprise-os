@@ -14,8 +14,16 @@ env:
   PYTHON_VERSION: "3.12"
 
 jobs:
+  # Windows-first project (risk R10): lint and type-check run on both
+  # ubuntu-latest and windows-latest (decided Sprint 5.3 — previously only
+  # the test job covered Windows).
   lint:
-    runs-on: ubuntu-latest
+    name: Lint (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -37,7 +45,12 @@ jobs:
         run: uv run python -m ai_company.integrity.check_command_map
 
   type-check:
-    runs-on: ubuntu-latest
+    name: Type check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

@@ -1,8 +1,9 @@
 """Opencode persona agents — sync company personas into opencode agent files.
 
-By default personas are written to the project's ``.opencode/agents``; use
-``scope="global"`` to persist them to ``~/.config/opencode/agents`` so they
-are available in every opencode session.
+By default (``scope="both"``) personas are written to both the project's
+``.opencode/agents`` and the user-global ``~/.config/opencode/agents`` so
+they are available in every opencode session; use ``scope="project"`` to
+keep them project-local.
 
 Public API:
 - :mod:`ai_company.agents.slug_map` — slug assignment and collision checks

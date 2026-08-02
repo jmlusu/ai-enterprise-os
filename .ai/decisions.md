@@ -51,6 +51,10 @@
 | **Generate dispatch = streaming runner** | `services/generate_runner.py` runs OpenCode as a shell=False subprocess, streams stdout to a per-run log file, persists run records, and replays interrupted runs on boot — dashboard live logs without a blocking request. | `services/generate_runner.py` |
 | **Shared write guard module** | `api/guards.py` `WriteGuard` centralizes the ADR 0010 check sequence (host → token → CSRF → audit) so wave 2a and wave 2b endpoints can never drift; `HIGH_IMPACT_ACTIONS` lives in one place. | `api/guards.py` |
 | **Decision engine records once** | `DecisionEngine.create_decision()` / `make_decision()` already record to history — facade adapters must not double-record; the inbox survives restarts via `DecisionHistory.import_decisions()`. | `decision/engine.py`, `decision/history.py`, `services/runtime_facade.py` |
+| **Read model rebuilds on startup** | ADR 0004 resolution (Sprint 5.3): the derived SQLite projection rebuilds **on startup** via the `initialize_read_model` step (`ReadModelEngine` rebuild-on-construct). No watcher/CLI — the projection is derived from JSONL so any rebuild is safe. | `config/runtime/startup.yaml`, `readmodel/engine.py` |
+| **Agent sync default scope `both`** | Sprint 5.3 resolution: `--scope` (and API body / facade default) changed from `project` to `both` so new users get persona agents in both project and global opencode dirs. | `agents/sync.py`, `agents/__main__.py`, `api/operational_endpoints.py`, `services/runtime_facade.py` |
+| **Dashboard port stays hardcoded 127.0.0.1:8000** | Sprint 5.3 resolution: loopback-only default is kept (security R9); `--host/--port` remain per-invocation overrides; non-loopback exposure requires full ADR 0010 auth. | `cli/main.py` `serve()` |
+| **Windows CI runs lint/type-check too** | Sprint 5.3 resolution: `ci.yml` lint + type-check jobs use an `os: [ubuntu-latest, windows-latest]` matrix (`fail-fast: false`) — Windows-first project (risk R10). | `.github/workflows/ci.yml` |
 | **EventBus uses JSONL persistence** | Events persist to `events/store.jsonl` for replay. Dead-letter events go to `events/dead_letter.jsonl`. Simple, grep-able, no extra dependencies. | `events/bus.py`, `events/persistence.py` |
 | **Memory tiered storage** | Working (in-memory) → Short-term (JSONL) → Long-term (JSONL) → Archived. Tier management runs as a scheduled job. Importance thresholds drive promotion/demotion. | `memory/engine.py` |
 | **Pre-commit excludes generated/.ai-company** | Generated output and `.ai-company/` state change frequently and are gitignored from lint/format hooks. Source code in `src/` is always checked. | `.pre-commit-config.yaml` |
@@ -91,6 +95,21 @@
   repo-map, system-overview, decisions, agent-roles, current-work) so agents
   stop re-discovering the system.
 - **Rule: update the relevant `.ai/` file after every commit.**
+
+### 2026-08-02 — Sprint 5.3 (SQLite read model + orphaned-decision close-out)
+- **ADR 0004 shipped:** `readmodel/` package — `ReadModelStore` (SQLite WAL,
+  schema v1) + `ReadModelEngine` (rebuild-on-construct); `runtime/dashboard.db`
+  projection over `events/store.jsonl`, `runtime/metrics_history.jsonl`,
+  `runtime/provider_usage.jsonl`; wired into startup as `initialize_read_model`
+  step (boot = 11 steps / 6 engines).
+- **Four orphaned decisions resolved and implemented:** read model rebuild
+  **on startup**; agent sync `--scope` default **both**; dashboard port stays
+  **127.0.0.1:8000** (documented in `serve()`); **Windows CI** lint/type-check
+  matrix.
+- **Data-quality fix:** metrics JSONL writer guarantees strictly increasing
+  timestamps (`_next_timestamp()`) — Windows coarse clock could previously
+  emit identical timestamps for rapid snapshots.
+- **Suite:** 1252 → **1265 green**; ruff/mypy/format clean.
 
 ### 2026-08-02 — Phase 2 Wave 2b (generate→review→validate→approve loop) + R5
 - **Generate dispatcher** shipped: `services/generate_runner.py` (streaming

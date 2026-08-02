@@ -88,7 +88,7 @@
 | `runtime/engine.py` | `RuntimeEngine` facade + engine registry |
 | `runtime/runtime.py` | `create_runtime()`, runtime wiring |
 | `runtime/lifecycle.py` | Phase state machine (`STARTING/RUNNING/DEGRADED/STOPPING/STOPPED`) |
-| `runtime/startup.py` | `StartupExecutor` — declarative 10-step boot |
+| `runtime/startup.py` | `StartupExecutor` — declarative 11-step boot |
 | `runtime/shutdown.py` | `ShutdownExecutor` — 6-step stop |
 | `runtime/state.py` | `RuntimeStateStore` → `runtime/runtime_state.json` |
 | `runtime/configuration.py` | `RuntimeConfiguration` from `config/runtime/*.yaml` |
@@ -171,6 +171,9 @@
 | `api/auth.py` | `WriteTokenService` / `CsrfService` / `host_allowed()` / fail-open write-audit publisher (ADR 0010) |
 | `api/write_endpoints.py` | 20 mutation POSTs + `GET /api/write-csrf` + `GET /api/audit/writes` (ADR 0010) |
 | `telemetry/cli.py` | CLI invocation telemetry (fail-open JSONL) |
+| `readmodel/store.py` | `ReadModelStore` — SQLite (WAL) derived read model, schema v1, `rebuild()` from JSONL (ADR 0004) |
+| `readmodel/engine.py` | `ReadModelEngine` — rebuild-on-construct engine (startup step `initialize_read_model`); `runtime/dashboard.db` |
+| `readmodel/__init__.py` | readmodel package exports |
 | `audit/` | session, logger, jsonl, events, metrics |
 | `backup/` | `backup/backup.py` + `__main__.py` |
 | `providers/` | base, factory, registry, openai, anthropic, gemini, ollama, mock |
@@ -236,7 +239,7 @@
 |---|---|
 | `adr/0001-0010-*.md` | Architectural decision records (see `.ai/decisions.md`) |
 | `architecture.md`, `architecture-diagram.md` | Architecture overview + diagram |
-| `STARTUP_SEQUENCE.md` | 10-step boot / 6-step shutdown |
+| `STARTUP_SEQUENCE.md` | 11-step boot / 6-step shutdown |
 | `RUNTIME_ENGINE.md` | Kernel module map, job catalog |
 | `RUNTIME_LIFECYCLE.md` | Lifecycle state machine |
 | `SUPERVISOR.md` | Supervisor/recovery detail |

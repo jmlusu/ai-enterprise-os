@@ -35,10 +35,10 @@ Source lives in `src/ai_company/runtime/`; configuration in
 
 ## Boot Lifecycle
 
-`RuntimeEngine.start()` runs a **10-step startup sequence** (see
+`RuntimeEngine.start()` runs a **11-step startup sequence** (see
 [STARTUP_SEQUENCE](STARTUP_SEQUENCE.md)): load the constitution, recover
-persisted state, load configuration, initialize the five engines (memory,
-event_bus, decision, workflow, orchestration), start background workers
+persisted state, load configuration, initialize the six engines (memory,
+event_bus, decision, workflow, orchestration, read_model), start background workers
 (scheduler, watchdog, supervisor, heartbeats), and mark the runtime
 `RUNNING`.
 

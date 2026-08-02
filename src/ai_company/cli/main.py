@@ -291,8 +291,14 @@ def status() -> None:
 @app.command()
 def serve(
     host: str = typer.Option(
-        "127.0.0.1", "--host", help="Bind address (v1 is loopback-only)"
+        "127.0.0.1",
+        "--host",
+        help="Bind address (v1 is loopback-only; default stays 127.0.0.1)",
     ),
+    # Decided (Sprint 5.3): the dashboard default binding stays hardcoded
+    # 127.0.0.1:8000 — loopback-only by default, configurable per-invocation
+    # via --host/--port. Non-loopback exposure requires the full ADR 0010
+    # write-auth scheme.
     port: int = typer.Option(8000, "--port", help="Port for the dashboard API"),
     config_dir: str = typer.Option(
         "config", "--config-dir", help="Directory containing the runtime/ config"

@@ -452,11 +452,15 @@ class TestCli:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         monkeypatch.chdir(tmp_path)
+        # Default scope is "both" — pin the global agents dir to tmp_path so
+        # the dry run can never touch the real user-global directory.
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
         from ai_company.agents.__main__ import main
 
         code = main(["sync", "--dry-run"])
         assert code == 0
         assert not (tmp_path / ".opencode" / "agents").exists()
+        assert not (tmp_path / ".config" / "opencode" / "agents").exists()
         captured = capsys.readouterr().out
         assert "Dry run" in captured
         assert "ceo" in captured
@@ -469,12 +473,17 @@ class TestCli:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
         from ai_company.agents.__main__ import main
 
         code = main(["sync"])
         assert code == 0
         assert (tmp_path / ".opencode" / "agents" / "ceo.md").exists()
         assert (tmp_path / ".opencode" / "agents" / "chairperson.md").exists()
+        # Default scope "both" also persists personas globally.
+        global_dir = tmp_path / ".config" / "opencode" / "agents"
+        assert (global_dir / "ceo.md").exists()
+        assert (global_dir / "chairperson.md").exists()
         captured = capsys.readouterr().out
         assert "Sync complete" in captured
 
@@ -485,6 +494,7 @@ class TestCli:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
         from ai_company.agents.__main__ import main
 
         assert main(["sync"]) == 0
@@ -500,8 +510,14 @@ class TestCli:
 
 
 class TestScope:
-    def test_default_scope_is_project(self) -> None:
-        assert AgentSyncConfig().output_dirs() == [Path(".opencode/agents")]
+    def test_default_scope_is_both(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+        assert AgentSyncConfig().output_dirs() == [
+            Path(".opencode/agents"),
+            tmp_path / ".config" / "opencode" / "agents",
+        ]
 
     def test_global_scope_resolves_user_home(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

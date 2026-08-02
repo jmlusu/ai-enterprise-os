@@ -51,12 +51,12 @@ class AgentSyncConfig(BaseModel):
     ``scope`` controls where generated agent files are written so personas
     persist globally (available in every project) or stay project-local:
 
-    - ``"project"`` — write to ``PROJECT_AGENTS_DIR`` (default, backward
+    - ``"both"`` — write to both locations (**default**: personas are
+      available in every opencode session, not just this project)
+    - ``"project"`` — write to ``PROJECT_AGENTS_DIR`` only (backward
       compatible with the original behavior)
     - ``"global"`` — write to the user-global opencode agents directory
-      (``~/.config/opencode/agents``) so the agents are loaded by opencode
-      from every working directory
-    - ``"both"`` — write to both locations
+      (``~/.config/opencode/agents``)
 
     An explicit ``output_dir`` always wins over ``scope``.
     """
@@ -64,7 +64,7 @@ class AgentSyncConfig(BaseModel):
     dry_run: bool = False
     force: bool = False
     include_departments: bool = False
-    scope: SyncScope = "project"
+    scope: SyncScope = "both"
     output_dir: Path | None = None
     registry_dir: Path = Path("company")
     config_dir: Path = Path("config/company")

@@ -5,10 +5,10 @@ Usage::
     python -m ai_company.agents sync [--dry-run] [--force]
         [--scope project|global|both] [--output-dir PATH]
 
-- ``--scope global`` persists personas to the user-global opencode agents
-  directory (``~/.config/opencode/agents``) so they are available in every
-  project at all times; ``--scope project`` writes to ``.opencode/agents``;
-  ``--scope both`` writes to both.
+- ``--scope both`` (default) persists personas to both the project
+  ``.opencode/agents`` directory and the user-global opencode agents
+  directory (``~/.config/opencode/agents``); ``--scope project`` writes to
+  ``.opencode/agents`` only; ``--scope global`` writes globally only.
 
 This is a standalone argparse entry point — deliberately NOT part of the
 frozen ``ai_company.cli`` Typer tree.
@@ -58,11 +58,11 @@ def build_parser() -> argparse.ArgumentParser:
     sync.add_argument(
         "--scope",
         choices=("project", "global", "both"),
-        default="project",
+        default="both",
         help=(
-            "Where to write agent files: 'project' (.opencode/agents), "
-            "'global' (~/.config/opencode/agents, available in every "
-            "project), or 'both' (default: project)"
+            "Where to write agent files: 'both' (project + global; default), "
+            "'project' (.opencode/agents only), or 'global' "
+            "(~/.config/opencode/agents only)"
         ),
     )
     sync.add_argument(

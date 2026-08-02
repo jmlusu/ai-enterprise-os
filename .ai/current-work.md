@@ -9,12 +9,22 @@
 
 | Field | Value |
 |---|---|
-| **Current Sprint** | Sprint 5.2 — Phase 2 Waves 2a+2b: Write Auth (ADR 0010) + Generate→Review→Validate→Approve Loop |
-| **Status** | ✅ **COMPLETED** (2026-08-02) — Waves 2a AND 2b shipped; **Phase 2 exit criterion met** (full generate → review → validate → approve loop from the browser) |
-| **Goal** | Complete the operational dashboard pivot: guarded mutation endpoints + the full governance loop (generate dispatcher, decision inbox, per-artifact validation, graph export, company CRUD, agent sync, backup) + R5 telemetry live panels |
+| **Current Sprint** | Sprint 5.3 — SQLite derived read model (ADR 0004) + orphaned-decision close-out |
+| **Status** | 🔄 **IN PROGRESS** — implementation complete, trackers/docs being updated |
+| **Goal** | Resolve the four orphaned technical decisions: (1) read model rebuild **on startup** (ADR 0004), (2) agent sync `--scope` default **both**, (3) dashboard port stays **127.0.0.1:8000**, (4) **Windows CI** runs lint/type-check |
 | **Commit** | Wave 2a: `131d9d9` · Wave 2b: `2244497` |
-| **Created** | 2026-08-01 |
-| **Completed** | 2026-08-02 |
+| **Created** | 2026-08-02 |
+| **Completed** | — |
+
+### Sprint 5.3 Deliverables
+
+- [x] **`readmodel/` package (ADR 0004)** — `ReadModelStore` (SQLite WAL, schema v1) + `ReadModelEngine` (rebuild-on-construct = the **startup** trigger); tables `events`, `metrics_history`, `provider_usage`, `meta`; reads: `recent_events`, `event_counts_by_type`, `metrics_snapshots`, `metrics_summary`, `provider_usage_by_model`
+- [x] **Startup wiring** — `config/runtime/startup.yaml` step `initialize_read_model` (engine `read_model`, `db_path: "@state_dir"` → `runtime/dashboard.db`) before `start_runtime`; boot sequence is now **11 steps / 6 engines**
+- [x] **Agent sync `--scope` default `both`** — `agents/sync.py` (`AgentSyncConfig.scope`), `agents/__main__.py` (`--scope`), `api/operational_endpoints.py` (`AgentsSyncBody.scope`), `services/runtime_facade.py` (`agents_sync(scope="both")`); new users get project + global dirs
+- [x] **Dashboard port decision documented** — `cli/main.py` `serve()` keeps default `127.0.0.1:8000` hardcoded (loopback-only), overridable via `--host/--port`; non-loopback requires ADR 0010 auth
+- [x] **Windows CI** — `ci.yml` lint + type-check jobs now use a `os: [ubuntu-latest, windows-latest]` matrix (`fail-fast: false`); tests already ran on both
+- [x] Tests: `tests/unit/readmodel/test_readmodel.py` (13 new), boot test updated (11 steps / 6 engines incl. `read_model`), agents-sync default + CLI global-dir writes; suite 1252 → **1265 green**; ruff/mypy/format clean
+- [x] Pre-existing fixes while green-checking: metrics JSONL writer now guarantees strictly increasing timestamps (Windows coarse clock); parity test asserts Typer 0.27 `target` rendering; ruff SIM117/RUF100 cleanups in wave 2b tests
 
 ### Sprint 5.2 Wave 2b Deliverables — All Done
 
@@ -78,13 +88,10 @@
 
 ## Next Sprint Candidates (Prioritized)
 
-### 1. Sprint 5.3 — SQLite derived read model (ADR 0004) 📊
-**ADR:** 0004 (Accepted) — rebuildable SQLite (WAL) projection for dashboard reads; rebuild trigger decision needed (startup? watcher? CLI?).
-
-### 2. Sprint 5.4 — Telemetry follow-ups 📡
+### 1. Sprint 5.4 — Telemetry follow-ups 📡
 R5 core (metrics + provider usage persistence) shipped with Wave 2b. Follow-ups: SQLite telemetry store, retention/rollup policies, alerting on isolation (R2 backlog), recovery-success metric.
 
-### 3. Sprint 5.5 — Svelte 5 Migration (Phase 4) 🔮
+### 2. Sprint 5.5 — Svelte 5 Migration (Phase 4) 🔮
 **ADR:** 0008 (v2 deferred) — richer UX with Svelte 5 + Vite when budget allows.
 
 ---
@@ -93,10 +100,10 @@ R5 core (metrics + provider usage persistence) shipped with Wave 2b. Follow-ups:
 
 | Issue | Context | Decision Needed |
 |---|---|---|
-| **SQLite read model rebuild trigger** | ADR 0004 accepted | On startup? Watcher? Manual CLI? |
-| **Agent sync `--scope` default** | Currently defaults to `global` | Default to `both` for new users? |
-| **Dashboard port binding** | Hardcoded `127.0.0.1:8000` | Make configurable via `config/runtime/*.yaml`? |
-| **Windows CI matrix** | Only test job runs on Windows | Should lint/typecheck also run on Windows? |
+| ~~SQLite read model rebuild trigger~~ | ADR 0004 accepted | ✅ **Resolved (Sprint 5.3): rebuild on startup** via `initialize_read_model` step (`ReadModelEngine` rebuild-on-construct) |
+| ~~Agent sync `--scope` default~~ | Previously defaulted to `project` | ✅ **Resolved (Sprint 5.3): default `both`** for new users (project + global) |
+| ~~Dashboard port binding~~ | Hardcoded `127.0.0.1:8000` | ✅ **Resolved (Sprint 5.3): keep hardcoded loopback default**; overridable via `--host/--port`; non-loopback requires ADR 0010 auth |
+| ~~Windows CI matrix~~ | Only test job ran on Windows | ✅ **Resolved (Sprint 5.3): lint + type-check also run on Windows** (ubuntu + windows matrix) |
 
 ---
 
@@ -121,14 +128,12 @@ b6d5a26        feat: Phase 1 wave 1 — dashboard API server (read-only contract
 
 ## Key Context for Next Session
 
-1. **Phase 2 Waves 2a+2b (ADR 0010) are SHIPPED** — Wave 2a commit `131d9d9`;
-   Wave 2b committed with this update. The dashboard now runs the full
-   **generate → review → validate → approve loop**: `/generate` streams an
-   OpenCode run with live logs + history, `/decisions` renders the approval
-   inbox (risk cards, approve/reject/escalate), per-artifact validators run
-   from the API, and graph export / company CRUD / agent sync / backup /
-   telemetry all have guarded, audited write endpoints. **Phase 2 exit
-   criterion met. Suite: 1252 tests green.**
+1. **Sprint 5.3 (SQLite read model + decision close-out) is IN PROGRESS** — the
+   four orphaned decisions from the previous session are now resolved and
+   implemented: read model rebuild **on startup** (ADR 0004,
+   `runtime/dashboard.db` WAL projection over the JSONL sources of truth),
+   agent sync `--scope` default **both**, dashboard port stays **127.0.0.1:8000**,
+   and **Windows CI** now runs lint/type-check. Suite: **1265 tests green**.
 
 2. **R5 telemetry is live** — runtime metrics persist every 30s to
    `runtime/metrics_history.jsonl`, provider usage to
@@ -204,5 +209,5 @@ python -m ai_company.cli.command_map validate
 
 ---
 
-*Updated: 2026-08-02 — Phase 2 Waves 2a+2b committed; exit criterion met (generate → review → validate → approve loop), R5 telemetry live panels, 1252 tests green*
-*Next update: When Sprint 5.3 (SQLite read model, ADR 0004) starts or after the next commit*
+*Updated: 2026-08-02 — Sprint 5.3 in progress: SQLite read model on startup (ADR 0004), agent sync scope default both, port decision kept, Windows CI lint/type-check; 1265 tests green*
+*Next update: When Sprint 5.3 commits or completes, or after the next commit*

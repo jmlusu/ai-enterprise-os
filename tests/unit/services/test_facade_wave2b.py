@@ -85,18 +85,18 @@ class _FakeRunner:
             "args": ["opencode", "run"],
         }
 
-    def list_runs(self, limit: int = 50) -> list[Any]:  # noqa: ARG002
+    def list_runs(self, limit: int = 50) -> list[Any]:
         return [_FakeRun(self._run)]
 
     def get(self, run_id: str) -> Any | None:
         return _FakeRun(self._run) if run_id == "run-1" else None
 
-    def log_tail(self, run_id: str, max_lines: int = 400) -> list[str]:  # noqa: ARG002
+    def log_tail(self, run_id: str, max_lines: int = 400) -> list[str]:
         if run_id != "run-1":
             raise KeyError(f"run not found: {run_id}")
         return ["line one", "line two"]
 
-    def start(self, target: str, reason: str = "") -> Any:  # noqa: ARG002
+    def start(self, target: str, reason: str = "") -> Any:
         if target == "bogus":
             raise ValueError(f"unknown generate target: {target}")
         return _FakeRun(self._run)

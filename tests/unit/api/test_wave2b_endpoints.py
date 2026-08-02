@@ -396,11 +396,11 @@ def test_graph_export_guarded(
 
 
 def test_ws_rejects_without_token_when_enforced(enforced_client: TestClient) -> None:
-    with pytest.raises(WebSocketDisconnect):
-        with enforced_client.websocket_connect(
-            "/api/ws", headers={"host": "127.0.0.1"}
-        ):
-            pass  # pragma: no cover — server closes before accept
+    with (
+        pytest.raises(WebSocketDisconnect),
+        enforced_client.websocket_connect("/api/ws", headers={"host": "127.0.0.1"}),
+    ):
+        pass  # pragma: no cover — server closes before accept
 
 
 def test_ws_accepts_with_valid_token(
@@ -421,11 +421,13 @@ def test_ws_accepts_with_valid_token(
 
 
 def test_ws_rejects_bad_token_when_enforced(enforced_client: TestClient) -> None:
-    with pytest.raises(WebSocketDisconnect):
-        with enforced_client.websocket_connect(
+    with (
+        pytest.raises(WebSocketDisconnect),
+        enforced_client.websocket_connect(
             "/api/ws?token=wrong-token", headers={"host": "127.0.0.1"}
-        ):
-            pass  # pragma: no cover
+        ),
+    ):
+        pass  # pragma: no cover
 
 
 def test_ws_allows_anonymous_on_plain_loopback(

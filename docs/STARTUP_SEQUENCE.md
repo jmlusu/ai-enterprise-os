@@ -5,7 +5,7 @@ ordered boot steps, and the shutdown executor derives its steps from the
 same dependency graph in reverse order. Executors live in
 `src/ai_company/runtime/startup.py` and `shutdown.py`.
 
-## Startup Steps (10)
+## Startup Steps (11)
 
 `StartupExecutor.run()` executes every step in order and records a
 `StartupSequence` with per-step status (`running → completed/failed`),
@@ -21,8 +21,9 @@ duration, and reuse flag.
 | 6 | `initialize_decision_engine` | class | Instantiate `DecisionEngine`, register as `decision` |
 | 7 | `initialize_workflow_engine` | class | Instantiate `WorkflowManager`, register as `workflow` |
 | 8 | `initialize_orchestrator` | class | Instantiate `OrchestrationEngine`, register as `orchestration` |
-| 9 | `start_runtime` | internal | Start workers: event bus, registered engines, scheduler, watchdog, supervisor, config jobs |
-| 10 | `ready` | internal | Mark the runtime `RUNNING`, persist `set_started`, publish `runtime.started` |
+| 9 | `initialize_read_model` | class | Instantiate `ReadModelEngine`, register as `read_model`; rebuild `runtime/dashboard.db` from the JSONL sources (ADR 0004 — rebuild trigger is **startup**) |
+| 10 | `start_runtime` | internal | Start workers: event bus, registered engines, scheduler, watchdog, supervisor, config jobs |
+| 11 | `ready` | internal | Mark the runtime `RUNNING`, persist `set_started`, publish `runtime.started` |
 
 ## Step Types
 

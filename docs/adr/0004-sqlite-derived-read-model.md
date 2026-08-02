@@ -1,6 +1,6 @@
 # ADR 0004 — SQLite (WAL) derived read model for dashboard reads
 
-Status: Accepted
+Status: Accepted (rebuild trigger resolved 2026-08-02 — **on startup**)
 Date: 2026-08-01
 Deciders: CDO, Data Engineering, Cloud Architecture
 
@@ -19,10 +19,18 @@ artifacts).
    rebuildable projection for dashboard queries (never written by the
    CLI/services directly except through the sync/replay path).
 3. WAL mode for concurrent dashboard reads while the runtime writes.
+4. **Rebuild trigger (Sprint 5.3): on startup.** The declarative boot
+   sequence gains an `initialize_read_model` step
+   (`ReadModelEngine`, `src/ai_company/readmodel/engine.py`) that drops
+   and re-imports every table from the JSONL sources when the runtime
+   starts. No watcher, no manual CLI — the projection is derived, so any
+   rebuild is safe and the dashboard always queries a consistent snapshot.
 
 ## Consequences
 
 - `runtime/dashboard.db` (gitignored) can be rebuilt at any time from the
   event log — no data-loss risk.
+- Startup cost: one SQLite rebuild pass over the JSONL sources at boot
+  (bounded by source size; acceptable for a local-first OS).
 - The read model is built in Phase 1; until then the dashboard reads the
   JSONL/JSON sources directly.

@@ -24,13 +24,20 @@ def test_runtime_boots_end_to_end(runtime) -> None:
     status = runtime.start()
     assert status.phase is RuntimePhase.RUNNING
     assert runtime.startup_sequence.success is True
-    assert len(runtime.startup_sequence.steps) == 10
+    assert len(runtime.startup_sequence.steps) == 11
 
 
 def test_all_core_engines_registered(runtime) -> None:
     runtime.start()
     names = set(runtime.engines)
-    assert {"memory", "event_bus", "decision", "workflow", "orchestration"} <= names
+    assert {
+        "memory",
+        "event_bus",
+        "decision",
+        "workflow",
+        "orchestration",
+        "read_model",
+    } <= names
 
 
 def test_scheduler_jobs_loaded_from_config(runtime) -> None:
@@ -52,6 +59,7 @@ def test_health_all_green_after_boot(runtime) -> None:
         "decision",
         "workflow",
         "orchestration",
+        "read_model",
         "system",
     } <= components
     assert all(check.status is HealthStatus.HEALTHY for check in checks)
@@ -60,8 +68,8 @@ def test_health_all_green_after_boot(runtime) -> None:
 def test_metrics_reflect_running_engines(runtime) -> None:
     runtime.start()
     metrics = runtime.metrics()
-    assert metrics.active_engines == 5
-    assert metrics.engine_healthy == 5
+    assert metrics.active_engines == 6
+    assert metrics.engine_healthy == 6
     assert metrics.queue_sizes.get("pending", 0) == 5
     assert metrics.counters.get("starts", 0) >= 1
 
@@ -72,7 +80,7 @@ def test_diagnostics_report_complete(runtime) -> None:
     assert len(report.errors) == 0
     assert report.phase is RuntimePhase.RUNNING
     assert len(report.config_sections) == 8
-    assert len(report.engines) == 5
+    assert len(report.engines) == 6
 
 
 def test_runtime_stops_cleanly(runtime) -> None:
@@ -136,4 +144,4 @@ def test_runtime_restart_keeps_engines_and_jobs(runtime) -> None:
     runtime.restart(reason="test-restart")
     assert runtime.status().phase is RuntimePhase.RUNNING
     assert len(runtime.scheduler.jobs()) == 5
-    assert len(runtime.engines) == 5
+    assert len(runtime.engines) == 6

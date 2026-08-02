@@ -71,7 +71,7 @@ subprocess → Validator Engine gates the result.
 
 ## Run-Time Layer (long-lived kernel)
 
-Booted by `ai-company runtime start` through the 10-step declarative startup
+Booted by `ai-company runtime start` through the 11-step declarative startup
 sequence (`config/runtime/startup.yaml`). Runs background workers (heartbeat,
 watchdog, scheduler, supervisor) until Ctrl-C.
 
@@ -79,7 +79,7 @@ watchdog, scheduler, supervisor) until Ctrl-C.
 |---|---|---|
 | RuntimeEngine (facade) | `runtime/engine.py` | Kernel facade; owns lifecycle, engine registry, state store. |
 | RuntimeLifecycle | `runtime/lifecycle.py` | Phase state machine `STARTING → RUNNING ↔ DEGRADED → STOPPING → STOPPED`. |
-| Startup/Shutdown | `runtime/startup.py`, `runtime/shutdown.py` | Declarative 10-step boot / 6-step stop. |
+| Startup/Shutdown | `runtime/startup.py`, `runtime/shutdown.py` | Declarative 11-step boot / 6-step stop. |
 | Heartbeat + Watchdog | `runtime/heartbeat.py`, `runtime/watchdog.py` | 5s heartbeats; stale-detection. |
 | Health + Metrics | `runtime/health.py`, `runtime/metrics.py` | Health reporting; `runtime.metrics` snapshot. |
 | Supervisor + Recovery | `runtime/supervisor.py`, `runtime/recovery.py` | Per-engine restart → isolate (ADR 0007). |
@@ -134,8 +134,8 @@ company/*.yaml ──► RegistryEngine.load() ──► frozen CompanyRegistry
 ```
 ai-company runtime start
   ──► StartupExecutor.run(config/runtime/startup.yaml)
-      10 steps: constitution → state → config → memory → event_bus
-               → decision → workflow → orchestration → start workers → ready
+      11 steps: constitution → state → config → memory → event_bus
+               → decision → workflow → orchestration → read model → start workers → ready
   ──► main_loop() (1s refresh) with background workers
 ```
 

@@ -16,13 +16,18 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 METRICS_HISTORY_RELATIVE_PATH = Path("runtime") / "metrics_history.jsonl"
+
+# Last timestamp emitted by this process, so rapid successive snapshots always
+# get strictly increasing timestamps even on platforms whose system clock has
+# coarse resolution (e.g. Windows ~15 ms ticks).
+_last_timestamp: str | None = None
 
 
 def metrics_history_path() -> Path:
@@ -39,7 +44,7 @@ def log_metrics_snapshot(snapshot: dict[str, Any]) -> None:
     """
     try:
         record: dict[str, Any] = {
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": _next_timestamp(),
             "snapshot": snapshot,
         }
         path = metrics_history_path()
@@ -48,6 +53,22 @@ def log_metrics_snapshot(snapshot: dict[str, Any]) -> None:
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
     except Exception as exc:
         logger.debug("Metrics history write failed: %s", exc)
+
+
+def _next_timestamp() -> str:
+    """UTC ISO-8601 timestamp, strictly increasing within this process.
+
+    ``datetime.now(UTC)`` can return the same value twice on coarse-clock
+    platforms; bump by one microsecond so ordering facts (trend, first/last)
+    stay meaningful.
+    """
+    global _last_timestamp
+    candidate = datetime.now(UTC).isoformat()
+    if _last_timestamp is not None and candidate <= _last_timestamp:
+        last_dt = datetime.fromisoformat(_last_timestamp)
+        candidate = (last_dt + timedelta(microseconds=1)).isoformat()
+    _last_timestamp = candidate
+    return candidate
 
 
 def read_metrics_history(limit: int = 100) -> list[dict[str, Any]]:

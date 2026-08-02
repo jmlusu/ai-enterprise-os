@@ -69,6 +69,16 @@ startup:
       engine: "orchestration"
       params: {}
 
+    - name: "initialize_read_model"
+      description: >-
+        Rebuild the SQLite derived read model (runtime/dashboard.db, WAL)
+        from the JSONL sources of truth (ADR 0004; trigger = on startup)
+      module: "ai_company.readmodel.engine"
+      class: "ReadModelEngine"
+      engine: "read_model"
+      params:
+        db_path: "@state_dir"
+
     - name: "start_runtime"
       description: "Start runtime workers (heartbeat, scheduler, watchdog, metrics)"
       target: "start_runtime"

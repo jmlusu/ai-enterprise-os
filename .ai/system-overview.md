@@ -50,7 +50,7 @@ the Validator Engine as a gate. Stateless — each invocation is fresh.
 ### Run-Time
 
 Triggered by `ai-company runtime start`. Boots the kernel through a
-**10-step declarative startup sequence** (`config/runtime/startup.yaml`),
+**11-step declarative startup sequence** (`config/runtime/startup.yaml`),
 then blocks in `main_loop()` until Ctrl-C. Background workers (heartbeat,
 watchdog, scheduler, supervisor) keep engines alive and self-healing.
 
@@ -66,8 +66,9 @@ STARTING ───────────────────────�
   │  6. initialize_decision_engine (DecisionEngine → "decision")
   │  7. initialize_workflow_engine (WorkflowManager → "workflow")
   │  8. initialize_orchestrator (OrchestrationEngine → "orchestration")
-  │  9. start_runtime (start workers: event bus, scheduler, watchdog, supervisor, config jobs)
-  │ 10. ready (mark RUNNING, publish runtime.started)
+  │  9. initialize_read_model (ReadModelEngine → "read_model"; rebuilds runtime/dashboard.db from JSONL)
+  │ 10. start_runtime (start workers: event bus, scheduler, watchdog, supervisor, config jobs)
+  │ 11. ready (mark RUNNING, publish runtime.started)
   ▼
 RUNNING ───────────────────────────────────────
   │  main_loop: refresh metrics every loop_interval_seconds (1.0s)
@@ -258,7 +259,7 @@ are never held on the event loop.
 - `.ai/repo-map.md` — file-by-file map of every module
 - `diagrams/data-flow-diagram.md` — process & data-store index (Level 0/1/2)
 - `docs/EXECUTION_MODEL.md` — orchestration plan/schedule/run/recovery
-- `docs/STARTUP_SEQUENCE.md` — 10-step boot / 6-step shutdown
+- `docs/STARTUP_SEQUENCE.md` — 11-step boot / 6-step shutdown
 - `docs/RUNTIME_ENGINE.md` — kernel module map, job catalog
 - `docs/PIPELINES.md` — task types, stage modes, built-in pipelines
 - `docs/OPERATIONS_RUNBOOK.md` — daily operations, troubleshooting
