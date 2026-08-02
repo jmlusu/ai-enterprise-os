@@ -25,7 +25,7 @@ import json
 import sys
 from pathlib import Path
 
-from click import Command, Group, Parameter
+from click import Command, Parameter
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CONTRACT_FILE = REPO_ROOT / "src" / "ai_company" / "cli" / "cli_surface_contract.json"
@@ -41,14 +41,20 @@ def _param_entry(param: Parameter) -> dict:
 
 
 def describe_command(cmd: Command) -> dict:
-    """Describe a command (or group) as a nested contract dict."""
+    """Describe a command (or group) as a nested contract dict.
+
+    Group detection is attribute-based (``commands`` dict present) rather
+    than ``isinstance(cmd, Group)``: typer's ``TyperGroup`` is not always
+    a ``click.Group`` subclass across typer versions (0.25 vs 0.27), but
+    every group exposes a ``commands`` mapping.
+    """
     entry: dict = {"params": {}}
     for param in cmd.params or []:
         entry["params"][param.name] = _param_entry(param)
-    if isinstance(cmd, Group):
+    subcommands = getattr(cmd, "commands", None) or {}
+    if subcommands:
         entry["commands"] = {
-            name: describe_command(sub)
-            for name, sub in sorted((cmd.commands or {}).items())
+            name: describe_command(sub) for name, sub in sorted(subcommands.items())
         }
     return entry
 
