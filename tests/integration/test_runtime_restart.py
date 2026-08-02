@@ -24,7 +24,7 @@ def test_restart_preserves_scheduler_jobs(runtime) -> None:
     runtime.start()
     runtime.restart(reason="test")
     jobs = runtime.scheduler.jobs()
-    assert len(jobs) == 5
+    assert len(jobs) == 6
     assert runtime.status().phase is RuntimePhase.RUNNING
 
 

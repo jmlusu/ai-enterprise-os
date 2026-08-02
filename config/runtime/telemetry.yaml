@@ -1,0 +1,29 @@
+# Runtime Telemetry Configuration
+# Retention + rollup policies for the telemetry JSONL sources of truth.
+#
+# Rollup-then-truncate contract (sprint 5.4 T2): before any raw record older
+# than its source's retention window is truncated, it is aggregated into
+# hourly/daily rollup records appended to the source's rollup file. Raw data
+# is never truncated before rollup completes. The `telemetry_retention`
+# scheduler job applies these policies on an interval; `retention status`
+# (dry-run) reports what the next apply would do.
+
+version: "1.0"
+description: "Retention and rollup policies for runtime telemetry logs"
+
+retention:
+  metrics_history:
+    days: 7
+    rollup: true
+  provider_usage:
+    days: 90
+    rollup: true
+  cli_telemetry:
+    days: 180
+    rollup: true
+
+rollup:
+  enabled: true
+  granularities:
+    - "hourly"
+    - "daily"

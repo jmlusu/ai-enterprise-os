@@ -42,6 +42,11 @@
     · restarts: <span class="mono">{{ trend.get("restarts", 0) }}</span>
     · open alerts: <span class="mono">{{ alerts_summary.get("open_count", 0) }}</span>.
   </p>
+  <p class="subtitle mt-1">
+    Retention (rollup-then-truncate): {% for source in retention_summary.get("sources", []) %}
+    <span class="mono">{{ source.get("key", "") }} {{ source.get("days", 0) }}d</span>{% if not loop.last %} · {% endif %}{% endfor %}
+    <span class="subtitle">— raw expired rows are rolled up hourly/daily before truncation (scheduler job)</span>.
+  </p>
 </div>
 
 <div class="card mb-1">

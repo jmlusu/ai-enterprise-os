@@ -223,6 +223,40 @@ def test_alerts_read(
     assert body["summary"]["open_alerts"][0]["attempts"] == 2
 
 
+def test_telemetry_retention_read(
+    client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """T2 — GET /api/telemetry/retention exposes the dry-run retention report."""
+    _stub(
+        monkeypatch,
+        facade,
+        "retention_status",
+        {
+            "success": True,
+            "errors": [],
+            "summary": {
+                "persistence_enabled": True,
+                "applied": False,
+                "total_raw": 3,
+                "total_expired": 2,
+                "sources": [
+                    {
+                        "key": "metrics_history",
+                        "days": 7,
+                        "raw_records": 3,
+                        "expired_records": 2,
+                        "would_rollup": 2,
+                    }
+                ],
+            },
+        },
+    )
+    body = client.get("/api/telemetry/retention").json()
+    assert body["summary"]["total_expired"] == 2
+    assert body["summary"]["sources"][0]["key"] == "metrics_history"
+    assert body["summary"]["applied"] is False
+
+
 def test_backup_status_read(
     client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
 ) -> None:

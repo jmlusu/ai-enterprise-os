@@ -511,6 +511,40 @@ class TestTelemetryFacade:
         assert summary["summary"]["open_count"] == 0
         assert summary["summary"]["open_alerts"] == []
 
+    def test_retention_status(
+        self,
+        facade: RuntimeFacade,
+        tmp_path: Path,
+    ) -> None:
+        """T2 — dry-run report reads raw counts per source, never mutates."""
+        (tmp_path / "runtime").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "runtime" / "metrics_history.jsonl").write_text(
+            json.dumps(
+                {
+                    "timestamp": "2026-08-01T10:00:00+00:00",
+                    "snapshot": {"cpu_percent": 12.0},
+                }
+            )
+            + "\n"
+            + json.dumps(
+                {
+                    "timestamp": "2026-08-02T10:00:00+00:00",
+                    "snapshot": {"cpu_percent": 10.0},
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        summary = facade.retention_status()
+        assert summary["success"] is True
+        report = summary["summary"]
+        assert report["applied"] is False  # read-only dry run
+        metrics = next(s for s in report["sources"] if s["key"] == "metrics_history")
+        assert metrics["raw_records"] == 2
+        assert metrics["days"] == 7
+        assert metrics["rollup"] is True
+
 
 def _write_metrics_and_usage(tmp_path: Path) -> dict[str, Path]:
     """Write tiny telemetry JSONL fixtures under ``tmp_path`` (T1)."""

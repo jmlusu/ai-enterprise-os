@@ -45,10 +45,11 @@ def test_all_core_engines_registered(runtime) -> None:
 def test_scheduler_jobs_loaded_from_config(runtime) -> None:
     runtime.start()
     jobs = runtime.scheduler.jobs()
-    assert len(jobs) == 5
+    assert len(jobs) == 6
     names = {job.name for job in jobs}
     assert "Daily executive briefing" in names
     assert "Continuous memory consolidation" in names
+    assert "Telemetry retention + rollup" in names
 
 
 def test_health_all_green_after_boot(runtime) -> None:
@@ -72,7 +73,7 @@ def test_metrics_reflect_running_engines(runtime) -> None:
     metrics = runtime.metrics()
     assert metrics.active_engines == 6
     assert metrics.engine_healthy == 6
-    assert metrics.queue_sizes.get("pending", 0) == 5
+    assert metrics.queue_sizes.get("pending", 0) == 6
     assert metrics.counters.get("starts", 0) >= 1
 
 
@@ -81,7 +82,7 @@ def test_diagnostics_report_complete(runtime) -> None:
     report = runtime.diagnostics()
     assert len(report.errors) == 0
     assert report.phase is RuntimePhase.RUNNING
-    assert len(report.config_sections) == 8
+    assert len(report.config_sections) == 9
     assert len(report.engines) == 6
 
 
@@ -164,5 +165,5 @@ def test_runtime_restart_keeps_engines_and_jobs(runtime) -> None:
     runtime.start()
     runtime.restart(reason="test-restart")
     assert runtime.status().phase is RuntimePhase.RUNNING
-    assert len(runtime.scheduler.jobs()) == 5
+    assert len(runtime.scheduler.jobs()) == 6
     assert len(runtime.engines) == 6

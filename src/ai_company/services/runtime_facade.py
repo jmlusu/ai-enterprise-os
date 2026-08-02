@@ -1915,6 +1915,37 @@ class RuntimeFacade:
         except Exception as exc:
             return {"success": False, "errors": [str(exc)], "summary": {}}
 
+    def retention_status(self) -> dict[str, Any]:
+        """Telemetry retention dry-run report (sprint 5.4 T2).
+
+        Reports raw/expired/rollup counts per source under the policies in
+        ``config/runtime/telemetry.yaml`` — read-only, never mutates files.
+        The `telemetry_retention` scheduler job performs the actual
+        rollup-then-truncate apply.
+        """
+        from ai_company.telemetry.retention import load_policies, retention_summary
+
+        try:
+            policies = load_policies(self._section_telemetry())
+            return {
+                "success": True,
+                "errors": [],
+                "summary": retention_summary(policies=policies),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "summary": {}}
+
+    def _section_telemetry(self) -> dict[str, Any]:
+        """Return the ``telemetry`` config section (empty when unavailable)."""
+        try:
+            runtime = getattr(self, "_runtime", None)
+            if runtime is None:
+                return {}
+            section = runtime.runtime_config.section("telemetry")
+            return section or {}
+        except Exception:
+            return {}
+
     def close(self) -> None:
         """Best-effort graceful shutdown of the runtime (idempotent)."""
         try:

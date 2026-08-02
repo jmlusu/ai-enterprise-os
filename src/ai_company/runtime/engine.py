@@ -552,6 +552,7 @@ class RuntimeEngine:
         self._job_handlers["event_publish"] = self._job_event_publish
         self._job_handlers["memory_consolidation"] = self._job_memory_consolidation
         self._job_handlers["orchestrate_pipeline"] = self._job_orchestrate_pipeline
+        self._job_handlers["telemetry_retention"] = self._job_telemetry_retention
 
     def register_job_handler(
         self, name: str, handler: Callable[[Any, Any], Any]
@@ -633,6 +634,25 @@ class RuntimeEngine:
             )
         except Exception as exc:
             logger.warning("Memory consolidation failed: %s", exc)
+
+    def _job_telemetry_retention(self, job: Any, runtime: Any) -> None:
+        """Apply telemetry retention policies (rollup-then-truncate, fail-open).
+
+        Backed by ``config/runtime/telemetry.yaml`` (sprint 5.4 T2). Never
+        raises: a retention failure must not break the scheduler worker.
+        """
+        try:
+            from ai_company.telemetry.retention import apply_retention, load_policies
+
+            policies = load_policies(self._section("telemetry"))
+            report = apply_retention(policies=policies, dry_run=False)
+            logger.info(
+                "Telemetry retention applied: %s rolled up, %s truncated",
+                report.get("total_rolled_up", 0),
+                report.get("total_truncated", 0),
+            )
+        except Exception as exc:
+            logger.warning("Telemetry retention failed: %s", exc)
 
     def _job_orchestrate_pipeline(self, job: Any, runtime: Any) -> None:
         orchestration = self.get_engine_optional("orchestration")

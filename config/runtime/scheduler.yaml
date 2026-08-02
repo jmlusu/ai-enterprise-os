@@ -64,3 +64,12 @@ scheduler:
       handler: "memory_consolidation"
       params: {}
       enabled: true
+
+    telemetry_retention:
+      name: "Telemetry retention + rollup"
+      description: "Rollup expired telemetry records and truncate raw JSONL logs"
+      kind: "recurring"
+      interval_seconds: 3600
+      handler: "telemetry_retention"
+      params: {}
+      enabled: true

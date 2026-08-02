@@ -412,6 +412,7 @@ def create_app(
         metrics = await _safe(facade.metrics_history_summary, default={}) or {}
         providers = await _safe(facade.provider_usage_summary, default={}) or {}
         alerts = await _safe(facade.alerts_summary, default={}) or {}
+        retention = await _safe(facade.retention_status, default={}) or {}
         status = await _safe(facade.status, default={}) or {}
         metrics_summary = metrics.get("summary", {})
         return templates.TemplateResponse(
@@ -424,6 +425,7 @@ def create_app(
                 trend=metrics_summary.get("trend", {}),
                 providers=providers.get("summary", {}),
                 alerts_summary=alerts.get("summary", {}),
+                retention_summary=retention.get("summary", {}),
                 status=status,
             ),
         )

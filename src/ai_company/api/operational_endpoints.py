@@ -238,6 +238,11 @@ def register_operational_endpoints(
         """Open isolation alerts + recent tail (System Health red chip data)."""
         return await run_in_threadpool(facade.alerts_summary, limit)
 
+    @app.get("/api/telemetry/retention", tags=["telemetry"])
+    async def telemetry_retention() -> dict[str, Any]:
+        """Retention dry-run report (raw/expired/rollup counts per source)."""
+        return await run_in_threadpool(facade.retention_status)
+
     @app.get("/api/backup", tags=["backup"])
     async def backup_status() -> dict[str, Any]:
         """Existing backup archives (newest first) for the R6 tile."""

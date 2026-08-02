@@ -66,8 +66,22 @@ def test_builtin_job_handlers_registered(runtime: RuntimeEngine) -> None:
         "event_publish",
         "memory_consolidation",
         "orchestrate_pipeline",
+        "telemetry_retention",
     ):
         assert name in runtime._job_handlers
+
+
+def test_job_telemetry_retention_runs_fail_open(
+    runtime: RuntimeEngine, tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The retention job applies policies and never raises (T2)."""
+    monkeypatch.chdir(tmp_path)  # keep any truncation inside the tmp dir
+
+    class _FakeJob:
+        name = "telemetry_retention"
+
+    runtime._job_telemetry_retention(_FakeJob(), runtime)  # must not raise
+    assert runtime._section("telemetry").get("retention", {})
 
 
 def test_job_noop_and_event_publish(runtime: RuntimeEngine) -> None:

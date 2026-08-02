@@ -10,6 +10,7 @@ Sections:
 - ``health`` — health check thresholds
 - ``recovery`` — recovery policies for engines/processes
 - ``diagnostics`` — diagnostic report collection settings
+- ``telemetry`` — retention + rollup policies for telemetry logs
 
 Each ``load_*_config(path)`` parses one file and merges it over built-in
 defaults (missing files fall back to defaults with a warning), matching
@@ -131,6 +132,20 @@ DEFAULT_DIAGNOSTICS_CONFIG: dict[str, Any] = {
     }
 }
 
+DEFAULT_TELEMETRY_CONFIG: dict[str, Any] = {
+    "telemetry": {
+        "retention": {
+            "metrics_history": {"days": 7, "rollup": True},
+            "provider_usage": {"days": 90, "rollup": True},
+            "cli_telemetry": {"days": 180, "rollup": True},
+        },
+        "rollup": {
+            "enabled": True,
+            "granularities": ["hourly", "daily"],
+        },
+    }
+}
+
 _CONFIG_SECTIONS: dict[str, tuple[str, dict[str, Any]]] = {
     "runtime": ("runtime.yaml", DEFAULT_RUNTIME_CONFIG),
     "startup": ("startup.yaml", DEFAULT_STARTUP_CONFIG),
@@ -140,6 +155,7 @@ _CONFIG_SECTIONS: dict[str, tuple[str, dict[str, Any]]] = {
     "health": ("health.yaml", DEFAULT_HEALTH_CONFIG),
     "recovery": ("recovery.yaml", DEFAULT_RECOVERY_CONFIG),
     "diagnostics": ("diagnostics.yaml", DEFAULT_DIAGNOSTICS_CONFIG),
+    "telemetry": ("telemetry.yaml", DEFAULT_TELEMETRY_CONFIG),
 }
 
 
@@ -253,6 +269,14 @@ def load_diagnostics_config(
     return _load_section("diagnostics", config_dir, required=required)
 
 
+def load_telemetry_config(
+    config_dir: str | Path = RUNTIME_CONFIG_DIR,
+    required: bool = False,
+) -> dict[str, Any]:
+    """Load telemetry retention + rollup settings."""
+    return _load_section("telemetry", config_dir, required=required)
+
+
 # ── Combined loader ────────────────────────────────────────────────
 
 
@@ -264,7 +288,7 @@ def load_all_runtime_configs(
 
     Returns a dict keyed by section name (``runtime``, ``startup``,
     ``heartbeat``, ``scheduler``, ``monitoring``, ``health``,
-    ``recovery``, ``diagnostics``).
+    ``recovery``, ``diagnostics``, ``telemetry``).
     """
     return {
         section: _load_section(section, config_dir, required=required)
