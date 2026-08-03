@@ -26,7 +26,7 @@
 | **T1** | SQLite **live** telemetry store â€” **SHIPPED** | 8 | `ReadModelStore.sync_from_jsonl()` â€” incremental, watermark-based, idempotent (no dupes on re-sync); synced on the 30s telemetry ticker (single writer via `facade.metrics_persist` â†’ `sync_read_model`); facade `metrics_history_summary` / `provider_usage_summary` read the store with **fail-open to JSONL**; JSONL stays append-only source of truth (ADR 0004). AC met: appends during a live session appear without restart; re-sync idempotent; store-down â†’ JSONL fallback. Suite 1308 â†’ **1320 green** |
 | **T2** | Retention + rollup â€” **SHIPPED** | 8 | `telemetry/retention.py` + `config/runtime/telemetry.yaml` (metrics 7d / provider_usage 90d / cli_telemetry 180d defaults); **rollup-then-truncate** hourly/daily aggregates (idempotent: buckets already in the rollup file skipped); `telemetry_retention` recurring scheduler job (3600s, pattern: `memory_consolidation`); `RuntimeFacade.retention_status` + `GET /api/telemetry/retention` (read-only report) + telemetry caption; every path fail-open. AC met: dry-run + apply; rollup math correct; raw never truncated before rollup; corrupt timestamps never truncated. Suite 1344 â†’ **1364 green** |
 | **T3** | Isolation alerting (R2 backlog) â€” **SHIPPED** | 3 | Unified `runtime.engine_isolated` event (engine, reason, attempts, ts) from supervisor `isolate()` (the single watchdog/health/recovery funnel; `runtime.engine_unisolated` on re-admission); fail-open `runtime/alerts.jsonl` + `telemetry/alerts.py` + `GET /api/alerts` + pulse/System Health red chip + telemetry KPI line; alert **resolved** on un-isolate (no spam â€” latest record per component wins). AC met: alert visible within one health cycle; persists across restart. Suite 1327 â†’ **1344 green** |
-| **T4** | Recovery-success metric (R2 backlog) | 3 | Metrics counters `recovery_attempts` / `recovery_successes` / `recovery_failures` + gauge `recovery_success_rate`; `RecoveryManager` outcome recording (recovered â†’ success; escalated/isolated â†’ failure; **once per outcome**); `/telemetry` KPI line "Self-healing: N% success". AC: counters increment exactly once per outcome; rate persists in snapshot |
+| **T4** | Recovery-success metric (R2 backlog) — **SHIPPED** | 3 | Metrics counters `recovery_attempts` / `recovery_successes` / `recovery_failures` + gauge `recovery_success_rate`; `RecoveryManager` outcome recording (recovered â†’ success; escalated/isolated â†’ failure; **once per outcome**); `/telemetry` KPI line "Self-healing: N% success". AC: counters increment exactly once per outcome; rate persists in snapshot |
 | **T5** | CI segfault flake (STRETCH) — **SHIPPED** | 5 | Root-cause: shutdown order stopped engines before workers, so supervisor/health-monitor threads probed closed SQLite connections (segfault on teardown). Fix: `shutdown.py` reorders steps — **stop_workers** (heartbeat_sender, scheduler, watchdog, supervisor) **before** stop_engines. Defense: `ReadModelEngine.health()` catches `sqlite3.Error` on closed connection. AC met: full suite 1364 green locally; CI run reran successfully; 10+ consecutive green runs validated locally. |
 
 **Sequencing:** T1 (foundation) â†’ T4 â€– T3 (small, independent) â†’ T2 (needs T1) â†’ T5 (last, risk-isolated).
@@ -176,7 +176,7 @@ Initiative Phase 3 `[NOT STARTED]` — **kickoff draft (2026-08-03):**
 - [x] **Design rationale** — verified against opencode docs (rules/): project `AGENTS.md` is the recommended committed rules file; `opencode.json` `instructions` field was **not** used for the constitution because it would reference gitignored `.ai-company/` paths from committed config (fresh-clone breakage) and `opencode.json` already carries user-local drift (`permission: "allow"`, never committed). Plugin `event` hooks are deferred to P2 (telemetry-on-close needs bus events, not static context).
 - [x] **No code/CLI/test impact** — markdown-only; suite/ruff/mypy/command-map/CLI-surface unaffected. Zero CLI-surface changes (ADR 0006).
 
-### Sprint 5.5 P2 Deliverables - Session bridge: telemetry on close (DONE, CI pending)
+### Sprint 5.5 P2 Deliverables - Session bridge: telemetry on close (DONE, CI green)
 
 - [x] **Capture plugin (machine-local, gitignored)** - `.opencode/plugins/session-telemetry.ts` registers event hooks: `session.updated` / `session.idle` (`end_reason: "idle"`), `session.deleted` (`"deleted"`), plugin `dispose` (`"shutdown"`), plus per-message token/cost rollup from `message.updated` and per-call tool usage from `tool.execute.after` (both deduped via Sets). Flushes only when dirty; fetches `AI_ENTERPRISE_API_URL` (default `http://127.0.0.1:8000`) + optional `AI_ENTERPRISE_WRITE_TOKEN`, refreshes CSRF via `GET /api/write-csrf`, one 403 retry; `client.app.log` failure throttle. Event/type names verified against installed `@opencode-ai/plugin@1.18.7` + `@opencode-ai/sdk@1.18.7` typings; single-file strict `tsc` typecheck clean (Bun runtime provides `process`).
 - [x] **Storage** - `telemetry/sessions.py`: fail-open JSONL at `runtime/session_telemetry.jsonl`, `_MAX_RECORDS = 5000` prune cap, `record_session_telemetry` (keyword-only), `read_session_telemetry(limit=200)`, `session_telemetry_summary(limit=200)` (newest-per-session dedupe, totals, by_model / by_end_reason). Retention: `session_telemetry` added to `SOURCE_PATHS` + `DEFAULT_POLICIES` (days 180, rollup false - per-session record, not a time series) + mirror in `config/runtime/telemetry.yaml`.
@@ -305,13 +305,14 @@ b6d5a26        feat: Phase 1 wave 1 â€” dashboard API server (read-only con
     all gates clean. **Next: P3 deep link dashboard → "continue in OpenCode."**
 
 12. **Local model tag cleanup (2026-08-03, infra, not a sprint P-item)** — the
-    four deepseek tags were all the same model (DeepSeek-R1-Distill-Qwen-7B,
-    one blob) differing only by default `num_ctx`. Removed duplicate
-    `deepseek-r1:7b-64k` and unused `deepseek-r1-4k:latest`; kept standard
-    `deepseek-r1:7b` + long-context `deepseek-r1-64k:latest`. `opencode.json`
-    updated: `deepseek-r1:7b-64k` model entry replaced by `deepseek-r1-64k:latest`,
-    `plan` agent repointed to `ollama/deepseek-r1-64k:latest` (identical
-    behavior). Verified: `ollama list` clean, JSON valid, inference OK.
+    deepseek tags were all the same model (DeepSeek-R1-Distill-Qwen-7B, one
+    blob) differing only by default `num_ctx`. Removed duplicate
+    `deepseek-r1:7b-64k`, unused `deepseek-r1-4k:latest`, and later the
+    duplicate `deepseek-r1:7b`; kept the single long-context
+    `deepseek-r1-64k:latest`. `opencode.json` updated: only
+    `deepseek-r1-64k:latest` remains, `plan` agent uses
+    `ollama/deepseek-r1-64k:latest`. Verified: `ollama list` clean, JSON valid,
+    inference OK.
 
 ---
 

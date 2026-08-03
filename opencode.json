@@ -23,10 +23,6 @@
           "name": "Mistral 7B"
         },
 
-        "deepseek-r1:7b": {
-          "name": "DeepSeek R1 7B"
-        },
-
         "deepseek-r1-64k:latest": {
           "name": "DeepSeek R1 7B 64K"
         }
@@ -64,10 +60,7 @@
 
   "default_agent": "build",
 
-  "permission": {
-    "bash": "ask",
-    "edit": "ask"
-  },
+  "permission": "allow",
 
   "compaction": {
     "auto": true,
