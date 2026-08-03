@@ -82,6 +82,44 @@
   {% endif %}
 </div>
 
+<div class="card mb-1">
+  <h2>OpenCode sessions <span class="subtitle">runtime/session_telemetry.jsonl — desktop plugin checkpoints</span></h2>
+  {% if sessions_summary.get("recent") %}
+  <table>
+    <thead>
+      <tr><th>Session</th><th>Model</th><th>User</th><th>Assistant</th><th>Tool calls</th><th>Commands</th><th>Tokens</th><th>Cost</th><th>End</th><th>Updated</th></tr>
+    </thead>
+    <tbody>
+      {% for session in sessions_summary.get("recent", []) %}
+      <tr>
+        <td class="mono">{{ (session.get("title", "") or session.get("session_id", ""))[:42] }}</td>
+        <td class="mono">{{ session.get("model_id", "—") }}</td>
+        <td>{{ session.get("messages_user", 0) }}</td>
+        <td>{{ session.get("messages_assistant", 0) }}</td>
+        <td>{{ session.get("tool_calls", 0) }}</td>
+        <td>{{ session.get("commands_run", 0) }}</td>
+        <td class="mono">{{ session.get("tokens_input", 0) + session.get("tokens_output", 0) }}</td>
+        <td class="mono">{{ "%.4f"|format(session.get("cost", 0.0)) }}</td>
+        <td>{{ session.get("end_reason", "checkpoint") }}</td>
+        <td class="mono">{{ (session.get("timestamp", "") or "").replace("T", " ")[:19] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="subtitle mt-1">
+    Totals: {{ sessions_summary.get("sessions", 0) }} sessions ·
+    {{ sessions_summary.get("totals", {}).get("user_messages", 0) }} user ·
+    {{ sessions_summary.get("totals", {}).get("assistant_messages", 0) }} assistant messages ·
+    {{ sessions_summary.get("totals", {}).get("tool_calls", 0) }} tool calls ·
+    {{ sessions_summary.get("totals", {}).get("commands_run", 0) }} commands.
+  </p>
+  {% else %}
+  <p class="empty">No OpenCode session telemetry recorded yet. Install the
+    <span class="mono">.opencode/plugins/session-telemetry.ts</span> capture plugin
+    (OpenCode desktop + <span class="mono">ai-company serve</span>) to start tracking sessions.</p>
+  {% endif %}
+</div>
+
 <div class="card">
   <h2>Agent health <span class="subtitle">live runtime status</span></h2>
   {% if status %}

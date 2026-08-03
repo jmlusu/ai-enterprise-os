@@ -21,6 +21,9 @@ retention:
   cli_telemetry:
     days: 180
     rollup: true
+  session_telemetry:
+    days: 180
+    rollup: false
 
 rollup:
   enabled: true

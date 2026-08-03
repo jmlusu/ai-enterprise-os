@@ -62,6 +62,7 @@ contract), 0009 (API contract), 0010 (Phase 2 write auth — ratified 2026-08-01
 | Agent sync | `python -m ai_company.agents sync` | `POST /api/agents/sync` | Agents view | **SHIPPED** (`1+2`, Wave 2b) |
 | Backups | `python -m ai_company.backup` | `GET/POST /api/backup` + `/api/backup/status` | Backups view + pulse tile | **SHIPPED** (`1+2`, Wave 2b) |
 | CLI telemetry | `runtime/cli_telemetry.jsonl` | `GET /api/telemetry/*` | Model/command usage | **SHIPPED** (`1+2`, Wave 2b telemetry panels) |
+| OpenCode session telemetry | (plugin `.opencode/plugins/session-telemetry.ts` — no CLI command) | `POST /api/telemetry/session` + `GET /api/telemetry/sessions` | Sessions panel | **SHIPPED** (Sprint 5.5 P2 — parity **N/A**: plugin-only capture source, CLI surface frozen ADR 0006) |
 | Dashboards (sprint) | (static `dashboards/sprint_dashboard.html`) | `GET /api/dashboard/sprint` | Sprint dashboard | DEFERRED — replaced by the new dashboard (finding #3) |
 
 ---

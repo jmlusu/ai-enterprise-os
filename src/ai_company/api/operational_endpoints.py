@@ -11,6 +11,7 @@ Read (no auth, same as the rest of the GET contract):
 - ``GET /api/validate/{artifact}`` — per-artifact validation passes
 - ``GET /api/company`` — registry file list
 - ``GET /api/telemetry/metrics``, ``GET /api/telemetry/providers`` — R5 panels
+- ``GET /api/telemetry/sessions`` — OpenCode session checkpoints (sprint 5.5 P2)
 
 Write (bearer token + CSRF + audit, identical contract to wave 2a via the
 shared :class:`WriteGuard`):
@@ -21,7 +22,8 @@ shared :class:`WriteGuard`):
 - ``POST /api/graph/export``, ``POST /api/company/departments``,
   ``DELETE /api/company/departments/{name}``, ``PATCH /api/company/manifest``
 - ``POST /api/agents/sync``, ``POST /api/backup``,
-  ``POST /api/telemetry/metrics`` (snapshot persistence)
+  ``POST /api/telemetry/metrics`` (snapshot persistence),
+  ``POST /api/telemetry/session`` (OpenCode session checkpoint)
 """
 
 from __future__ import annotations
@@ -121,6 +123,38 @@ class GraphExportBody(BaseModel):
     """Graph export options."""
 
     output_dir: str = Field(default="generated", max_length=500)
+
+
+class SessionTelemetryBody(BaseModel):
+    """One OpenCode session checkpoint (sprint 5.5 P2 plugin payload).
+
+    ``session_id`` is required; the rest are the plugin's captured counters
+    (already non-negative) plus last-seen model/provider metadata. Numeric
+    fields are clamped to their non-negative domain by validation.
+    """
+
+    session_id: str = Field(..., min_length=1, max_length=200)
+    started_at: str | None = Field(default=None, max_length=64)
+    updated_at: str | None = Field(default=None, max_length=64)
+    end_reason: str = Field(default="checkpoint", max_length=50)
+    title: str = Field(default="", max_length=500)
+    directory: str = Field(default="", max_length=1000)
+    project_id: str | None = Field(default=None, max_length=200)
+    agent: str | None = Field(default=None, max_length=200)
+    model_id: str | None = Field(default=None, max_length=200)
+    provider_id: str | None = Field(default=None, max_length=200)
+    messages_user: int = Field(default=0, ge=0)
+    messages_assistant: int = Field(default=0, ge=0)
+    tool_calls: int = Field(default=0, ge=0)
+    commands_run: int = Field(default=0, ge=0)
+    tools_used: dict[str, int] = Field(default_factory=dict)
+    tokens_input: int = Field(default=0, ge=0)
+    tokens_output: int = Field(default=0, ge=0)
+    tokens_reasoning: int = Field(default=0, ge=0)
+    cost: float = Field(default=0.0, ge=0.0)
+    additions: int = Field(default=0, ge=0)
+    deletions: int = Field(default=0, ge=0)
+    files_changed: int = Field(default=0, ge=0)
 
 
 # ── registration ──────────────────────────────────────────────────────────
@@ -242,6 +276,13 @@ def register_operational_endpoints(
     async def telemetry_retention() -> dict[str, Any]:
         """Retention dry-run report (raw/expired/rollup counts per source)."""
         return await run_in_threadpool(facade.retention_status)
+
+    @app.get("/api/telemetry/sessions", tags=["telemetry"])
+    async def telemetry_sessions(
+        limit: int = Query(default=200, ge=1, le=5000),
+    ) -> dict[str, Any]:
+        """OpenCode session checkpoints (Sessions panel data, sprint 5.5 P2)."""
+        return await run_in_threadpool(facade.session_telemetry_summary, limit)
 
     @app.get("/api/backup", tags=["backup"])
     async def backup_status() -> dict[str, Any]:
@@ -453,3 +494,23 @@ def register_operational_endpoints(
         """Snapshot current runtime metrics into the persisted history."""
         result = await run_in_threadpool(facade.metrics_persist)
         return guard.audited(result, "telemetry.metrics.persist")
+
+    @app.post("/api/telemetry/session", tags=["telemetry", "write"])
+    async def telemetry_session_persist(
+        body: SessionTelemetryBody,
+        _: None = Depends(guard.guard("telemetry.session.persist")),
+    ) -> dict[str, Any]:
+        """Persist one OpenCode session checkpoint (sprint 5.5 P2 plugin).
+
+        Not a high-impact action (ADR 0010 §5) — no reason is required — but
+        it rides the same bearer-token + CSRF + audit guard as every other
+        mutation and publishes ``audit.write`` on success.
+        """
+        result = await run_in_threadpool(
+            facade.session_telemetry_record, body.model_dump()
+        )
+        return guard.audited(
+            result,
+            "telemetry.session.persist",
+            extra={"session_id": body.session_id, "end_reason": body.end_reason},
+        )

@@ -545,6 +545,40 @@ class TestTelemetryFacade:
         assert metrics["days"] == 7
         assert metrics["rollup"] is True
 
+    def test_session_telemetry_record_and_summary(
+        self,
+        facade: RuntimeFacade,
+        tmp_path: Path,
+    ) -> None:
+        """P2 — checkpoint record persists; summary dedups to newest per session."""
+        record = {
+            "session_id": "sess-1",
+            "title": "Sprint 5.5 P2",
+            "messages_user": 2,
+            "messages_assistant": 3,
+            "tool_calls": 4,
+            "commands_run": 1,
+            "tools_used": {"read": 2},
+            "end_reason": "idle",
+        }
+        result = facade.session_telemetry_record(dict(record))
+        assert result["success"] is True
+        assert result["session_id"] == "sess-1"
+
+        record["end_reason"] = "deleted"
+        record["messages_assistant"] = 4
+        result = facade.session_telemetry_record(dict(record))
+        assert result["success"] is True
+
+        summary = facade.session_telemetry_summary()
+        assert summary["success"] is True
+        data = summary["summary"]
+        assert data["sessions"] == 1
+        assert data["records"] == 2
+        assert data["recent"][0]["messages_assistant"] == 4
+        assert data["recent"][0]["end_reason"] == "deleted"
+        assert data["totals"]["tool_calls"] == 4
+
 
 def _write_metrics_and_usage(tmp_path: Path) -> dict[str, Path]:
     """Write tiny telemetry JSONL fixtures under ``tmp_path`` (T1)."""

@@ -52,6 +52,10 @@ SOURCE_PATHS: dict[str, tuple[Path, Path]] = {
         Path("runtime") / "cli_telemetry.jsonl",
         Path("runtime") / "rollup_cli_telemetry.jsonl",
     ),
+    "session_telemetry": (
+        Path("runtime") / "session_telemetry.jsonl",
+        Path("runtime") / "rollup_session_telemetry.jsonl",
+    ),
 }
 
 # Default retention policies (mirror config/runtime/telemetry.yaml).
@@ -59,6 +63,7 @@ DEFAULT_POLICIES: dict[str, dict[str, Any]] = {
     "metrics_history": {"days": 7, "rollup": True},
     "provider_usage": {"days": 90, "rollup": True},
     "cli_telemetry": {"days": 180, "rollup": True},
+    "session_telemetry": {"days": 180, "rollup": False},
 }
 
 GRANULARITIES: tuple[str, ...] = ("hourly", "daily")

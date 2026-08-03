@@ -408,11 +408,12 @@ def create_app(
 
     @app.get("/telemetry", response_class=HTMLResponse, include_in_schema=False)
     async def telemetry_view(request: Request) -> HTMLResponse:
-        """Telemetry page (risk R5 — KPI / Model Usage / Agent Health panels)."""
+        """Telemetry page (risk R5 — KPI / Model Usage / Sessions / Agent Health)."""
         metrics = await _safe(facade.metrics_history_summary, default={}) or {}
         providers = await _safe(facade.provider_usage_summary, default={}) or {}
         alerts = await _safe(facade.alerts_summary, default={}) or {}
         retention = await _safe(facade.retention_status, default={}) or {}
+        sessions = await _safe(facade.session_telemetry_summary, default={}) or {}
         status = await _safe(facade.status, default={}) or {}
         metrics_summary = metrics.get("summary", {})
         return templates.TemplateResponse(
@@ -426,6 +427,7 @@ def create_app(
                 providers=providers.get("summary", {}),
                 alerts_summary=alerts.get("summary", {}),
                 retention_summary=retention.get("summary", {}),
+                sessions_summary=sessions.get("summary", {}),
                 status=status,
             ),
         )
@@ -500,6 +502,7 @@ def create_app(
                 "agents_sync": "/api/agents/sync",
                 "backup": "/api/backup",
                 "telemetry_metrics": "/api/telemetry/metrics",
+                "telemetry_session": "/api/telemetry/session",
             },
             "endpoints": {
                 "health": "/api/health",
@@ -535,6 +538,7 @@ def create_app(
                 "company_files": "/api/company",
                 "telemetry_metrics": "/api/telemetry/metrics",
                 "telemetry_providers": "/api/telemetry/providers",
+                "telemetry_sessions": "/api/telemetry/sessions",
                 "websocket": "/api/ws?since=<iso8601>",
                 "docs": "/api/docs",
             },

@@ -257,6 +257,40 @@ def test_telemetry_retention_read(
     assert body["summary"]["applied"] is False
 
 
+def test_telemetry_sessions_read(
+    client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """P2 — GET /api/telemetry/sessions exposes OpenCode session checkpoints."""
+    _stub(
+        monkeypatch,
+        facade,
+        "session_telemetry_summary",
+        {
+            "success": True,
+            "errors": [],
+            "summary": {
+                "persistence_enabled": True,
+                "records": 1,
+                "sessions": 1,
+                "recent": [
+                    {
+                        "session_id": "sess-1",
+                        "title": "Sprint 5.5 P2",
+                        "messages_user": 2,
+                        "messages_assistant": 3,
+                        "tool_calls": 4,
+                        "end_reason": "deleted",
+                    }
+                ],
+                "totals": {"tool_calls": 4},
+            },
+        },
+    )
+    body = client.get("/api/telemetry/sessions").json()
+    assert body["summary"]["sessions"] == 1
+    assert body["summary"]["recent"][0]["session_id"] == "sess-1"
+
+
 def test_backup_status_read(
     client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -458,6 +492,91 @@ def test_graph_export_guarded(
         headers=_auth(token=_TOKEN),
     )
     assert resp.status_code == 200
+
+
+def test_telemetry_session_persist_requires_auth(
+    enforced_client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """P2 — with loopback token enforcement on, a missing bearer is a 401."""
+    _stub(
+        monkeypatch,
+        facade,
+        "session_telemetry_record",
+        {"success": True, "errors": [], "session_id": "sess-1"},
+    )
+    resp = enforced_client.post("/api/telemetry/session", json={"session_id": "sess-1"})
+    assert resp.status_code == 401
+    assert _audit_actions(enforced_client)[-1]["action"] == "telemetry.session.persist"
+
+
+def test_telemetry_session_persist_bad_csrf(
+    client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _stub(
+        monkeypatch,
+        facade,
+        "session_telemetry_record",
+        {"success": True, "errors": [], "session_id": "sess-1"},
+    )
+    resp = client.post(
+        "/api/telemetry/session",
+        json={"session_id": "sess-1"},
+        headers=_auth(token=_TOKEN, csrf="wrong"),
+    )
+    assert resp.status_code == 403
+
+
+def test_telemetry_session_persist_guarded_and_audited(
+    client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """P2 — guarded checkpoint post succeeds and publishes audit.write."""
+    captured = _stub(
+        monkeypatch,
+        facade,
+        "session_telemetry_record",
+        {"success": True, "errors": [], "session_id": "sess-1"},
+    )
+    resp = client.post(
+        "/api/telemetry/session",
+        json={
+            "session_id": "sess-1",
+            "title": "Sprint 5.5 P2",
+            "messages_user": 2,
+            "messages_assistant": 3,
+            "tool_calls": 4,
+            "commands_run": 1,
+            "tools_used": {"read": 2},
+            "end_reason": "idle",
+        },
+        headers=_auth(token=_TOKEN),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["session_id"] == "sess-1"
+    body = captured[0][0][0]  # facade.session_telemetry_record(record)
+    assert body["session_id"] == "sess-1"
+    assert body["tool_calls"] == 4
+    actions = _audit_actions(client)
+    assert actions[-1]["action"] == "telemetry.session.persist"
+    assert actions[-1]["result"] == "ok"
+    assert actions[-1]["details"]["session_id"] == "sess-1"
+
+
+def test_telemetry_session_persist_rejects_negative_counts(
+    client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """P2 — the Pydantic body clamps counters to their non-negative domain."""
+    _stub(
+        monkeypatch,
+        facade,
+        "session_telemetry_record",
+        {"success": True, "errors": [], "session_id": "sess-1"},
+    )
+    resp = client.post(
+        "/api/telemetry/session",
+        json={"session_id": "sess-1", "tool_calls": -1},
+        headers=_auth(token=_TOKEN),
+    )
+    assert resp.status_code == 422
 
 
 # ── WebSocket token enforcement (wave 2b) ─────────────────────────────────

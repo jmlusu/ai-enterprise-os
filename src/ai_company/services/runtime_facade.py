@@ -1935,6 +1935,43 @@ class RuntimeFacade:
         except Exception as exc:
             return {"success": False, "errors": [str(exc)], "summary": {}}
 
+    def session_telemetry_record(self, record: dict[str, Any]) -> dict[str, Any]:
+        """Persist one OpenCode session checkpoint (sprint 5.5 P2).
+
+        The endpoint layer already validated the payload against the Pydantic
+        body model; this adapter is a thin fail-open call into the telemetry
+        module so ingestion never breaks the caller's path.
+        """
+        from ai_company.telemetry.sessions import record_session_telemetry
+
+        try:
+            record_session_telemetry(**record)
+            return {
+                "success": True,
+                "errors": [],
+                "session_id": record.get("session_id", ""),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)]}
+
+    def session_telemetry_summary(self, limit: int = 200) -> dict[str, Any]:
+        """OpenCode session checkpoints summary (sprint 5.5 P2 Sessions panel).
+
+        Fail-open JSONL read (``runtime/session_telemetry.jsonl``) — telemetry
+        reads never break the API path. The newest checkpoint per session is
+        reported with aggregate totals, per-model rows, and end-reason counts.
+        """
+        from ai_company.telemetry.sessions import session_telemetry_summary
+
+        try:
+            return {
+                "success": True,
+                "errors": [],
+                "summary": session_telemetry_summary(limit=limit),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "summary": {}}
+
     def _section_telemetry(self) -> dict[str, Any]:
         """Return the ``telemetry`` config section (empty when unavailable)."""
         try:
