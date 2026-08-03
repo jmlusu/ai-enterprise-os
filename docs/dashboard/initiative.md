@@ -1,8 +1,8 @@
 # Initiative: GUI Dashboard + OpenCode Desktop as Command Centers
 
-Status: **ACTIVE — Phase 1 DONE (read-only dashboard v1 shipped 2026-08-01); Phase 2 Waves 2a+2b SHIPPED 2026-08-02 — exit criterion met (full generate → review → validate → approve loop from the browser); Phase 3 next (OpenCode desktop as first-class command center)**
+Status: **ACTIVE — Phase 1 DONE (read-only dashboard v1 shipped 2026-08-01); Phase 2 Waves 2a+2b SHIPPED 2026-08-02 — exit criterion met (full generate → review → validate → approve loop from the browser); Phase 3 IN PROGRESS (Sprint 5.5: P1 + P2 SHIPPED 2026-08-03 — OpenCode desktop as first-class command center)**
 Owner: Chief Architect (opencode/big-pickle) · Ratified by: CEO / CIO / CTO / CAIO / CDO / SWE
-Last updated: 2026-08-02
+Last updated: 2026-08-03
 
 > This file is the **living tracker** for the initiative. Every phase, risk, and
 > decision below is updated as work lands. Status markers used:
@@ -143,7 +143,7 @@ Parity matrix P2 rows → **`1+2`** (all safe-write rows live on both surfaces).
 
 ### Phase 3 — OpenCode desktop as first-class command center (3–4 wks)
 
-`[IN PROGRESS — 2026-08-03, Sprint 5.5]` — **P1 SHIPPED**: session bridge `AGENTS.md` (committed) auto-loads constitution + sprint state + `.ai/current-work.md` on every open. Plan in `.ai/current-work.md` (P1–P6, 32 pts). Groundwork **committed** (`src/ai_company/agents/` agent-sync engine + `tests/test_agents_sync.py` — earlier "untracked" note is stale).
+`[IN PROGRESS — 2026-08-03, Sprint 5.5]` — **P1 SHIPPED**: session bridge `AGENTS.md` (committed) auto-loads constitution + sprint state + `.ai/current-work.md` on every open. **P2 SHIPPED (commit `8e07d9d`)**: session telemetry-on-close — machine-local OpenCode plugin `.opencode/plugins/session-telemetry.ts` (gitignored; pins `@opencode-ai/plugin`+`sdk` 1.18.7) flushes on session.idle/deleted/dispose (CSRF refresh + one 403 retry; per-message/per-call dedupe) to the **guarded audited** `POST /api/telemetry/session` (WriteGuard `telemetry.session.persist`, not high-impact) → fail-open `runtime/session_telemetry.jsonl` (5000-record cap) + retention source (180d, rollup false) + `GET /api/telemetry/sessions` + `/telemetry` **Sessions panel** — Model Usage / Agent Health become real for the first time (D5 numerator groundwork). Plan in `.ai/current-work.md` (P1–P6, 32 pts). Groundwork **committed** (`src/ai_company/agents/` agent-sync engine + `tests/test_agents_sync.py` — earlier "untracked" note is stale).
 
 - Session bridge: every session loads constitution/state (P1 ✅) and closes by posting telemetry (P2, session endpoint) → Model Usage and Agent Health become real for the first time; P2 also instruments GUI/desktop action telemetry = honest D5 numerator (P5).
 - Deep links both ways: dashboard → "continue in OpenCode" (P3); desktop → "submit for review" (P4).

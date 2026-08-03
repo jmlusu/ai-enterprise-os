@@ -57,6 +57,12 @@ ai-company serve                         # dashboard API on 127.0.0.1:8000 (loop
   actions need a `reason`. Never log or render tokens.
 - **Dashboard** is loopback-only by default (ADR 0002); statuses use the
   canonical four-state vocabulary `ok`/`watch`/`action`/`unknown` (R12).
+- **Session telemetry (Sprint 5.5 P2):** OpenCode sessions post checkpoints to
+  the guarded audited `POST /api/telemetry/session` via the machine-local plugin
+  `.opencode/plugins/session-telemetry.ts` (gitignored; flushes on
+  session.idle/deleted/dispose); server persists to
+  `runtime/session_telemetry.jsonl` → `/telemetry` Sessions panel. Not
+  high-impact (no `reason`).
 - **Quality gates must be green:** full pytest suite, ruff, mypy `--strict`,
   format, command-map, CLI-surface, `uv audit`. CI runs these on ubuntu +
   windows.

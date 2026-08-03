@@ -9,12 +9,12 @@
 
 | Field | Value |
 |---|---|
-| **Current Sprint** | Sprint 5.4 â€” Telemetry: durable, bounded, actionable (SQLite store, retention/rollup, isolation alerting, recovery metric) — **COMPLETE 2026-08-03** |
-| **Status** | ✅ **COMPLETE** â€” T1 + T2 + T3 + T4 + T5 all SHIPPED; suite **1364 green**; all CI runs 8/8 (T5 post-fix: runs `30799819043` + `30800484976`) |
-| **Goal** | Complete the R5/R2 telemetry story before Phase 3: (T1) SQLite **live** telemetry store (incremental sync, read path = ADR 0004 projection), (T2) retention + rollup policies (config-driven, rollup-then-truncate, scheduler job), (T3) isolation alerting (`runtime.engine_isolated` â†’ alerts â†’ dashboard), (T4) recovery-success metric (counters + KPI rate), (T5, stretch) CI segfault root-cause. Zero CLI-surface changes (ADR 0006); R3 parity rows for new reads |
-| **Commit** | Sprint 5.4: T1 `294e107` Â· T2 `11fde80` Â· T3 `f690133` Â· T4 `9dba281` Â· T5 `b93a886` Â· tracker hashes `f3c4989`/`314498a`/`345500c` Â· Sprint 5.3: `de9c851` Â· Wave 2b: `2244497` Â· Wave 2a: `131d9d9` |
-| **Created** | 2026-08-02 |
-| **Completed** | 2026-08-03 (T5 close-out; CI runs `30799819043` + `30800484976` both 8/8 first-try) |
+| **Current Sprint** | Sprint 5.5 - Phase 3: OpenCode desktop as first-class command center - **IN PROGRESS (P1 + P2 SHIPPED)** |
+| **Status** | **IN PROGRESS** - P1 (session bridge AGENTS.md, `f8c5389`) + P2 (session telemetry-on-close, `8e07d9d`) SHIPPED; suite **1378 green**; P2 CI pending; P3-P6 next |
+| **Goal** | Sprint 5.5 (32 pts): every session loads constitution/state on open (P1) and reports telemetry on close (P2 - Model Usage / Agent Health become real, D5 numerator groundwork); dashboard <-> desktop deep links (P3/P4); GUI/desktop action telemetry = honest D5 numerator (P5); R3 parity >=40/71 rows by close-out (P6). ZERO CLI-surface changes (ADR 0006) |
+| **Commit** | Sprint 5.5: P1 `f8c5389` / P2 `8e07d9d` / Sprint 5.4 closed `4ca321f` / T1 `294e107` / T2 `11fde80` / T3 `f690133` / T4 `9dba281` / T5 `b93a886` / Sprint 5.3 `de9c851` |
+| **Created** | 2026-08-03 (Sprint 5.5 plan committed) |
+| **Completed** | - (in progress) |
 | **Follow-up (in progress)** | Post-Sprint 5.3 risk mitigation completed: R12/R8/R3/R11/R4 â€” see "Dashboard Initiative Follow-up" below |
 
 ### Sprint 5.4 Backlog (committed plan â€” 2026-08-02)
@@ -176,6 +176,14 @@ Initiative Phase 3 `[NOT STARTED]` — **kickoff draft (2026-08-03):**
 - [x] **Design rationale** — verified against opencode docs (rules/): project `AGENTS.md` is the recommended committed rules file; `opencode.json` `instructions` field was **not** used for the constitution because it would reference gitignored `.ai-company/` paths from committed config (fresh-clone breakage) and `opencode.json` already carries user-local drift (`permission: "allow"`, never committed). Plugin `event` hooks are deferred to P2 (telemetry-on-close needs bus events, not static context).
 - [x] **No code/CLI/test impact** — markdown-only; suite/ruff/mypy/command-map/CLI-surface unaffected. Zero CLI-surface changes (ADR 0006).
 
+### Sprint 5.5 P2 Deliverables - Session bridge: telemetry on close (DONE, CI pending)
+
+- [x] **Capture plugin (machine-local, gitignored)** - `.opencode/plugins/session-telemetry.ts` registers event hooks: `session.updated` / `session.idle` (`end_reason: "idle"`), `session.deleted` (`"deleted"`), plugin `dispose` (`"shutdown"`), plus per-message token/cost rollup from `message.updated` and per-call tool usage from `tool.execute.after` (both deduped via Sets). Flushes only when dirty; fetches `AI_ENTERPRISE_API_URL` (default `http://127.0.0.1:8000`) + optional `AI_ENTERPRISE_WRITE_TOKEN`, refreshes CSRF via `GET /api/write-csrf`, one 403 retry; `client.app.log` failure throttle. Event/type names verified against installed `@opencode-ai/plugin@1.18.7` + `@opencode-ai/sdk@1.18.7` typings; single-file strict `tsc` typecheck clean (Bun runtime provides `process`).
+- [x] **Storage** - `telemetry/sessions.py`: fail-open JSONL at `runtime/session_telemetry.jsonl`, `_MAX_RECORDS = 5000` prune cap, `record_session_telemetry` (keyword-only), `read_session_telemetry(limit=200)`, `session_telemetry_summary(limit=200)` (newest-per-session dedupe, totals, by_model / by_end_reason). Retention: `session_telemetry` added to `SOURCE_PATHS` + `DEFAULT_POLICIES` (days 180, rollup false - per-session record, not a time series) + mirror in `config/runtime/telemetry.yaml`.
+- [x] **API** - `RuntimeFacade.session_telemetry_record` / `session_telemetry_summary` (fail-open wrappers); `SessionTelemetryBody` (Pydantic v2: required `session_id`, counters `ge=0`, capped lengths - negative counts -> 422); `GET /api/telemetry/sessions?limit=` (1-5000); guarded audited `POST /api/telemetry/session` via `guard.guard("telemetry.session.persist")` (NOT in HIGH_IMPACT_ACTIONS - no reason needed), audit extra `session_id` + `end_reason`; app contract entries `telemetry_session` / `telemetry_sessions`.
+- [x] **Dashboard** - `/telemetry` view passes `sessions_summary`; `telemetry.html` gains an OpenCode Sessions panel (before Agent health) with empty-state hint pointing at the plugin. Parity row added to `docs/dashboard/parity-matrix-v0.md` (**N/A** - plugin-only capture source, CLI surface frozen ADR 0006).
+- [x] **Tests** - new `tests/unit/telemetry/test_sessions.py` (8: roundtrip, missing-file fail-open, empty summary, newest-per-session dedupe, ordering, by_model/end_reason, plain-file runtime fail-open, prune cap); `test_retention.py` (session policy + rollup-set assertion), `test_wave2b_endpoints.py` (auth 401, bad CSRF 403, guarded+audited, negative counts 422, sessions read), `test_facade_wave2b.py` (record + summary). Full suite **1364 -> 1378 green**; ruff/mypy-strict/format/command-map/CLI-surface/uv-audit clean; pre-commit scoped to the 12 P2 files green.
+
 ### 2. Sprint 5.6 â€” Svelte 5 Migration (Phase 4) ðŸ”®
 **ADR:** 0008 (v2 deferred) â€” richer UX with Svelte 5 + Vite when budget allows.
 
@@ -195,6 +203,9 @@ Initiative Phase 3 `[NOT STARTED]` — **kickoff draft (2026-08-03):**
 ## Recently Completed (Commits)
 
 ```text
+8e07d9d        feat: Sprint 5.5 P2 - session telemetry (plugin -> guarded POST /api/telemetry/session -> JSONL -> Sessions panel)
+f8c5389        feat: Sprint 5.5 P1 - session bridge AGENTS.md (constitution + sprint state auto-load on every open)
+4ca321f        chore: close Sprint 5.4 (27/27, suite 1364, CI 8/8 post-fix) and draft Sprint 5.5 Phase 3 kickoff (P1-P6)
 1fd0c97        feat: R4 â€” end-to-end free/local fallback for generate dispatch (D9 close-out)
 936f9ea        fix: strip ANSI styling from CLI help in parity test (CI FORCE_COLOR wraps tokens)
 de9c851        feat: Sprint 5.3 â€” SQLite read model on startup (ADR 0004), agent sync scope both, Windows CI lint/type-check
@@ -283,6 +294,15 @@ b6d5a26        feat: Phase 1 wave 1 â€” dashboard API server (read-only con
     (previously ~15% fail rate). If a segfault reappears, re-run the failed job
     once before investigating code.
 
+11. **Sprint 5.5 P1 + P2 SHIPPED (2026-08-03)** — Phase 3 kickoff `4ca321f`;
+    P1 session bridge `AGENTS.md` (`f8c5389`); **P2 session telemetry-on-close
+    (`8e07d9d`)**: OpenCode plugin → guarded audited
+    `POST /api/telemetry/session` (WriteGuard `telemetry.session.persist`,
+    not high-impact) → fail-open `runtime/session_telemetry.jsonl` →
+    `/telemetry` Sessions panel. Model Usage / Agent Health now show desktop
+    activity for the first time (D5 numerator groundwork). Suite **1378 green**;
+    all gates clean. **Next: P3 deep link dashboard → "continue in OpenCode."**
+
 ---
 
 ## Quick Commands Reference
@@ -331,4 +351,5 @@ python -m ai_company.cli.command_map validate
 ---
 
 *Updated: 2026-08-03 — **Sprint 5.5 OPENED (32 pts) + P1 SHIPPED**: session bridge AGENTS.md (`.ai-company/constitution/rules.md` + `current_sprint.yaml` + `.ai/current-work.md` auto-load on every open; markdown-only, zero CLI/test impact). Sprint 5.4 COMPLETE + kickoff record `4ca321f`, CI run `30801913924` 8/8 green; T5 segfault fix held across `30799819043` + `30800484976` (both 8/8 first-try).** — *Updated: 2026-08-02 â€” **Sprint 5.4 T5 SHIPPED (commit `b93a886`, run `30759697395`; shutdown reorder fix for exit-139; local suite 1364 green, >10 consecutive local runs green)** — **Sprint 5.4 T2 SHIPPED + CI GREEN (commit `11fde80`, run `30759697395`; all 8 jobs green — ubuntu `test` re-ran after the known exit-139 segfault flake per T5 protocol, passed attempt 2)** (retention/rollup: `telemetry/retention.py` rollup-then-truncate with idempotent hourly/daily aggregates + config-driven policies via `config/runtime/telemetry.yaml` (9th config section), `telemetry_retention` recurring scheduler job, `RuntimeFacade.retention_status` + `GET /api/telemetry/retention` + telemetry caption, everything fail-open; +20 tests â†’ suite **1364 green**; ruff/mypy/format/command-map/CLI-surface clean); **Sprint 5.4 T3 SHIPPED + CI GREEN (run `30758507616`: 8/8 jobs, no reruns)** (isolation alerting: unified `runtime.engine_isolated`/`runtime.engine_unisolated` events from the supervisor isolate/unisolate funnel (attempts carried from failed recovery), fail-open `runtime/alerts.jsonl` + `telemetry/alerts.py` with no-spam summary (latest record per component wins, resolved on un-isolate), `GET /api/alerts`, pulse/System Health red chip + health alert table + telemetry KPI line; +17 tests â†’ suite **1344 green**; ruff/mypy/format/command-map/CLI-surface clean); **Sprint 5.4 T4 SHIPPED + CI GREEN (run 30757132205: 8/8 jobs, no reruns)** (recovery-success metric: `recovery_attempts/successes/failures` counters + `recovery_success_rate` gauge recorded once per `RecoveryManager` outcome (concrete recovery = success; escalate/isolate/exhausted = failure); shared tolerant `metrics_trend()` fixes a latent T1 shape bug so the facade's flattened `metrics_persist` dump now renders gauges on the KPI panel; new **Self-healing** KPI card (`cols-5`); +7 tests â†’ suite **1327 green**; ruff/mypy/format/command-map/CLI-surface clean); **Sprint 5.4 T1 SHIPPED** (SQLite live telemetry store: `sync_from_jsonl` incremental watermark sync, facade reads prefer the store w/ JSONL fallback, sync wired into the 30s ticker via `metrics_persist`; suite 1308 â†’ **1320 green**); **CI green on main** (run 30755035002: 8/8 jobs â€” the ubuntu `test` job hit the **known exit-139 segfault flake** after `test_runtime_restart.py` and passed on rerun; run 30754497955: 8/8 jobs â€” one `test-windows` rerun for a **timing flake** in `test_engines_stay_healthy_and_not_isolated_after_boot`'s final psutil `system` health sweep (DEGRADED on the loaded shared runner; isolation + heartbeat assertions passed; ubuntu `test` green first try; passes locally 3Ã—; unrelated to T1 â€” T5 tracks the segfault, Windows health blip is runner-load noise); Sprint 5.3 (`de9c851`) + R12 batch (`147540b` + `75e0595`) + R8/R3/R11 batch (`38a3d7f` + typer-group fix `935beeb`) + **R4 fallback (`1fd0c97`)** all committed + pushed; **R4 `[MITIGATED]`** â€” shared `services/generate_dispatch.py` fallback (opencode â†’ free/local `ollama`) proven end-to-end across runner/CLI; **D10 persona onboarding SIGNED OFF (R11 â†’ `[MITIGATED]`)**; R12 `[MITIGATED]`; R8 gate live (CLI surface contract, additive-only); R3 parity milestone set (â‰¥40/71 rows by Phase 3); suite 1265 â†’ **1308 green**; **CI green on main (run 30750231104: 8/8 jobs, after one documented-segfault-flake rerun of the ubuntu `test` job)**; **Sprint 5.4 PLANNED & COMMITTED â€” see "Sprint 5.4 Backlog" above (T1â€“T4 = 22 pts, T5 CI-flake stretch); next candidates: Sprint 5.5 (Phase 3 desktop), Sprint 5.6 (Svelte 5)***
-*Next update: at the first Sprint 5.5 commit (Phase 3 kickoff) — current `current_sprint.yaml` = Sprint 5.4 COMPLETE, awaiting Sprint 5.5 plan commit.*
+*Updated: 2026-08-03 - **Sprint 5.5 P2 SHIPPED (commit `8e07d9d`)**: session telemetry-on-close - machine-local plugin `.opencode/plugins/session-telemetry.ts` (gitignored, pins @opencode-ai/plugin+sdk 1.18.7) flushes on session.idle/deleted/dispose (CSRF refresh + one 403 retry, per-message/per-call dedupe) to the guarded audited `POST /api/telemetry/session` (WriteGuard `telemetry.session.persist`, not high-impact) -> fail-open `runtime/session_telemetry.jsonl` (5000-record cap) + retention source (180d, rollup false) + `GET /api/telemetry/sessions` + `/telemetry` Sessions panel (Model Usage / Agent Health become real - D5 numerator groundwork). +8 sessions tests; suite **1378 green**; ruff/mypy-strict/format/command-map/CLI-surface/uv-audit clean; pre-commit green (scoped to P2 files). Parity row added (N/A - plugin-only capture source, CLI surface frozen ADR 0006).
+*Next update: at the P3/P4 deep-link commit.*
