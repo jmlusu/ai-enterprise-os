@@ -143,11 +143,11 @@ Parity matrix P2 rows → **`1+2`** (all safe-write rows live on both surfaces).
 
 ### Phase 3 — OpenCode desktop as first-class command center (3–4 wks)
 
-`[NOT STARTED]` — note: groundwork exists (`src/ai_company/agents/` agent-sync engine + `tests/test_agents_sync.py`, currently untracked).
+`[KICKOFF DRAFTED 2026-08-03 — Sprint 5.5 plan in .ai/current-work.md; awaiting plan commit]` — note: groundwork is **committed** (`src/ai_company/agents/` agent-sync engine + `tests/test_agents_sync.py` — earlier "untracked" note is stale).
 
-- Session bridge: every session loads constitution/state and closes by posting telemetry (session endpoint) → Model Usage and Agent Health become real for the first time.
-- Deep links both ways: dashboard → "continue in OpenCode"; desktop → "submit for review".
-- **Exit:** ≥90% of generation targets runnable desktop-first without typing a CLI command.
+- Session bridge: every session loads constitution/state (P1) and closes by posting telemetry (P2, session endpoint) → Model Usage and Agent Health become real for the first time; P2 also instruments GUI/desktop action telemetry = honest D5 numerator (P5).
+- Deep links both ways: dashboard → "continue in OpenCode" (P3); desktop → "submit for review" (P4).
+- **Exit:** ≥90% of generation targets runnable desktop-first without typing a CLI command. (R3 milestone: ≥40/71 parity rows tested by Phase 3 close-out — P6, continuous.)
 
 ### Phase 4 — CLI demotion + migration (4 wks, trigger-gated)
 

@@ -9,12 +9,12 @@
 
 | Field | Value |
 |---|---|
-| **Current Sprint** | Sprint 5.4 â€” Telemetry: durable, bounded, actionable (SQLite store, retention/rollup, isolation alerting, recovery metric) |
-| **Status** | ðŸ”„ **IN PROGRESS** â€” T1 + T4 + T3 + **T2 shipped (CI pending)**; T5 stretch |
-| **Goal** | Complete the R5/R2 telemetry story before Phase 3: (T1) SQLite **live** telemetry store (incremental sync, read path = ADR 0004 projection), (T2) retention + rollup policies (config-driven, rollup-then-truncate, scheduler job), (T3) isolation alerting (`runtime.engine_isolated` â†’ alerts â†’ dashboard), (T4) recovery-success metric (counters + KPI rate). Zero CLI-surface changes (ADR 0006); R3 parity rows for new reads |
-| **Commit** | Sprint 5.4 T3: `f690133` (CI run `30758507616` 8/8 green) Â· T2: `11fde80` Â· T4: `9dba281` Â· T1: `294e107` Â· Sprint 5.3: `de9c851` Â· Wave 2b: `2244497` Â· Wave 2a: `131d9d9` |
+| **Current Sprint** | Sprint 5.4 â€” Telemetry: durable, bounded, actionable (SQLite store, retention/rollup, isolation alerting, recovery metric) — **COMPLETE 2026-08-03** |
+| **Status** | ✅ **COMPLETE** â€” T1 + T2 + T3 + T4 + T5 all SHIPPED; suite **1364 green**; all CI runs 8/8 (T5 post-fix: runs `30799819043` + `30800484976`) |
+| **Goal** | Complete the R5/R2 telemetry story before Phase 3: (T1) SQLite **live** telemetry store (incremental sync, read path = ADR 0004 projection), (T2) retention + rollup policies (config-driven, rollup-then-truncate, scheduler job), (T3) isolation alerting (`runtime.engine_isolated` â†’ alerts â†’ dashboard), (T4) recovery-success metric (counters + KPI rate), (T5, stretch) CI segfault root-cause. Zero CLI-surface changes (ADR 0006); R3 parity rows for new reads |
+| **Commit** | Sprint 5.4: T1 `294e107` Â· T2 `11fde80` Â· T3 `f690133` Â· T4 `9dba281` Â· T5 `b93a886` Â· tracker hashes `f3c4989`/`314498a`/`345500c` Â· Sprint 5.3: `de9c851` Â· Wave 2b: `2244497` Â· Wave 2a: `131d9d9` |
 | **Created** | 2026-08-02 |
-| **Completed** | â€” |
+| **Completed** | 2026-08-03 (T5 close-out; CI runs `30799819043` + `30800484976` both 8/8 first-try) |
 | **Follow-up (in progress)** | Post-Sprint 5.3 risk mitigation completed: R12/R8/R3/R11/R4 â€” see "Dashboard Initiative Follow-up" below |
 
 ### Sprint 5.4 Backlog (committed plan â€” 2026-08-02)
@@ -155,7 +155,20 @@
 ## Next Sprint Candidates (Prioritized)
 
 ### 1. Sprint 5.5 â€” Phase 3: OpenCode desktop as first-class command center ðŸ–¥ï¸
-Initiative Phase 3 `[NOT STARTED]`: session bridge (every session loads constitution/state, closes by posting telemetry â†’ Model Usage / Agent Health become real), deep links both ways (dashboard â†’ "continue in OpenCode"; desktop â†’ "submit for review"), GUI/desktop action telemetry for the D5 north-star numerator. **Exit:** â‰¥90% of generation targets runnable desktop-first without typing a CLI command.
+Initiative Phase 3 `[NOT STARTED]` — **kickoff draft (2026-08-03):**
+
+**Goal:** make the OpenCode desktop session a first-class operator surface — every session loads constitution/state on open and reports telemetry on close (Model Usage / Agent Health become real, D5), and dashboard ⇄ desktop deep links work both ways.
+
+| # | Item | Pts | Acceptance summary |
+|---|---|---|---|
+| **P1** | **Session bridge — constitution/state load on open** | 8 | Session startup hooks load `.ai-company/constitution/` + sprint state before work; no manual `load` step; works from repo root in a fresh session |
+| **P2** | **Session bridge — telemetry on close** | 8 | Every session closes by posting a session record (start/end ts, commands run, agent/tool usage) to the telemetry endpoint → `Model Usage` / `Agent Health` panels show desktop activity for the first time (D5 numerator groundwork). Fail-open; no data loss on abrupt close |
+| **P3** | **Deep link: dashboard → "continue in OpenCode"** | 5 | Dashboard run/target/artifact views offer "continue in OpenCode" opening the desktop at the right session/target |
+| **P4** | **Deep link: desktop → "submit for review"** | 5 | From a desktop session, a generated artifact can be submitted to the decision/approval inbox for review |
+| **P5** | **GUI/desktop action telemetry (D5 numerator)** | 3 | Instrumented action counters distinguish GUI/desktop vs CLI actions so the north-star share metric is honest (numerator + denominator) |
+| **P6** | **R3 parity milestone advance** | 3 | Parity tests reach ≥40/71 command rows by Phase 3 close-out; every new command ships its parity test in the same change |
+
+**Sequencing:** P1 → P2 (session bridge core) → P3/P4 (deep links) → P5 (needs P1/P2) → P6 (continuous). **Exit:** ≥90% of generation targets runnable desktop-first without typing a CLI command. **DoD:** suite ≥1364 green; ruff/mypy/format/command-map/CLI-surface clean; trackers updated with each commit (CLI surface frozen — ADR 0006; desktop hooks must not change CLI). **Groundwork already committed:** `src/ai_company/agents/` agent-sync engine + `tests/test_agents_sync.py` (initiative note "untracked" is stale).
 
 ### 2. Sprint 5.6 â€” Svelte 5 Migration (Phase 4) ðŸ”®
 **ADR:** 0008 (v2 deferred) â€” richer UX with Svelte 5 + Vite when budget allows.
@@ -255,13 +268,14 @@ b6d5a26        feat: Phase 1 wave 1 â€” dashboard API server (read-only con
    Every new read command must add a parity row + parity test (Phase 4 demotion
    trigger depends on it). Wave 2b flipped all remaining safe-write rows to `1+2`.
 
-10. **Known CI flake (ubuntu `test` job, 2026-08-02)** â€” intermittent native
-    `Segmentation fault` (exit 139) right after
-    `tests/integration/test_runtime_boot.py` finishes (~15% mark; thread
-    teardown boundary; HeartbeatSender/health-monitor threads + SQLite).
-    Same-commit rerun passes; `test-windows` never hit it; not introduced by
-    the R8/R12 batches (reproduced on a docs-only commit). If CI shows this,
-    re-run the failed job before investigating code.
+10. **CI segfault flake FIXED (2026-08-03)** â€” the intermittent ubuntu `test`
+    job `Segmentation fault` (exit 139) was root-caused: shutdown stopped
+    engines before workers, so supervisor/health/heartbeat threads probed the
+    closed SQLite connection during teardown. Fix: `shutdown.py` reorders to
+    `stop_workers` before `stop_engines`; `ReadModelEngine.health()` guards
+    `sqlite3.Error`. CI runs `30799819043` + `30800484976` both 8/8 first-try
+    (previously ~15% fail rate). If a segfault reappears, re-run the failed job
+    once before investigating code.
 
 ---
 
@@ -311,4 +325,4 @@ python -m ai_company.cli.command_map validate
 ---
 
 *Updated: 2026-08-02 â€” **Sprint 5.4 T5 SHIPPED (commit `b93a886`, run `30759697395`; shutdown reorder fix for exit-139; local suite 1364 green, >10 consecutive local runs green)** — **Sprint 5.4 T2 SHIPPED + CI GREEN (commit `11fde80`, run `30759697395`; all 8 jobs green — ubuntu `test` re-ran after the known exit-139 segfault flake per T5 protocol, passed attempt 2)** (retention/rollup: `telemetry/retention.py` rollup-then-truncate with idempotent hourly/daily aggregates + config-driven policies via `config/runtime/telemetry.yaml` (9th config section), `telemetry_retention` recurring scheduler job, `RuntimeFacade.retention_status` + `GET /api/telemetry/retention` + telemetry caption, everything fail-open; +20 tests â†’ suite **1364 green**; ruff/mypy/format/command-map/CLI-surface clean); **Sprint 5.4 T3 SHIPPED + CI GREEN (run `30758507616`: 8/8 jobs, no reruns)** (isolation alerting: unified `runtime.engine_isolated`/`runtime.engine_unisolated` events from the supervisor isolate/unisolate funnel (attempts carried from failed recovery), fail-open `runtime/alerts.jsonl` + `telemetry/alerts.py` with no-spam summary (latest record per component wins, resolved on un-isolate), `GET /api/alerts`, pulse/System Health red chip + health alert table + telemetry KPI line; +17 tests â†’ suite **1344 green**; ruff/mypy/format/command-map/CLI-surface clean); **Sprint 5.4 T4 SHIPPED + CI GREEN (run 30757132205: 8/8 jobs, no reruns)** (recovery-success metric: `recovery_attempts/successes/failures` counters + `recovery_success_rate` gauge recorded once per `RecoveryManager` outcome (concrete recovery = success; escalate/isolate/exhausted = failure); shared tolerant `metrics_trend()` fixes a latent T1 shape bug so the facade's flattened `metrics_persist` dump now renders gauges on the KPI panel; new **Self-healing** KPI card (`cols-5`); +7 tests â†’ suite **1327 green**; ruff/mypy/format/command-map/CLI-surface clean); **Sprint 5.4 T1 SHIPPED** (SQLite live telemetry store: `sync_from_jsonl` incremental watermark sync, facade reads prefer the store w/ JSONL fallback, sync wired into the 30s ticker via `metrics_persist`; suite 1308 â†’ **1320 green**); **CI green on main** (run 30755035002: 8/8 jobs â€” the ubuntu `test` job hit the **known exit-139 segfault flake** after `test_runtime_restart.py` and passed on rerun; run 30754497955: 8/8 jobs â€” one `test-windows` rerun for a **timing flake** in `test_engines_stay_healthy_and_not_isolated_after_boot`'s final psutil `system` health sweep (DEGRADED on the loaded shared runner; isolation + heartbeat assertions passed; ubuntu `test` green first try; passes locally 3Ã—; unrelated to T1 â€” T5 tracks the segfault, Windows health blip is runner-load noise); Sprint 5.3 (`de9c851`) + R12 batch (`147540b` + `75e0595`) + R8/R3/R11 batch (`38a3d7f` + typer-group fix `935beeb`) + **R4 fallback (`1fd0c97`)** all committed + pushed; **R4 `[MITIGATED]`** â€” shared `services/generate_dispatch.py` fallback (opencode â†’ free/local `ollama`) proven end-to-end across runner/CLI; **D10 persona onboarding SIGNED OFF (R11 â†’ `[MITIGATED]`)**; R12 `[MITIGATED]`; R8 gate live (CLI surface contract, additive-only); R3 parity milestone set (â‰¥40/71 rows by Phase 3); suite 1265 â†’ **1308 green**; **CI green on main (run 30750231104: 8/8 jobs, after one documented-segfault-flake rerun of the ubuntu `test` job)**; **Sprint 5.4 PLANNED & COMMITTED â€” see "Sprint 5.4 Backlog" above (T1â€“T4 = 22 pts, T5 CI-flake stretch); next candidates: Sprint 5.5 (Phase 3 desktop), Sprint 5.6 (Svelte 5)***
-*Next update: at the next Sprint 5.4 commit (T5 or CI verification of T2)*
+*Next update: at the first Sprint 5.5 commit (Phase 3 kickoff) — current `current_sprint.yaml` = Sprint 5.4 COMPLETE, awaiting Sprint 5.5 plan commit.*
