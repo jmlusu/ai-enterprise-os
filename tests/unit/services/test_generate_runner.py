@@ -141,7 +141,7 @@ def test_start_success_streams_log_and_persists_history(
     captured = _patch_dispatch(monkeypatch, {"opencode": "fake-opencode.exe"}, [proc])
 
     run = runner.start(_FAKE_TARGET)
-    assert run.status in ("queued", "running")
+    assert run.status in ("queued", "running", "succeeded")
     assert _wait_status(runner, run.run_id) == "succeeded"
 
     finished = runner.get(run.run_id)

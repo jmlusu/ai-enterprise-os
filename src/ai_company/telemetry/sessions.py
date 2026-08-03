@@ -22,11 +22,17 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# Last timestamp emitted by this process, so rapid successive checkpoints always
+# get strictly increasing capture times even on platforms whose system clock has
+# coarse resolution (e.g. Windows ~15 ms ticks). Ordering matters: the summary
+# dedups to the newest checkpoint per session by this timestamp.
+_last_timestamp: str | None = None
 
 SESSION_TELEMETRY_RELATIVE_PATH = Path("runtime") / "session_telemetry.jsonl"
 
@@ -73,7 +79,7 @@ def record_session_telemetry(
     """
     try:
         record: dict[str, Any] = {
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": _next_timestamp(),
             "session_id": session_id,
             "started_at": started_at,
             "updated_at": updated_at,
@@ -104,6 +110,22 @@ def record_session_telemetry(
         _maybe_prune(path)
     except Exception as exc:
         logger.debug("Session telemetry write failed: %s", exc)
+
+
+def _next_timestamp() -> str:
+    """UTC ISO-8601 timestamp, strictly increasing within this process.
+
+    ``datetime.now(UTC)`` can return the same value twice on coarse-clock
+    platforms; bump by one microsecond so the newest-per-session dedupe in
+    :func:`session_telemetry_summary` keeps the latest checkpoint.
+    """
+    global _last_timestamp
+    candidate = datetime.now(UTC).isoformat()
+    if _last_timestamp is not None and candidate <= _last_timestamp:
+        last_dt = datetime.fromisoformat(_last_timestamp)
+        candidate = (last_dt + timedelta(microseconds=1)).isoformat()
+    _last_timestamp = candidate
+    return candidate
 
 
 def _maybe_prune(path: Path) -> None:
