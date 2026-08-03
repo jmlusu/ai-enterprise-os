@@ -9,10 +9,10 @@
 
 | Field | Value |
 |---|---|
-| **Current Sprint** | Sprint 5.5 - Phase 3: OpenCode desktop as first-class command center - **IN PROGRESS (P1 + P2 + P3 SHIPPED)** |
-| **Status** | **IN PROGRESS** - P1 (session bridge AGENTS.md, `f8c5389`) + P2 (session telemetry-on-close, `8e07d9d` + fix `16a43a2`) + P3 (dashboard -> desktop deep links, `ad488a8`) SHIPPED; suite **1399 green**; P4-P6 next |
+| **Current Sprint** | Sprint 5.5 - Phase 3: OpenCode desktop as first-class command center - **IN PROGRESS (P1 + P2 + P3 + P4 SHIPPED)** |
+| **Status** | **IN PROGRESS** - P1 (session bridge AGENTS.md, `f8c5389`) + P2 (session telemetry-on-close, `8e07d9d` + fix `16a43a2`) + P3 (dashboard -> desktop deep links, `ad488a8`) + P4 (desktop -> submit for review, `2d3b6d6`) SHIPPED; suite **1409 green**; P5-P6 next |
 | **Goal** | Sprint 5.5 (32 pts): every session loads constitution/state on open (P1) and reports telemetry on close (P2 - Model Usage / Agent Health become real, D5 numerator groundwork); dashboard <-> desktop deep links (P3/P4); GUI/desktop action telemetry = honest D5 numerator (P5); R3 parity >=40/71 rows by close-out (P6). ZERO CLI-surface changes (ADR 0006) |
-| **Commit** | Sprint 5.5: P3 `ad488a8` / P1 `f8c5389` / P2 `8e07d9d` / P2 fix `16a43a2` / Sprint 5.4 closed `4ca321f` / T1 `294e107` / T2 `11fde80` / T3 `f690133` / T4 `9dba281` / T5 `b93a886` / Sprint 5.3 `de9c851` |
+| **Commit** | Sprint 5.5: P4 `2d3b6d6` / P3 `ad488a8` / P1 `f8c5389` / P2 `8e07d9d` / P2 fix `16a43a2` / Sprint 5.4 closed `4ca321f` / T1 `294e107` / T2 `11fde80` / T3 `f690133` / T4 `9dba281` / T5 `b93a886` / Sprint 5.3 `de9c851` |
 | **Created** | 2026-08-03 (Sprint 5.5 plan committed) |
 | **Completed** | - (in progress) |
 | **Follow-up (in progress)** | Post-Sprint 5.3 risk mitigation completed: R12/R8/R3/R11/R4 â€” see "Dashboard Initiative Follow-up" below |
@@ -192,6 +192,16 @@ Initiative Phase 3 `[NOT STARTED]` — **kickoff draft (2026-08-03):**
 - [x] **Parity** - row added to `docs/dashboard/parity-matrix-v0.md` (**N/A** - `opencode://` desktop URL scheme, no CLI counterpart; CLI surface frozen ADR 0006); guard test `tests/golden/test_parity_wave2b.py::test_parity_deep_link_desktop_surface` asserts every run/target served carries a valid `opencode://new-session?` link.
 - [x] **Tests** - new `tests/unit/services/test_deep_links.py` (15: URL scheme/action, backslash normalization + encoding, roundtrip decode, blank/overlong rejection, per-surface prompts, additive enrichment w/o mutation, `project_directory`); facade deep-link tests; API passthrough test. Full suite **1378 -> 1399 green**; ruff/mypy-strict/format/command-map/CLI-surface clean; pre-commit green (scoped to P3 files).
 
+### Sprint 5.5 P4 Deliverables — Deep link: desktop → "submit for review" (DONE, `2d3b6d6`)
+
+- [x] **Endpoint** - guarded audited `POST /api/review/submit` (`operational_endpoints.py`): `ReviewSubmitBody` (Pydantic v2 — `title` 1-200, `description` 1-4000, `artifact_paths` list capped/cleaned, `session_id`/`model` capped) under `WriteGuard` `review.submit` (**not** in HIGH_IMPACT_ACTIONS — no `reason`), audit extra `title`/`decision_id`/`session_id`; base URL from `request.base_url`; contract-map keys `review_submit` added in `app.py`. A desktop agent hands the returned `review_link` to the operator.
+- [x] **Facade (ADR 0003 single surface)** - `RuntimeFacade.review_submit(title, description, artifact_paths=None, session_id="", model="", base_url="http://127.0.0.1:8000/")` creates a `review` decision via the shared `_decision_engine_instance()` (requester `session_id` or `"desktop"`, tags `["review","desktop"]`, metadata `{source, session_id, artifact_paths, model}`) and returns `{"success", "decision", "review_link"}`; fail-open errors.
+- [x] **Deep link** - `deep_links.py::review_link(decision_id, base_url="http://127.0.0.1:8000/")` → `/decisions?focus=<percent-encoded-id>`; exported via `__all__`.
+- [x] **Dashboard** - `/decisions` card shows a `desktop` source chip, artifact-path list, and session/model line for review decisions; `?focus=<id>` in the URL scrolls to + highlights the decision (`app.js::focusReview` + `.focus-highlight` CSS).
+- [x] **Recipe** - `AGENTS.md` "Submit for review (Sprint 5.5 P4)" section: `GET /api/write-csrf` → `X-CSRF-Token` (+ optional bearer on loopback) → one-liner curl to `POST /api/review/submit` with `artifact_paths` + `$OPENCODE_SESSION_ID`.
+- [x] **Parity** - row added to `docs/dashboard/parity-matrix-v0.md` (**N/A** - desktop HTTP surface, no CLI counterpart; CLI surface frozen ADR 0006); guard test `tests/golden/test_parity_wave2b.py::test_parity_review_submit_desktop_surface` asserts the new surface shares the WriteGuard (401 enforced / 403 missing CSRF).
+- [x] **Tests** - `test_deep_links.py` (+3 review-link base/encode), `test_facade_wave2b.py` (+2 desktop decision + default requester), `test_wave2b_endpoints.py` (+4 guarded/audited, enforced 401, missing CSRF 403, validation 422). Full suite **1399 -> 1409 green**; ruff/mypy-strict/format/command-map/CLI-surface clean; pre-commit green (scoped to P4 files).
+
 ### 2. Sprint 5.6 â€” Svelte 5 Migration (Phase 4) ðŸ”®
 **ADR:** 0008 (v2 deferred) â€” richer UX with Svelte 5 + Vite when budget allows.
 
@@ -211,6 +221,7 @@ Initiative Phase 3 `[NOT STARTED]` — **kickoff draft (2026-08-03):**
 ## Recently Completed (Commits)
 
 ```text
+2d3b6d6        feat: Sprint 5.5 P4 - desktop -> submit for review deep link
 ad488a8        feat: Sprint 5.5 P3 - dashboard -> OpenCode desktop deep links (continue in OpenCode)
 16a43a2        fix: P2 session telemetry dedupe on Windows coarse clock + harden generate_runner start assert
 8e07d9d        feat: Sprint 5.5 P2 - session telemetry (plugin -> guarded POST /api/telemetry/session -> JSONL -> Sessions panel)
@@ -321,6 +332,19 @@ b6d5a26        feat: Phase 1 wave 1 â€” dashboard API server (read-only con
     (ADR 0006 frozen); parity matrix row N/A + guard test. Suite **1399 green**;
     all gates clean. **Next: P4 deep link desktop → "submit for review."**
 
+11c. **Sprint 5.5 P4 SHIPPED (2026-08-03, `2d3b6d6`)** — desktop → "submit
+    for review": a desktop session POSTs an artifact to the guarded audited
+    `POST /api/review/submit` (`WriteGuard review.submit`, not high-impact,
+    CSRF + optional loopback bearer per ADR 0010; `ReviewSubmitBody` Pydantic
+    v2) → facade `review_submit` creates a `review` decision (requester =
+    session_id or "desktop", tags `["review","desktop"]`, metadata with
+    session/artifact/model) and returns `review_link`
+    (`/decisions?focus=<id>`) for the operator. `/decisions` shows a desktop
+    source chip + artifact paths; `?focus=` highlights. AGENTS.md carries the
+    curl recipe. No CLI counterpart (ADR 0006 frozen); parity row N/A + guard
+    test. Suite **1409 green**; all gates clean. **Next: P5 GUI/desktop action
+    telemetry (D5 numerator).**
+
 12. **Local model tag cleanup (2026-08-03, infra, not a sprint P-item)** — the
     deepseek tags were all the same model (DeepSeek-R1-Distill-Qwen-7B, one
     blob) differing only by default `num_ctx`. Removed duplicate
@@ -382,4 +406,5 @@ python -m ai_company.cli.command_map validate
 *Updated: 2026-08-03 - **Sprint 5.5 P2 SHIPPED (commit `8e07d9d`)**: session telemetry-on-close - machine-local plugin `.opencode/plugins/session-telemetry.ts` (gitignored, pins @opencode-ai/plugin+sdk 1.18.7) flushes on session.idle/deleted/dispose (CSRF refresh + one 403 retry, per-message/per-call dedupe) to the guarded audited `POST /api/telemetry/session` (WriteGuard `telemetry.session.persist`, not high-impact) -> fail-open `runtime/session_telemetry.jsonl` (5000-record cap) + retention source (180d, rollup false) + `GET /api/telemetry/sessions` + `/telemetry` Sessions panel (Model Usage / Agent Health become real - D5 numerator groundwork). +8 sessions tests; suite **1378 green**; ruff/mypy-strict/format/command-map/CLI-surface/uv-audit clean; pre-commit green (scoped to P2 files). Parity row added (N/A - plugin-only capture source, CLI surface frozen ADR 0006).
 *Updated: 2026-08-03 - **Sprint 5.5 P2 CI GREEN (run `30806583069`: 8/8 jobs, no reruns)** - post-CI fix `16a43a2`: (1) `record_session_telemetry` now emits strictly increasing capture timestamps (same `_next_timestamp` pattern as metrics) so newest-per-session dedupe keeps the latest checkpoint even on Windows coarse-clock ticks (first CI run: `assert 3 == 4` on test-windows); (2) hardened a pre-existing race in `test_generate_runner.py::test_start_success_streams_log_and_persists_history` (stub can complete before the immediate status assert - ubuntu first run: `'succeeded' not in ('queued','running')`; now allows `succeeded`). Both jobs green on the rerun.
 *Updated: 2026-08-03 - **Sprint 5.5 P3 SHIPPED (commit `ad488a8`)**: dashboard -> OpenCode desktop deep links ("continue in OpenCode") - `services/deep_links.py` (Pydantic v2 `NewSessionDeepLink`, `opencode://new-session?directory=&prompt=`, backslash normalization + percent-encoding; session-id resume still upstream #6232) + additive `deep_link` on facade `generate_targets/generate_runs/generate_run/generate_start/orchestration_history` + "Continue in OpenCode" links on `/generate` (targets + run history) and `/runs` (per-plan) + `.deep-link` CSS. No CLI counterpart (ADR 0006 frozen); parity matrix row N/A + guard test. +21 tests; suite **1399 green**; ruff/mypy-strict/format/command-map/CLI-surface clean; pre-commit green (scoped to P3 files).**
-*Next update: at the P4 deep-link commit (desktop -> "submit for review").**
+*Updated: 2026-08-03 - **Sprint 5.5 P4 SHIPPED (commit `2d3b6d6`)**: desktop -> "submit for review" deep link - guarded audited `POST /api/review/submit` (ReviewSubmitBody Pydantic v2, WriteGuard `review.submit` not high-impact, CSRF + optional loopback bearer) -> facade `review_submit` creates a `review` decision (tags review/desktop, metadata source/session_id/artifact_paths/model, requester session_id or 'desktop') + returns `review_link` (`/decisions?focus=<id>`); `/decisions` desktop chip + artifact paths + session/model line + `?focus=` highlight (`.focus-highlight`); AGENTS.md curl recipe (write-csrf -> X-CSRF-Token). No CLI counterpart (ADR 0006 frozen); parity matrix row N/A + guard test. +10 tests; suite **1409 green**; ruff/mypy-strict/format/command-map/CLI-surface clean; pre-commit green (scoped to P4 files).**
+*Next update: at the P5 commit (GUI/desktop action telemetry - D5 numerator).**
