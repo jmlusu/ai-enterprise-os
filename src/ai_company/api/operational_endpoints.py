@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 
 from ai_company.api.auth import (
@@ -82,6 +82,26 @@ class DecisionActionBody(BaseModel):
     """Reasoned decision action (reject / cancel)."""
 
     reason: str = Field(..., min_length=1, max_length=_REASON_MAX)
+
+
+class ReviewSubmitBody(BaseModel):
+    """Submit a generated artifact from a desktop session for review (P4).
+
+    The OpenCode desktop agent calls this after producing an artifact; the
+    guarded audited handler creates a ``review`` decision in the approval
+    inbox and returns a ``review_link`` deep link for the operator.
+    """
+
+    title: str = Field(..., min_length=1, max_length=200)
+    description: str = Field(..., min_length=1, max_length=4000)
+    artifact_paths: list[str] = Field(default_factory=list, max_length=50)
+    session_id: str = Field(default="", max_length=200)
+    model: str = Field(default="", max_length=200)
+
+    @field_validator("artifact_paths")
+    @classmethod
+    def _sanitize_paths(cls, value: list[str]) -> list[str]:
+        return [path.strip()[:500] for path in value if path.strip()]
 
 
 class DecisionEscalateBody(BaseModel):
@@ -407,6 +427,37 @@ def register_operational_endpoints(
             "decision.cancel",
             reason=body.reason,
             extra={"decision_id": decision_id},
+        )
+
+    @app.post("/api/review/submit", tags=["review", "write"])
+    async def review_submit(
+        request: Request,
+        body: ReviewSubmitBody,
+        _: None = Depends(guard.guard("review.submit")),
+    ) -> dict[str, Any]:
+        """Submit a generated artifact from a desktop session for review (P4).
+
+        Creates a ``review`` decision in the approval inbox and returns a
+        ``review_link`` deep link (``/decisions?focus=<decision_id>``) the
+        desktop session can hand to the operator. Not a high-impact action.
+        """
+        result = await run_in_threadpool(
+            facade.review_submit,
+            body.title,
+            body.description,
+            body.artifact_paths,
+            body.session_id,
+            body.model,
+            str(request.base_url),
+        )
+        return guard.audited(
+            result,
+            "review.submit",
+            extra={
+                "title": body.title,
+                "decision_id": (result.get("decision") or {}).get("id"),
+                "session_id": body.session_id,
+            },
         )
 
     # ── graph export / company CRUD / agents / backup (writes) ─────────────

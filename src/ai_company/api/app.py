@@ -503,6 +503,7 @@ def create_app(
                 "backup": "/api/backup",
                 "telemetry_metrics": "/api/telemetry/metrics",
                 "telemetry_session": "/api/telemetry/session",
+                "review_submit": "/api/review/submit",
             },
             "endpoints": {
                 "health": "/api/health",
@@ -535,6 +536,7 @@ def create_app(
                 "generate_log": "/api/generate/runs/{run_id}/log",
                 "decisions": "/api/decisions",
                 "decision_get": "/api/decisions/{decision_id}",
+                "review_submit": "/api/review/submit",
                 "company_files": "/api/company",
                 "telemetry_metrics": "/api/telemetry/metrics",
                 "telemetry_providers": "/api/telemetry/providers",

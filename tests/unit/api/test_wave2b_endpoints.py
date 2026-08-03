@@ -458,6 +458,70 @@ def test_decision_reject_requires_reason_in_audit(
     assert actions[-1]["reason"] == "not now"
 
 
+def test_review_submit_guarded_and_audited(
+    client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """P4: a desktop submission is guarded, audited, and returns a deep link."""
+    captured = _stub(
+        monkeypatch,
+        facade,
+        "review_submit",
+        {
+            "success": True,
+            "errors": [],
+            "decision": {"id": "decision_9", "title": "T"},
+            "review_link": "http://127.0.0.1/decisions?focus=decision_9",
+        },
+    )
+    resp = client.post(
+        "/api/review/submit",
+        json={
+            "title": "Review generated registry",
+            "description": "Artifact from a desktop session.",
+            "artifact_paths": ["generated/registry/company.yaml"],
+            "session_id": "session-abc",
+            "model": "deepseek-r1-64k:latest",
+        },
+        headers=_auth(token=_TOKEN),
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["review_link"] == "http://127.0.0.1/decisions?focus=decision_9"
+    assert captured[0][0][0] == "Review generated registry"
+    actions = _audit_actions(client)
+    assert actions[-1]["action"] == "review.submit"
+    assert actions[-1]["details"]["session_id"] == "session-abc"
+
+
+def test_review_submit_enforced_requires_token(
+    enforced_client: TestClient,
+) -> None:
+    resp = enforced_client.post(
+        "/api/review/submit",
+        json={"title": "T", "description": "D"},
+        headers=_auth(token=None),
+    )
+    assert resp.status_code == 401
+
+
+def test_review_submit_missing_csrf_is_403(client: TestClient) -> None:
+    resp = client.post(
+        "/api/review/submit",
+        json={"title": "T", "description": "D"},
+        headers=_auth(token=_TOKEN, csrf=None),
+    )
+    assert resp.status_code == 403
+
+
+def test_review_submit_validation_422(client: TestClient) -> None:
+    resp = client.post(
+        "/api/review/submit",
+        json={"title": "", "description": ""},
+        headers=_auth(token=_TOKEN),
+    )
+    assert resp.status_code == 422
+
+
 def test_backup_create_guarded(
     client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
 ) -> None:

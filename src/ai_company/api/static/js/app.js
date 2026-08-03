@@ -732,6 +732,17 @@
     });
   }
 
+  /* ── Review focus (P4): /decisions?focus=<id> deep link highlight ────── */
+  function focusReview() {
+    var params = new URLSearchParams(window.location.search);
+    var focusId = params.get("focus");
+    if (!focusId) { return; }
+    var card = document.querySelector('[data-decision-id="' + focusId + '"]');
+    if (!card) { return; }
+    card.classList.add("focus-highlight");
+    try { card.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) { card.scrollIntoView(); }
+  }
+
   /* ── Backup tile age (R6) ────────────────────────────────────────────── */
   function updateBackupAge() {
     var el = document.getElementById("backup-age");
@@ -766,6 +777,7 @@
     wireGenerate();
     loadGenerateRuns();
     wireDecisionActions();
+    focusReview();
     updateBackupAge();
     setInterval(updateBackupAge, 30000);
   });

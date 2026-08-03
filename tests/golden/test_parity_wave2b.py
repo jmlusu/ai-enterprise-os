@@ -229,3 +229,25 @@ def test_parity_deep_link_desktop_surface(client: TestClient) -> None:
         link = target.get("deep_link")
         assert isinstance(link, str)
         assert link.startswith("opencode://new-session?")
+
+
+# ── desktop submit-for-review surface (Sprint 5.5 P4) ────────────────────────
+
+
+def test_parity_review_submit_desktop_surface(
+    token_enforced_client: TestClient, client: TestClient
+) -> None:
+    """P4 desktop review submission is a dashboard-only write surface.
+
+    It has no CLI counterpart (the CLI surface is frozen under ADR 0006), so
+    the parity matrix records this row as N/A; this guard asserts the new
+    surface shares the exact write guard: a missing bearer token is a 401
+    under enforcement, and a missing CSRF token is a 403 on plain loopback.
+    """
+    body = {"title": "Review generated registry", "description": "Artifact"}
+
+    enforced = token_enforced_client.post("/api/review/submit", json=body)
+    assert enforced.status_code == 401
+
+    plain = client.post("/api/review/submit", json=body)
+    assert plain.status_code == 403

@@ -23,6 +23,7 @@ from ai_company.services.deep_links import (
     enrich_target,
     plan_continue_prompt,
     project_directory,
+    review_link,
     run_continue_prompt,
     target_continue_prompt,
 )
@@ -152,3 +153,18 @@ def test_project_directory_from_default_config(tmp_path: Path) -> None:
 def test_project_directory_explicit_value(tmp_path: Path) -> None:
     target = tmp_path / "workspace"
     assert project_directory(str(target)) == str(target)
+
+
+def test_review_link_builds_url_with_base() -> None:
+    url = review_link("decision_1", "http://127.0.0.1:8000")
+    assert url == "http://127.0.0.1:8000/decisions?focus=decision_1"
+
+
+def test_review_link_defaults_to_loopback() -> None:
+    url = review_link("decision_2")
+    assert url == "http://127.0.0.1:8000/decisions?focus=decision_2"
+
+
+def test_review_link_encodes_id() -> None:
+    url = review_link("decision a/b")
+    assert "decision%20a%2Fb" in url

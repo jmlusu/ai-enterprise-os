@@ -68,6 +68,17 @@ def build_new_session_link(directory: str, prompt: str) -> str:
     return NewSessionDeepLink(directory=directory, prompt=prompt).url
 
 
+def review_link(decision_id: str, base_url: str = "http://127.0.0.1:8000/") -> str:
+    """Dashboard deep link that focuses one review decision (P4).
+
+    The dashboard is loopback-only by default (ADR 0002); the desktop session
+    hands this HTTP link to the operator, who clicks straight into the
+    ``/decisions`` approval queue scrolled to the submitted review.
+    """
+    base = base_url if base_url.endswith("/") else f"{base_url}/"
+    return f"{base}decisions?focus={quote(decision_id, safe='')}"
+
+
 def run_continue_prompt(run: Mapping[str, Any]) -> str:
     """Session prompt that hands one generate run off to the desktop."""
     run_id = run.get("run_id") or ""
@@ -159,6 +170,7 @@ __all__ = [
     "enrich_target",
     "plan_continue_prompt",
     "project_directory",
+    "review_link",
     "run_continue_prompt",
     "target_continue_prompt",
 ]

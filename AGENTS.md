@@ -63,6 +63,21 @@ ai-company serve                         # dashboard API on 127.0.0.1:8000 (loop
   session.idle/deleted/dispose); server persists to
   `runtime/session_telemetry.jsonl` → `/telemetry` Sessions panel. Not
   high-impact (no `reason`).
+- **Submit for review (Sprint 5.5 P4):** after producing a generated artifact,
+  a desktop session submits it to the decision/approval inbox by POSTing to the
+  guarded audited `POST /api/review/submit` on the loopback dashboard. It needs
+  the per-run CSRF token (`GET /api/write-csrf`) echoed in `X-CSRF-Token`
+  (bearer token optional on loopback unless `--require-loopback-token`). The
+  response's `review_link` (`http://127.0.0.1:8000/decisions?focus=<id>`) is
+  the deep link to hand to the operator. One-liner from the repo root:
+
+  ```bash
+  CSRF=$(curl -s http://127.0.0.1:8000/api/write-csrf | python -c "import sys,json;print(json.load(sys.stdin)['csrf_token'])")
+  curl -s -X POST http://127.0.0.1:8000/api/review/submit \
+    -H "Content-Type: application/json" -H "X-CSRF-Token: $CSRF" \
+    -d '{"title":"Review generated registry","description":"Artifact from desktop session","artifact_paths":["generated/registry/company.yaml"],"session_id":"'"$OPENCODE_SESSION_ID"'"}'
+  ```
+  Not a high-impact action (no `reason`). No CLI counterpart — parity N/A.
 - **Quality gates must be green:** full pytest suite, ruff, mypy `--strict`,
   format, command-map, CLI-surface, `uv audit`. CI runs these on ubuntu +
   windows.

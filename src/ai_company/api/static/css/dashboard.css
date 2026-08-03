@@ -229,6 +229,13 @@ tr:last-child td { border-bottom: none; }
 }
 .deep-link.btn-sm:hover { background: var(--accent); color: var(--bg); }
 
+.decision-card.focus-highlight {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.artifact-paths { margin: 0; padding-left: 1.1rem; font-size: 0.8rem; }
+.artifact-paths li { margin: 0.15rem 0; }
+
 .stat-row {
   display: flex;
   justify-content: space-between;

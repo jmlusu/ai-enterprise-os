@@ -143,6 +143,38 @@ class TestGenerateFacade:
         for target in result["targets"]:
             assert target["deep_link"].startswith("opencode://new-session?directory=")
 
+    def test_review_submit_creates_desktop_decision(
+        self, facade: RuntimeFacade
+    ) -> None:
+        result = facade.review_submit(
+            title="Review generated registry",
+            description="Artifact from a desktop session.",
+            artifact_paths=["generated/registry/company.yaml"],
+            session_id="session-abc",
+            model="deepseek-r1-64k:latest",
+            base_url="http://127.0.0.1:8000",
+        )
+        assert result["success"] is True
+        decision = result["decision"]
+        assert decision["tags"] == ["review", "desktop"]
+        assert decision["requester"] == "session-abc"
+        assert decision["metadata"]["source"] == "desktop"
+        assert decision["metadata"]["artifact_paths"] == [
+            "generated/registry/company.yaml"
+        ]
+        assert decision["metadata"]["session_id"] == "session-abc"
+        assert result["review_link"] == (
+            f"http://127.0.0.1:8000/decisions?focus={decision['id']}"
+        )
+
+    def test_review_submit_defaults_requester(self, facade: RuntimeFacade) -> None:
+        result = facade.review_submit(title="T", description="D")
+        assert result["success"] is True
+        assert result["decision"]["requester"] == "desktop"
+        assert result["review_link"].startswith(
+            "http://127.0.0.1:8000/decisions?focus="
+        )
+
     def test_generate_run_missing(self, facade: RuntimeFacade) -> None:
         facade._generate_runner = _FakeRunner()
         result = facade.generate_run("nope")

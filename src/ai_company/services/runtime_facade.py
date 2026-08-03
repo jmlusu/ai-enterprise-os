@@ -1490,6 +1490,54 @@ class RuntimeFacade:
         except Exception as exc:
             return {"success": False, "errors": [str(exc)], "decision": None}
 
+    def review_submit(
+        self,
+        title: str,
+        description: str,
+        artifact_paths: list[str] | None = None,
+        session_id: str = "",
+        model: str = "",
+        base_url: str = "http://127.0.0.1:8000/",
+    ) -> dict[str, Any]:
+        """Submit a generated artifact from a desktop session for review (P4).
+
+        Creates a ``review`` decision in the approval inbox tagged as a
+        desktop submission and returns a ``review_link`` deep link that
+        focuses the new review on the dashboard (``/decisions?focus=<id>``).
+        The desktop agent hands ``review_link`` to the operator; it is a
+        desktop-HTTP surface with no CLI counterpart (ADR 0006 / R3 N/A).
+        """
+        from ai_company.services.deep_links import review_link
+
+        try:
+            engine = self._decision_engine_instance()
+            decision = engine.create_decision(
+                title=title,
+                description=description,
+                category="operational",
+                requester=session_id or "desktop",
+                tags=["review", "desktop"],
+                metadata={
+                    "source": "desktop",
+                    "session_id": session_id,
+                    "artifact_paths": artifact_paths or [],
+                    "model": model,
+                },
+            )
+            return {
+                "success": True,
+                "errors": [],
+                "decision": decision.to_dict(),
+                "review_link": review_link(decision.id, base_url),
+            }
+        except Exception as exc:
+            return {
+                "success": False,
+                "errors": [str(exc)],
+                "decision": None,
+                "review_link": None,
+            }
+
     def decision_approve(
         self,
         decision_id: str,

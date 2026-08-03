@@ -59,11 +59,25 @@
           <span class="chip {{ decision.status }}">{{ decision.status }}</span>
           <span class="chip">{{ decision.category }}</span>
           <span class="chip">{{ decision.priority }}</span>
+          {% if decision.metadata and decision.metadata.get("source") == "desktop" %}
+          <span class="chip watch">desktop</span>
+          {% endif %}
           {% if decision.risk_score is not none %}
           <span class="chip watch">risk {{ decision.risk_score }}</span>
           {% endif %}
         </p>
         <p>{{ decision.description }}</p>
+        {% if decision.metadata and decision.metadata.get("artifact_paths") %}
+        <p class="subtitle mt-1">artifacts submitted from the desktop:</p>
+        <ul class="artifact-paths">
+          {% for path in decision.metadata["artifact_paths"] %}
+          <li class="mono">{{ path }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if decision.metadata and decision.metadata.get("session_id") %}
+        <p class="subtitle mt-1">desktop session: <span class="mono">{{ decision.metadata["session_id"] }}</span>{% if decision.metadata.get("model") %} · model: <span class="mono">{{ decision.metadata["model"] }}</span>{% endif %}</p>
+        {% endif %}
         {% if decision.options %}
         <table>
           <thead><tr><th>Option</th><th>Description</th></tr></thead>
