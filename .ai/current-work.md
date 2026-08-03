@@ -54,7 +54,7 @@
 - [x] **Fix: shutdown order** — `shutdown.py` reorders steps: **`stop_workers` now runs before `stop_engines`** (notify → stop_workers → stop_engines → stop_processes → save_state → finalize). This ensures background threads are joined before any engine closes its resources.
 - [x] **Defense in depth** — `ReadModelEngine.health()` wraps `store.stats()` in `try/except sqlite3.Error` and returns {"status": "unhealthy", "error": "store unavailable: ..."} instead of crashing. Graceful degradation if shutdown races persist.
 - [x] **Tests updated** — `tests/unit/runtime/test_shutdown.py` step-order assertion updated to reflect new sequence (stop_workers before stop_engines). All existing shutdown tests pass.
-- [x] **Validation** — full suite **1364 green** locally; CI run re-ran successfully (all 8 jobs green); >10 consecutive local runs pass without segfault.
+- [x] **Validation** — full suite **1364 green** locally; **CI run `48` (head `314498a`) all 8 jobs green first try** — the ubuntu `test` job that previously segfaulted (~15%) passed with no rerun; >10 consecutive local runs pass without segfault.
 
 ### Sprint 5.4 T2 Deliverables â€” Retention + rollup (DONE, CI pending)
 
