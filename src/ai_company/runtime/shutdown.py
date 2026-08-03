@@ -3,10 +3,14 @@
 Shuts the runtime down in dependency-safe order:
 
 1. Notify listeners (publish ``runtime.stopping``).
-2. Stop engines in reverse-topological order (dependents stop before
+2. Stop background workers (scheduler, watchdog, supervisor,
+   heartbeat sender) **before** engines, so no monitoring thread
+   probes a component while it is mid-teardown (fixes a teardown
+   race that segfaulted when the supervisor/health monitor probed a
+   read-model engine whose SQLite connection had already closed).
+3. Stop engines in reverse-topological order (dependents stop before
    their dependencies) using the runtime dependency graph.
-3. Stop managed processes.
-4. Stop background workers (scheduler, watchdog, supervisor).
+4. Stop managed processes.
 5. Persist final state (phase STOPPED, stopped_at).
 6. Finalize (phase STOPPED, publish ``runtime.stopped``).
 
@@ -81,13 +85,13 @@ class ShutdownExecutor:
                 "Notify listeners that shutdown is beginning",
                 self._notify_step,
             ),
+            ("stop_workers", "Stop background workers", self._stop_workers),
             (
                 "stop_engines",
                 "Stop engines (reverse dependency order)",
                 self._stop_engines,
             ),
             ("stop_processes", "Stop managed processes", self._stop_processes),
-            ("stop_workers", "Stop background workers", self._stop_workers),
             ("save_state", "Persist final runtime state", self._save_state),
             ("finalize", "Mark runtime stopped", self._finalize),
         ]

@@ -44,9 +44,9 @@ def test_full_shutdown_succeeds() -> None:
     assert sequence.reason == "test"
     assert [s.name for s in sequence.steps] == [
         "notify",
+        "stop_workers",
         "stop_engines",
         "stop_processes",
-        "stop_workers",
         "save_state",
         "finalize",
     ]

@@ -14,6 +14,7 @@ reaches RUNNING. ``restart()`` (supervisor recovery) also re-runs the rebuild;
 
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -117,15 +118,18 @@ class ReadModelEngine(BaseModel):
         store = self._store
         if store is None:
             return {"status": "unhealthy", "error": "read model store not open"}
-        stats = store.stats()
-        rows = stats["events"] + stats["metrics_history"] + stats["provider_usage"]
-        return {
-            "status": "healthy",
-            "schema_version": stats["schema_version"],
-            "rebuilt_at": stats["rebuilt_at"],
-            "rows": rows,
-            "wal": stats["wal"],
-        }
+        try:
+            stats = store.stats()
+            rows = stats["events"] + stats["metrics_history"] + stats["provider_usage"]
+            return {
+                "status": "healthy",
+                "schema_version": stats["schema_version"],
+                "rebuilt_at": stats["rebuilt_at"],
+                "rows": rows,
+                "wal": stats["wal"],
+            }
+        except sqlite3.Error as exc:
+            return {"status": "unhealthy", "error": f"store unavailable: {exc}"}
 
     # ── read passthroughs (ADR 0004 projection queries) ─────────────
 
