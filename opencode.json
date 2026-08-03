@@ -27,7 +27,7 @@
           "name": "DeepSeek R1 7B"
         },
 
-        "deepseek-r1:7b-64k": {
+        "deepseek-r1-64k:latest": {
           "name": "DeepSeek R1 7B 64K"
         }
       }
@@ -44,7 +44,7 @@
     },
 
     "plan": {
-      "model": "ollama/deepseek-r1:7b-64k"
+      "model": "ollama/deepseek-r1-64k:latest"
     },
 
     "explore": {
