@@ -124,6 +124,25 @@ class TestGenerateFacade:
         assert result["success"] is True
         assert result["runs"][0]["run_id"] == "run-1"
 
+    def test_generate_runs_carry_deep_link(self, facade: RuntimeFacade) -> None:
+        facade._generate_runner = _FakeRunner()
+        result = facade.generate_runs()
+        assert result["runs"][0]["deep_link"].startswith(
+            "opencode://new-session?directory="
+        )
+
+    def test_generate_run_carries_deep_link(self, facade: RuntimeFacade) -> None:
+        facade._generate_runner = _FakeRunner()
+        result = facade.generate_run("run-1")
+        assert result["run"]["deep_link"].startswith("opencode://new-session?")
+
+    def test_generate_targets_carry_deep_link(self, facade: RuntimeFacade) -> None:
+        result = facade.generate_targets()
+        assert result["success"] is True
+        assert result["targets"]
+        for target in result["targets"]:
+            assert target["deep_link"].startswith("opencode://new-session?directory=")
+
     def test_generate_run_missing(self, facade: RuntimeFacade) -> None:
         facade._generate_runner = _FakeRunner()
         result = facade.generate_run("nope")

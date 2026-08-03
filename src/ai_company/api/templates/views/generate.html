@@ -16,13 +16,17 @@
     <label for="generate-target">Target</label>
     <select id="generate-target" class="select">
       {% for target in targets %}
-      <option value="{{ target.key }}" data-desc="{{ target.description | e }}">{{ target.key }} — {{ target.description }}</option>
+      <option value="{{ target.key }}" data-desc="{{ target.description | e }}" data-deep-link="{{ target.deep_link | e }}">{{ target.key }} — {{ target.description }}</option>
       {% endfor %}
     </select>
     <input id="generate-reason" type="text" class="input" placeholder="Reason (optional)" autocomplete="off" maxlength="500">
     <button id="generate-dispatch" type="button" class="btn">Dispatch</button>
   </div>
   <p id="generate-target-desc" class="subtitle mt-1">Select a target to dispatch.</p>
+  <p class="mt-1">
+    <a id="generate-deep-link" class="deep-link" target="_blank" rel="noopener" href="{% if targets %}{{ targets[0].deep_link | e }}{% endif %}">Continue in OpenCode →</a>
+    <span class="subtitle">open this target in the OpenCode desktop app</span>
+  </p>
   <span id="generate-status" class="write-status"></span>
 </div>
 

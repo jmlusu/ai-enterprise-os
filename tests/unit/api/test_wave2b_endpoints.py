@@ -134,6 +134,30 @@ def test_generate_runs_read(
     assert body["runs"] == []
 
 
+def test_generate_runs_deep_link_passthrough(
+    client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The API serves the additive ``deep_link`` the facade enriches (P3)."""
+    _stub(
+        monkeypatch,
+        facade,
+        "generate_runs",
+        {
+            "success": True,
+            "errors": [],
+            "runs": [
+                {
+                    "run_id": "g1",
+                    "target": "registry",
+                    "deep_link": "opencode://new-session?directory=x&prompt=y",
+                }
+            ],
+        },
+    )
+    body = client.get("/api/generate/runs").json()
+    assert body["runs"][0]["deep_link"].startswith("opencode://new-session?")
+
+
 def test_generate_run_404(
     client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
 ) -> None:

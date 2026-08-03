@@ -201,3 +201,31 @@ def test_parity_write_surfaces_share_csrf(client: TestClient) -> None:
 
     wave2b = client.post("/api/generate", json={"target": "registry"})
     assert wave2b.status_code == 403
+
+
+# ── desktop deep-link surface (Sprint 5.5 P3) ───────────────────────────────
+
+
+def test_parity_deep_link_desktop_surface(client: TestClient) -> None:
+    """P3 desktop hand-off is an additive read surface on the generate API.
+
+    OpenCode desktop deep links have no CLI counterpart (the CLI surface is
+    frozen under ADR 0006), so the parity matrix records this row as N/A;
+    this guard asserts the dashboard still serves a valid ``opencode://``
+    link for every run and target it exposes.
+    """
+    runs = client.get("/api/generate/runs").json()
+    for run in runs.get("runs", []):
+        link = run.get("deep_link")
+        assert isinstance(link, str)
+        assert link.startswith("opencode://new-session?")
+        assert "directory=" in link
+        assert "prompt=" in link
+
+    targets = client.get("/api/generate/targets").json()
+    assert targets["success"] is True
+    assert targets["targets"]
+    for target in targets["targets"]:
+        link = target.get("deep_link")
+        assert isinstance(link, str)
+        assert link.startswith("opencode://new-session?")

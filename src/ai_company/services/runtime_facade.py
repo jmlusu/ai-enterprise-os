@@ -836,8 +836,10 @@ class RuntimeFacade:
     ) -> dict[str, Any]:
         """JSON mirror of ``ai-company orchestrate history``."""
         from ai_company.orchestration import OrchestrationEngine
+        from ai_company.services.deep_links import enrich_plan, project_directory
 
         owns = engine is None
+        directory = project_directory(self._config_dir)
         try:
             engine = engine or OrchestrationEngine()
             records = engine.history(plan_id)[:limit]
@@ -845,7 +847,9 @@ class RuntimeFacade:
                 "success": True,
                 "errors": [],
                 "count": len(records),
-                "records": [r.model_dump(mode="json") for r in records],
+                "records": [
+                    enrich_plan(r.model_dump(mode="json"), directory) for r in records
+                ],
             }
         except Exception as exc:
             return {"success": False, "errors": [str(exc)], "records": []}
@@ -859,20 +863,25 @@ class RuntimeFacade:
     def generate_targets(self) -> dict[str, Any]:
         """JSON mirror of ``ai-company targets``."""
         from ai_company.cli.command_map import load_command_map
+        from ai_company.services.deep_links import enrich_target, project_directory
 
+        directory = project_directory(self._config_dir)
         try:
             command_map = load_command_map()
             return {
                 "success": True,
                 "errors": [],
                 "targets": [
-                    {
-                        "key": key,
-                        "description": entry.description,
-                        "agent": entry.agent,
-                        "model": entry.model,
-                        "prompt_file": entry.prompt_file,
-                    }
+                    enrich_target(
+                        {
+                            "key": key,
+                            "description": entry.description,
+                            "agent": entry.agent,
+                            "model": entry.model,
+                            "prompt_file": entry.prompt_file,
+                        },
+                        directory,
+                    )
                     for key, entry in sorted(command_map.items())
                 ],
             }
@@ -1323,18 +1332,23 @@ class RuntimeFacade:
 
     def generate_runs(self, limit: int = 50) -> dict[str, Any]:
         """Recent generate runs (newest first)."""
+        from ai_company.services.deep_links import enrich_run, project_directory
+
+        directory = project_directory(self._config_dir)
         try:
             runs = self._generate_runner_instance().list_runs(limit=limit)
             return {
                 "success": True,
                 "errors": [],
-                "runs": [run.to_dict() for run in runs],
+                "runs": [enrich_run(run.to_dict(), directory) for run in runs],
             }
         except Exception as exc:
             return {"success": False, "errors": [str(exc)], "runs": []}
 
     def generate_run(self, run_id: str) -> dict[str, Any]:
         """One generate run by id."""
+        from ai_company.services.deep_links import enrich_run, project_directory
+
         run = self._generate_runner_instance().get(run_id)
         if run is None:
             return {
@@ -1342,7 +1356,11 @@ class RuntimeFacade:
                 "errors": [f"run not found: {run_id}"],
                 "run": None,
             }
-        return {"success": True, "errors": [], "run": run.to_dict()}
+        return {
+            "success": True,
+            "errors": [],
+            "run": enrich_run(run.to_dict(), project_directory(self._config_dir)),
+        }
 
     def generate_log(self, run_id: str, max_lines: int = 400) -> dict[str, Any]:
         """Tail of one run's streamed log."""
@@ -1356,13 +1374,19 @@ class RuntimeFacade:
 
     def generate_start(self, target: str, reason: str = "") -> dict[str, Any]:
         """Dispatch one generate run (mirrors ``ai-company generate <target>``)."""
+        from ai_company.services.deep_links import enrich_run, project_directory
+
         try:
             run = self._generate_runner_instance().start(target, reason=reason)
         except ValueError as exc:
             return {"success": False, "errors": [str(exc)], "run": None}
         except Exception as exc:
             return {"success": False, "errors": [str(exc)], "run": None}
-        return {"success": True, "errors": [], "run": run.to_dict()}
+        return {
+            "success": True,
+            "errors": [],
+            "run": enrich_run(run.to_dict(), project_directory(self._config_dir)),
+        }
 
     def generate_cancel(self, run_id: str) -> dict[str, Any]:
         """Cancel a running generate dispatch."""

@@ -373,6 +373,7 @@
   var generateLogEl = document.getElementById("generate-log");
   var generateTargetSelect = document.getElementById("generate-target");
   var generateTargetDesc = document.getElementById("generate-target-desc");
+  var generateDeepLink = document.getElementById("generate-deep-link");
   var activeRunTimer = null;
 
   function setGenerateStatus(text, cls) {
@@ -387,6 +388,9 @@
       var opt = generateTargetSelect.options[generateTargetSelect.selectedIndex];
       if (generateTargetDesc && opt) {
         generateTargetDesc.textContent = opt.dataset.desc || "";
+      }
+      if (generateDeepLink && opt && opt.dataset.deepLink) {
+        generateDeepLink.href = opt.dataset.deepLink;
       }
     });
     var dispatchBtn = document.getElementById("generate-dispatch");
@@ -487,6 +491,15 @@
       actions.className = "write-actions inline";
       actions.appendChild(logBtn);
       if (cancelBtn) { actions.appendChild(cancelBtn); }
+      if (run.deep_link) {
+        var deepLink = document.createElement("a");
+        deepLink.href = run.deep_link;
+        deepLink.target = "_blank";
+        deepLink.rel = "noopener";
+        deepLink.className = "deep-link btn-sm";
+        deepLink.textContent = "Continue in OpenCode";
+        actions.appendChild(deepLink);
+      }
       tr.innerHTML =
         '<td class="mono">' + escAttr(run.run_id) + "</td>" +
         "<td>" + escAttr(run.target) + "</td>" +
