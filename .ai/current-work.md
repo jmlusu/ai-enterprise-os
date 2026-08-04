@@ -246,6 +246,44 @@ Initiative Phase 3 `[NOT STARTED]` — **kickoff draft (2026-08-03):**
   `mermaid.min.js` 10.9.1 (jsdom harness). No suite/ruff/mypy impact (docs
   only).
 
+### P1 Technical Diagrams (2026-08-04) — DONE
+
+- [x] **P1 diagram set created** (docs only, no code/CLI/test impact) — five
+  diagrams covering the highest-leverage subsystems for Phase 4 planning,
+  all grounded in source (`readmodel/store.py`, `telemetry/*.py`,
+  `orchestration/lifecycle.py`, `runtime/supervisor.py`).
+  5. **`docs/diagrams/telemetry-dataflow-diagram.md`** — producers → 8 JSONL
+     sources of truth → consumers (read model watermark sync, retention
+     rollup-then-truncate, D5 `action_share_summary`, session/alerts panels);
+     readmodel projection scope is events/metrics/provider only.
+  6. **`docs/diagrams/session-bridge-sequence.md`** — P1–P4 sequence:
+     AGENTS.md session bridge on open → plugin hook capture → flush on
+     close (`POST /api/telemetry/session`, guarded, `source=None` plumbing) →
+     Sessions panel; `review.submit` (`source="desktop"`) → review decision →
+     `review_link` → `/decisions?focus=`; D5 contribution note.
+  7. **`docs/diagrams/orchestration-pipeline-diagram.md`** — COO flow:
+     plan → run → stages → tasks → TaskExecutor → Coordinator → engines;
+     checkpoint/state-store; RecoveryManager strategies; **pipeline + task
+     state machines from the actual `PIPELINE_TRANSITIONS` / `TASK_TRANSITIONS`
+     maps** (incl. SCHEDULED/PAUSED/RECOVERING/READY states).
+  8. **`docs/diagrams/supervisor-self-healing-diagram.md`** — failure-detection
+     funnel (heartbeat/health/watchdog) → `on_failure` → RecoveryManager →
+     policy actions (restart → reload_state → isolate → escalate) → isolate →
+     `engine_isolated` + alert open → unisolate → alert resolved (T3 no-spam
+     contract); supervisor component state machine.
+  9. **`docs/diagrams/read-model-diagram.md`** — ADR 0004: JSONL → `rebuild()`
+     on startup (one transaction, watermarks seeded at EOF) → dashboard.db
+     (WAL, schema v1 tables) → reads; live `sync_from_jsonl()` on the 30s
+     ticker (single writer, idempotent, event dedup, full-reimport on
+     truncation); fail-open JSONL fallback; `check_same_thread=False`; health
+     guard.
+- [x] **`docs/diagrams/README.md`** updated — P1 rows SHIPPED, backlog reduced
+  to the P2 set (generate dispatch, view→endpoint→facade map, deep-link map,
+  event bus internals, deployment topology).
+- [x] **Validated** — all 14 mermaid blocks across the 9 diagram files parse
+  clean against vendored `mermaid.min.js` 10.9.1 (jsdom harness). No
+  suite/ruff/mypy impact (docs only).
+
 ### 2. Sprint 5.6 â€” Svelte 5 Migration (Phase 4) ðŸ”®
 **ADR:** 0008 (v2 deferred) â€” richer UX with Svelte 5 + Vite when budget allows.
 
