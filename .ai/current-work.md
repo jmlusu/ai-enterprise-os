@@ -213,6 +213,39 @@ Initiative Phase 3 `[NOT STARTED]` — **kickoff draft (2026-08-03):**
 - [x] **Tests** - new `tests/unit/telemetry/test_actions.py` (15: roundtrip, read limit, count clamp, prune, fail-open write, empty/missing/corrupt logs, gui+desktop+cli share math, session dedupe to newest checkpoint, window filtering, target control); `test_facade_wave2b.py` (+1 share summary); `test_wave2b_endpoints.py` (+5 actions read, gui record on guarded write, rejected write records nothing, review.submit → desktop, session.persist skipped); `test_retention.py` policy sets; golden guard test. Full suite **1409 -> 1428 green**; ruff/mypy-strict/format/command-map/CLI-surface clean; pre-commit green.
 - [x] **Live verification** (2026-08-04) - restarted `ai-company serve`; clean baseline (gui/desktop 0, session activity 369, CLI 2250); real `POST /api/review/submit` → desktop 1, real `POST /api/decisions` → gui 1; `GET /api/telemetry/actions` share recomputed live (14.2%); `/telemetry` D5 card renders "14.2%" + counts.
 
+### P0 Technical Diagrams (2026-08-04) — DONE
+
+- [x] **P0 diagram set created** (docs only, no code/CLI/test impact) — the only
+  prior diagram was `docs/architecture-diagram.md`, last updated Sprint 4.5 and
+  predating the dashboard initiative / services layer / runtime kernel /
+  telemetry / read model / deep links / session bridge.
+  1. **`docs/architecture-diagram.md` refreshed (4.5 → 5.5)** — full system
+     architecture: command centers (CLI/API/OpenCode desktop), shared services
+     (ADR 0003), build-time + run-time layers, telemetry JSONL→SQLite (ADR
+     0004), write auth (ADR 0010); new purple/orange/teal/red legend; status-by-
+     sprint table extended through Sprint 5.5.
+  2. **`docs/diagrams/runtime-lifecycle-diagram.md`** — phase state machine
+     from `RUNTIME_TRANSITIONS` (STOPPED/STARTING/RUNNING/DEGRADED/RECOVERING/
+     STOPPING/FAILED), 11-step boot (from `config/runtime/startup.yaml`,
+     incl. boot-time state recovery ordering + read-model rebuild step 9),
+     6-step shutdown (stop_workers BEFORE stop_engines — T5 segfault fix),
+     worker-set table.
+  3. **`docs/diagrams/command-centers-diagram.md`** — dual command-center model
+     (workshop = OpenCode, boardroom/NOC = dashboard, CLI = shell underneath),
+     all thin adapters over `services/`; deep-link flows (P3/P4); anti-drift
+     guarantees.
+  4. **`docs/diagrams/write-auth-flow-diagram.md`** — WriteGuard sequence
+     (ADR 0010): `GET /api/write-csrf` → bearer (401) → CSRF (403) → high-
+     impact reason (422) → `audit.write` + `record_action(source)` (D5 P5);
+     fail-open JSONL audit fallback; WS `?token=` note.
+- [x] **`docs/diagrams/README.md`** — index of the P0 set + P1/P2 backlog
+  (telemetry data-flow, session bridge, COO pipeline, supervisor self-healing,
+  read model, generate dispatch, view→endpoint→facade map, deep-link map,
+  event bus, deployment topology).
+- [x] **Validated** — all 6 mermaid blocks parse clean against vendored
+  `mermaid.min.js` 10.9.1 (jsdom harness). No suite/ruff/mypy impact (docs
+  only).
+
 ### 2. Sprint 5.6 â€” Svelte 5 Migration (Phase 4) ðŸ”®
 **ADR:** 0008 (v2 deferred) â€” richer UX with Svelte 5 + Vite when budget allows.
 
