@@ -230,6 +230,16 @@ hermetic API-side runtime).
   `test_parity_status.py` (2) + `test_parity_wave2b.py` (per-artifact
   validate reports == CLI `validate` lines; generate/backup OpenAPI
   contract; shared guard 401/403) — 11 golden tests + contract tests.
+- **Wave 3 (P6, 2026-08-04):** `test_parity_wave3_read.py` — 18 golden read
+  tests covering `registry show`, `exec org-chart`, `memory list/get/search/
+  show/stats/snapshots`, `report generate`, `company board-report`,
+  `orchestrate status/history`, `runtime health/metrics/diagnostics`; and
+  `test_parity_wave3_writes.py` — 19 write-contract tests asserting the CLI
+  `--help` knob surface matches the OpenAPI body schemas for `memory save/
+  update/snapshot/restore/archive/unarchive`, `runtime start/stop/restart/
+  reload` (`--reason`), `orchestrate plan/start/resume/retry/rollback`,
+  `report generate`, `graph export`, `bootstrap`, `build`. **44 of 71 command
+  rows parity-tested — milestone MET (≥40 target).** Suite 1465 green.
 - **Target by Phase 3 close-out:** every read and every safe-write row is
   parity-tested — **≥40 of 71 command rows** golden-tested (the 5 CLI-only
   destructive rows are out of scope by design; they have no GUI path to
