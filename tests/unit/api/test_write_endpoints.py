@@ -26,6 +26,12 @@ _TOKEN = "test-write-token-0123456789abcdef"
 _CSRF = "test-csrf-token-0123456789abcdef"
 
 
+@pytest.fixture(autouse=True)
+def _isolated_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the guarded-write action telemetry (P5 D5) out of the repo tree."""
+    monkeypatch.chdir(tmp_path)
+
+
 @pytest.fixture()
 def bus(tmp_path: Path) -> EventBus:
     instance = EventBus(

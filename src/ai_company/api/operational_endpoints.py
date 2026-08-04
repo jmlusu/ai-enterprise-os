@@ -304,6 +304,16 @@ def register_operational_endpoints(
         """OpenCode session checkpoints (Sessions panel data, sprint 5.5 P2)."""
         return await run_in_threadpool(facade.session_telemetry_summary, limit)
 
+    @app.get("/api/telemetry/actions", tags=["telemetry"])
+    async def telemetry_actions(
+        window_days: int = Query(default=30, ge=1, le=365),
+        target_pct: float = Query(default=80.0, ge=0.0, le=100.0),
+    ) -> dict[str, Any]:
+        """GUI/desktop vs CLI operator-action share (D5 north-star, sprint 5.5 P5)."""
+        return await run_in_threadpool(
+            facade.action_telemetry_summary, window_days, target_pct
+        )
+
     @app.get("/api/backup", tags=["backup"])
     async def backup_status() -> dict[str, Any]:
         """Existing backup archives (newest first) for the R6 tile."""
@@ -458,6 +468,7 @@ def register_operational_endpoints(
                 "decision_id": (result.get("decision") or {}).get("id"),
                 "session_id": body.session_id,
             },
+            source="desktop",
         )
 
     # ── graph export / company CRUD / agents / backup (writes) ─────────────
@@ -564,4 +575,5 @@ def register_operational_endpoints(
             result,
             "telemetry.session.persist",
             extra={"session_id": body.session_id, "end_reason": body.end_reason},
+            source=None,
         )

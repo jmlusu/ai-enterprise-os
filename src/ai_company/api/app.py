@@ -414,6 +414,7 @@ def create_app(
         alerts = await _safe(facade.alerts_summary, default={}) or {}
         retention = await _safe(facade.retention_status, default={}) or {}
         sessions = await _safe(facade.session_telemetry_summary, default={}) or {}
+        actions = await _safe(facade.action_telemetry_summary, default={}) or {}
         status = await _safe(facade.status, default={}) or {}
         metrics_summary = metrics.get("summary", {})
         return templates.TemplateResponse(
@@ -428,6 +429,7 @@ def create_app(
                 alerts_summary=alerts.get("summary", {}),
                 retention_summary=retention.get("summary", {}),
                 sessions_summary=sessions.get("summary", {}),
+                actions_summary=actions.get("summary", {}),
                 status=status,
             ),
         )
@@ -541,6 +543,7 @@ def create_app(
                 "telemetry_metrics": "/api/telemetry/metrics",
                 "telemetry_providers": "/api/telemetry/providers",
                 "telemetry_sessions": "/api/telemetry/sessions",
+                "telemetry_actions": "/api/telemetry/actions",
                 "websocket": "/api/ws?since=<iso8601>",
                 "docs": "/api/docs",
             },

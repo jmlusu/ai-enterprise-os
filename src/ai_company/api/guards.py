@@ -32,6 +32,7 @@ from ai_company.api.auth import (
     publish_write_rejected,
 )
 from ai_company.events import EventBus
+from ai_company.telemetry.actions import record_action
 
 __all__ = ["HIGH_IMPACT_ACTIONS", "WriteGuard"]
 
@@ -122,8 +123,16 @@ class WriteGuard:
         action: str,
         reason: str | None = None,
         extra: dict[str, object] | None = None,
+        source: str | None = "gui",
     ) -> dict[str, object]:
-        """Publish an ``audit.write`` event (fail-open) and return ``result``."""
+        """Publish an ``audit.write`` event (fail-open) and return ``result``.
+
+        ``source`` feeds the D5 action telemetry (sprint 5.5 P5): ``"gui"``
+        for dashboard operator writes, ``"desktop"`` for desktop-originated
+        writes, and ``None`` to skip recording (telemetry plumbing such as
+        ``telemetry.session.persist`` is not an operator action). Recording is
+        fail-open and never affects the returned result.
+        """
         if self._bus is not None:
             status = "ok" if result.get("success") else "failed"
             details: dict[str, object] = dict(extra or {})
@@ -138,4 +147,6 @@ class WriteGuard:
                 details=details or None,
                 failed_path=self._failed_path,
             )
+        if source is not None:
+            record_action(source, action)
         return result

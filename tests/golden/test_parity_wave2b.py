@@ -251,3 +251,38 @@ def test_parity_review_submit_desktop_surface(
 
     plain = client.post("/api/review/submit", json=body)
     assert plain.status_code == 403
+
+
+# ── D5 operator-action share surface (Sprint 5.5 P5) ─────────────────────────
+
+
+def test_parity_d5_actions_surface(client: TestClient) -> None:
+    """P5 D5 share is a read-only telemetry metric with no CLI counterpart
+    (the CLI surface is frozen under ADR 0006), so the parity matrix records
+    this row as N/A; this guard asserts the new surface serves a complete,
+    bounded D5 summary and is registered in the OpenAPI contract with its
+    window/target knobs.
+    """
+    body = client.get("/api/telemetry/actions").json()
+    assert body["success"] is True
+    summary = body["summary"]
+    for key in (
+        "window_days",
+        "target_pct",
+        "counts",
+        "desktop_session_actions",
+        "gui_desktop_total",
+        "cli_total",
+        "actions_total",
+        "share_pct",
+        "at_target",
+        "by_action",
+    ):
+        assert key in summary, f"D5 summary missing {key}"
+    assert 0.0 <= summary["share_pct"] <= 100.0
+    assert summary["counts"]["cli"] >= 0
+
+    openapi = _openapi(client)
+    operation = openapi["paths"]["/api/telemetry/actions"]["get"]
+    params = {p["name"] for p in operation.get("parameters", [])}
+    assert {"window_days", "target_pct"} <= params

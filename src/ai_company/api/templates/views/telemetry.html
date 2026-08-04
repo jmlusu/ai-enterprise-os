@@ -50,6 +50,48 @@
 </div>
 
 <div class="card mb-1">
+  <h2>GUI/desktop share <span class="subtitle">D5 north-star — operator actions via Dashboard/OpenCode desktop</span></h2>
+  <div class="grid cols-4">
+    <div class="card">
+      <h2>Share</h2>
+      <div class="big-number">{{ actions_summary.get("share_pct", 0) }}<small>%</small></div>
+      <p class="subtitle">target {{ actions_summary.get("target_pct", 80.0) }}% — {{ "at target" if actions_summary.get("at_target") else "below target" }}</p>
+    </div>
+    <div class="card">
+      <h2>GUI + desktop</h2>
+      <div class="big-number">{{ actions_summary.get("gui_desktop_total", 0) }}<small>actions</small></div>
+      <p class="subtitle">
+        {{ actions_summary.get("counts", {}).get("gui", 0) }} gui ·
+        {{ actions_summary.get("counts", {}).get("desktop", 0) }} desktop ·
+        {{ actions_summary.get("desktop_session_actions", 0) }} session activity
+      </p>
+    </div>
+    <div class="card">
+      <h2>CLI baseline</h2>
+      <div class="big-number">{{ actions_summary.get("cli_total", 0) }}<small>invocations</small></div>
+      <p class="subtitle">window {{ actions_summary.get("window_days", 30) }}d · runtime/cli_telemetry.jsonl</p>
+    </div>
+    <div class="card">
+      <h2>Total actions</h2>
+      <div class="big-number">{{ actions_summary.get("actions_total", 0) }}<small>all</small></div>
+      <p class="subtitle">share = {{ actions_summary.get("gui_desktop_total", 0) }} / {{ actions_summary.get("actions_total", 0) }}</p>
+    </div>
+  </div>
+  {% if actions_summary.get("by_action") %}
+  <p class="subtitle mt-1">by action:
+    {% for row in actions_summary.get("by_action", [])[:6] %}
+    <span class="mono">{{ row.get("source", "") }}:{{ row.get("action", "") }} ×{{ row.get("count", 0) }}</span>{% if not loop.last %} · {% endif %}{% endfor %}
+  </p>
+  {% endif %}
+  <p class="subtitle mt-1">
+    Numerator = guarded dashboard writes + desktop review submits + OpenCode
+    session commands/tool calls (<span class="mono">runtime/action_telemetry.jsonl</span>);
+    denominator adds CLI invocations. Telemetry plumbing
+    (<span class="mono">telemetry.session.persist</span>) is excluded.
+  </p>
+</div>
+
+<div class="card mb-1">
   <h2>Model usage <span class="subtitle">runtime/provider_usage.jsonl — aggregated by model</span></h2>
   {% if providers.get("models") %}
   <table>

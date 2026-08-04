@@ -24,6 +24,9 @@ retention:
   session_telemetry:
     days: 180
     rollup: false
+  action_telemetry:
+    days: 180
+    rollup: false
 
 rollup:
   enabled: true

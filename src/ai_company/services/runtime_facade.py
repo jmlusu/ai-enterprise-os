@@ -2044,6 +2044,29 @@ class RuntimeFacade:
         except Exception as exc:
             return {"success": False, "errors": [str(exc)], "summary": {}}
 
+    def action_telemetry_summary(
+        self, window_days: int = 30, target_pct: float = 80.0
+    ) -> dict[str, Any]:
+        """GUI/desktop vs CLI operator-action share (D5 north-star, sprint 5.5 P5).
+
+        Fail-open read: the numerator counts GUI actions (guarded dashboard
+        writes) plus desktop actions (explicit records + OpenCode session
+        commands/tool calls); the denominator adds CLI invocations from the
+        signed-off D5 baseline (``runtime/cli_telemetry.jsonl``).
+        """
+        from ai_company.telemetry.actions import action_share_summary
+
+        try:
+            return {
+                "success": True,
+                "errors": [],
+                "summary": action_share_summary(
+                    window_days=window_days, target_pct=target_pct
+                ),
+            }
+        except Exception as exc:
+            return {"success": False, "errors": [str(exc)], "summary": {}}
+
     def _section_telemetry(self) -> dict[str, Any]:
         """Return the ``telemetry`` config section (empty when unavailable)."""
         try:

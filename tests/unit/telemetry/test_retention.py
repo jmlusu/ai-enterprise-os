@@ -66,14 +66,17 @@ def test_load_policies_defaults() -> None:
     assert policies["provider_usage"]["days"] == 90
     assert policies["cli_telemetry"]["days"] == 180
     assert policies["session_telemetry"]["days"] == 180
-    # rollup sources are the aggregated history logs; session checkpoints are
-    # truncated by age without rollup (per-session record, not a time series).
+    assert policies["action_telemetry"]["days"] == 180
+    # rollup sources are the aggregated history logs; session/action checkpoints
+    # are truncated by age without rollup (per-session/per-action records, not
+    # time series).
     assert {k for k, v in policies.items() if v["rollup"]} == {
         "metrics_history",
         "provider_usage",
         "cli_telemetry",
     }
     assert policies["session_telemetry"]["rollup"] is False
+    assert policies["action_telemetry"]["rollup"] is False
 
 
 def test_load_policies_merges_config_section() -> None:
@@ -94,6 +97,7 @@ def test_load_policies_ignores_unknown_sources() -> None:
         "provider_usage",
         "cli_telemetry",
         "session_telemetry",
+        "action_telemetry",
     }
 
 

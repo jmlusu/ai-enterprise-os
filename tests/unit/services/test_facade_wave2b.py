@@ -630,6 +630,55 @@ class TestTelemetryFacade:
         assert data["recent"][0]["end_reason"] == "deleted"
         assert data["totals"]["tool_calls"] == 4
 
+    def test_action_telemetry_summary(
+        self,
+        facade: RuntimeFacade,
+        tmp_path: Path,
+    ) -> None:
+        """P5 — D5 share = (gui + desktop + session activity) / (+ cli baseline)."""
+        from ai_company.telemetry.actions import record_action
+        from ai_company.telemetry.sessions import record_session_telemetry
+
+        (tmp_path / "runtime").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "runtime" / "cli_telemetry.jsonl").write_text(
+            json.dumps(
+                {
+                    "timestamp": "2026-08-01T10:00:00+00:00",
+                    "command": "serve",
+                    "args": [],
+                    "working_dir": ".",
+                    "exit_code": 0,
+                    "duration_seconds": 1.0,
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        record_action("gui", "runtime.reload")
+        record_action("desktop", "review.submit", session_id="sess-9")
+        record_session_telemetry(
+            session_id="sess-9",
+            title="P5",
+            commands_run=3,
+            tool_calls=5,
+            end_reason="idle",
+        )
+
+        summary = facade.action_telemetry_summary()
+        assert summary["success"] is True
+        data = summary["summary"]
+        assert data["counts"]["cli"] == 1
+        assert data["counts"]["gui"] == 1
+        assert data["counts"]["desktop"] == 1
+        assert data["desktop_session_actions"] == 8
+        assert data["gui_desktop_total"] == 10
+        assert data["actions_total"] == 11
+        assert data["share_pct"] == round(10 / 11 * 100, 1)
+        assert data["at_target"] is True
+        by_action = {row["action"]: row["count"] for row in data["by_action"]}
+        assert by_action["review.submit"] == 1
+        assert by_action["runtime.reload"] == 1
+
 
 def _write_metrics_and_usage(tmp_path: Path) -> dict[str, Path]:
     """Write tiny telemetry JSONL fixtures under ``tmp_path`` (T1)."""

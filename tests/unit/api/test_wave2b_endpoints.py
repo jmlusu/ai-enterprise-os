@@ -9,6 +9,7 @@ failure. Facade write adapters are stubbed; the real adapters are covered in
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,12 @@ from ai_company.services.runtime_facade import RuntimeFacade
 _MISSING_CONFIG = "__missing__"
 _TOKEN = "test-write-token-0123456789abcdef"
 _CSRF = "test-csrf-token-0123456789abcdef"
+
+
+@pytest.fixture(autouse=True)
+def _isolated_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the guarded-write action telemetry (P5 D5) out of the repo tree."""
+    monkeypatch.chdir(tmp_path)
 
 
 @pytest.fixture()
@@ -313,6 +320,42 @@ def test_telemetry_sessions_read(
     body = client.get("/api/telemetry/sessions").json()
     assert body["summary"]["sessions"] == 1
     assert body["summary"]["recent"][0]["session_id"] == "sess-1"
+
+
+def test_telemetry_actions_read(
+    client: TestClient, facade: RuntimeFacade, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """P5 — GET /api/telemetry/actions exposes the D5 operator-action share."""
+    _stub(
+        monkeypatch,
+        facade,
+        "action_telemetry_summary",
+        {
+            "success": True,
+            "errors": [],
+            "summary": {
+                "persistence_enabled": True,
+                "window_days": 30,
+                "target_pct": 80.0,
+                "counts": {"cli": 4, "gui": 6, "desktop": 2},
+                "desktop_session_actions": 5,
+                "gui_desktop_total": 13,
+                "cli_total": 4,
+                "actions_total": 17,
+                "share_pct": 76.5,
+                "at_target": False,
+                "by_action": [
+                    {"source": "gui", "action": "runtime.reload", "count": 6}
+                ],
+            },
+        },
+    )
+    body = client.get("/api/telemetry/actions").json()
+    summary = body["summary"]
+    assert summary["counts"] == {"cli": 4, "gui": 6, "desktop": 2}
+    assert summary["gui_desktop_total"] == 13
+    assert summary["share_pct"] == 76.5
+    assert summary["at_target"] is False
 
 
 def test_backup_status_read(
@@ -665,6 +708,126 @@ def test_telemetry_session_persist_rejects_negative_counts(
         headers=_auth(token=_TOKEN),
     )
     assert resp.status_code == 422
+
+
+def test_guarded_write_records_gui_action(
+    client: TestClient,
+    facade: RuntimeFacade,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """P5 — a guarded dashboard write records a GUI operator action (D5)."""
+    monkeypatch.chdir(tmp_path)
+    _stub(
+        monkeypatch,
+        facade,
+        "decision_create",
+        {
+            "success": True,
+            "errors": [],
+            "decision": {"id": "decision_1", "title": "T"},
+        },
+    )
+    resp = client.post(
+        "/api/decisions",
+        json={"title": "T", "description": "D", "category": "technical"},
+        headers=_auth(token=_TOKEN),
+    )
+    assert resp.status_code == 200
+
+    log = tmp_path / "runtime" / "action_telemetry.jsonl"
+    assert log.is_file()
+    records = [
+        json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()
+    ]
+    assert records[-1]["source"] == "gui"
+    assert records[-1]["action"] == "decision.create"
+    assert records[-1]["count"] == 1
+
+
+def test_rejected_write_does_not_record_action(
+    client: TestClient,
+    facade: RuntimeFacade,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """P5 — a write blocked by the guard (bad CSRF) is not an operator action."""
+    monkeypatch.chdir(tmp_path)
+    _stub(
+        monkeypatch,
+        facade,
+        "decision_create",
+        {
+            "success": True,
+            "errors": [],
+            "decision": {"id": "decision_1", "title": "T"},
+        },
+    )
+    resp = client.post(
+        "/api/decisions",
+        json={"title": "T", "description": "D", "category": "technical"},
+        headers=_auth(token=_TOKEN, csrf="wrong"),
+    )
+    assert resp.status_code == 403
+    assert not (tmp_path / "runtime" / "action_telemetry.jsonl").exists()
+
+
+def test_review_submit_records_desktop_action(
+    client: TestClient,
+    facade: RuntimeFacade,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """P5 — review.submit is recorded under the desktop source, not GUI."""
+    monkeypatch.chdir(tmp_path)
+    _stub(
+        monkeypatch,
+        facade,
+        "review_submit",
+        {
+            "success": True,
+            "errors": [],
+            "decision": {"id": "decision_9", "title": "T"},
+            "review_link": "http://127.0.0.1/decisions?focus=decision_9",
+        },
+    )
+    resp = client.post(
+        "/api/review/submit",
+        json={"title": "Review generated registry", "description": "D"},
+        headers=_auth(token=_TOKEN),
+    )
+    assert resp.status_code == 200
+
+    log = tmp_path / "runtime" / "action_telemetry.jsonl"
+    assert log.is_file()
+    records = [
+        json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()
+    ]
+    assert records[-1]["source"] == "desktop"
+    assert records[-1]["action"] == "review.submit"
+
+
+def test_telemetry_session_persist_skips_action_record(
+    client: TestClient,
+    facade: RuntimeFacade,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """P5 — telemetry plumbing (session.persist) is not an operator action."""
+    monkeypatch.chdir(tmp_path)
+    _stub(
+        monkeypatch,
+        facade,
+        "session_telemetry_record",
+        {"success": True, "errors": [], "session_id": "sess-1"},
+    )
+    resp = client.post(
+        "/api/telemetry/session",
+        json={"session_id": "sess-1", "end_reason": "idle"},
+        headers=_auth(token=_TOKEN),
+    )
+    assert resp.status_code == 200
+    assert not (tmp_path / "runtime" / "action_telemetry.jsonl").exists()
 
 
 # ── WebSocket token enforcement (wave 2b) ─────────────────────────────────
