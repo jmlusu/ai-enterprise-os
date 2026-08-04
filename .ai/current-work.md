@@ -284,6 +284,40 @@ Initiative Phase 3 `[NOT STARTED]` — **kickoff draft (2026-08-03):**
   clean against vendored `mermaid.min.js` 10.9.1 (jsdom harness). No
   suite/ruff/mypy impact (docs only).
 
+### P2 Technical Diagrams (2026-08-04) — DONE
+
+- [x] **P2 diagram set created** (docs only, no code/CLI/test impact) — the
+  final five diagrams closing the technical-diagram backlog; grounded in source
+  (`services/generate_dispatch.py`, `services/generate_runner.py`,
+  `services/deep_links.py`, `services/runtime_facade.py`, `api/app.py`,
+  `api/write_endpoints.py`, `api/operational_endpoints.py`, `events/bus.py`,
+  `events/*.py`, `.github/workflows/*.yml`).
+  10. **`docs/diagrams/generate-dispatch-diagram.md`** — shared dispatcher
+      (R4/D9): opencode primary → ollama fallback on missing/startup-fail/
+      non-zero exit; `DispatchOutcome.used_fallback`; per-attempt error table;
+      cancellation (register_proc), restart-replay as failed, append-mode logs.
+  11. **`docs/diagrams/view-endpoint-facade-map.md`** — the 12 Jinja2 views,
+      93 API routes, and 8 facade method groups all resolving to the same
+      engines (ADR 0003 single surface); full view → endpoint → facade →
+      engine ledger table; write surface via WriteGuard (ADR 0010).
+  12. **`docs/diagrams/deep-links-diagram.md`** — P3 (dashboard →
+      `opencode://new-session` via `NewSessionDeepLink` Pydantic v2) and P4
+      (desktop → `POST /api/review/submit` → `review_link` →
+      `/decisions?focus=`); validation rules table; parity N/A notes.
+  13. **`docs/diagrams/event-bus-diagram.md`** — `EventBus` publish pipeline
+      (middleware → PriorityProcessor heapq → router → Dispatcher →
+      persistence → metrics/history), delivery modes, dead-letter/replay,
+      request/reply, EventType/priority/status enums.
+  14. **`docs/diagrams/deployment-topology-diagram.md`** — single-machine
+      topology: CLI + loopback dashboard server + OpenCode desktop + runtime
+      kernel in-process + JSONL/SQLite stores + ollama/opencode binaries;
+      GitHub Actions CI (lint/type-check ubuntu+windows, test/test-windows,
+      validate, build) + nightly-backup + release workflows.
+- [x] **`docs/diagrams/README.md`** updated — P2 rows SHIPPED; backlog complete
+  (14/14). No suite/ruff/mypy impact (docs only).
+- [x] **Validated** — all 19 mermaid blocks across the 14 diagram files parse
+  clean against vendored `mermaid.min.js` 10.9.1 (jsdom harness).
+
 ### 2. Sprint 5.6 â€” Svelte 5 Migration (Phase 4) ðŸ”®
 **ADR:** 0008 (v2 deferred) â€” richer UX with Svelte 5 + Vite when budget allows.
 
