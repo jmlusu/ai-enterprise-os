@@ -17,6 +17,22 @@
 | **Completed** | 2026-08-04 (P6 CI green — run `30893245070` 8/8 jobs) |
 | **Follow-up (in progress)** | Post-Sprint 5.3 risk mitigation completed: R12/R8/R3/R11/R4 â€” see "Dashboard Initiative Follow-up" below |
 
+### Post-Sprint 5.5 — Company Docs Generator (DONE, CI green `31007703006` 8/8)
+
+- [x] **`company/company_docs_generator.py`** — deterministic `CompanyDocsGenerator`
+  producing the eight top-level docs (`ROADMAP.md`, `CHANGELOG.md`,
+  `PROJECT_STATUS.md`, `BOARD.md`, `WORKFLOWS.md`, `DECISION_ENGINE.md`,
+  `MEMORY.md`, `GRAPH.md`) from `config/*.yaml` + the loaded registry. No
+  timestamps / wall-clock values → byte-for-byte comparable output; missing
+  config files degrade to warnings, never raise. Wired into
+  `CompanyGenerator.generate_all()` as step 10 (`generator.py`).
+- [x] **`opencode.json`** — added `gemma4:12b` (Gemma 4 12B) to the ollama model
+  list.
+- [x] **CI run `31007703006` 8/8 green first try (2026-08-05)** — test /
+  test-windows / type-check (ubuntu+windows) / lint (ubuntu+windows) /
+  validate / build. Committed `c1b902d`. Suite 1465 green; ruff/mypy-strict/
+  format/command-map/CLI-surface clean; pre-commit hooks green.
+
 ### Sprint 5.4 Backlog (committed plan â€” 2026-08-02)
 
 **Goal:** telemetry is durable (SQLite live store), bounded (retention/rollup), and actionable (isolation alerting + recovery-success metric) â€” closing the R5/R2 backlog before Phase 3.
@@ -337,6 +353,7 @@ Initiative Phase 3 `[NOT STARTED]` — **kickoff draft (2026-08-03):**
 ## Recently Completed (Commits)
 
 ```text
+c1b902d        feat: deterministic company docs generator (8 top-level docs) wired into generate_all + gemma4 model
 ae21380        feat: Sprint 5.5 P6 - R3 parity milestone MET (44/71 rows, wave 3 golden tests)
 42ccc4e        feat: Sprint 5.5 P5 - GUI/desktop action telemetry (honest D5 numerator)
 2d3b6d6        feat: Sprint 5.5 P4 - desktop -> submit for review deep link
