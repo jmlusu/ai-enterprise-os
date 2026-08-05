@@ -25,6 +25,10 @@
 
         "deepseek-r1-64k:latest": {
           "name": "DeepSeek R1 7B 64K"
+        },
+
+        "gemma4:12b": {
+          "name": "Gemma 4 12B"
         }
       }
     }

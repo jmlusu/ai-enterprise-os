@@ -15,6 +15,7 @@ from typing import Any
 import yaml
 
 from ai_company.company.board_generator import BoardGenerator, BoardResult
+from ai_company.company.company_docs_generator import CompanyDocsGenerator
 from ai_company.company.department_generator import DepartmentGenerator
 from ai_company.company.doc_generator import DocGenerator
 from ai_company.company.executive_generator import ExecutiveGenerator
@@ -100,9 +101,9 @@ class CompanyGenerator:
         """Run every generator and write all artifacts.
 
         Executes, in order: organization, board, executives, departments,
-        specialists, workflows, prompts, docs, and graph export. Each
-        sub-generator's summary and created files are aggregated into a
-        single :class:`GenerateAllResult`.
+        specialists, workflows, prompts, docs, graph export, and company
+        docs. Each sub-generator's summary and created files are aggregated
+        into a single :class:`GenerateAllResult`.
         """
         result = GenerateAllResult()
         registry = self._load_registry()
@@ -173,6 +174,17 @@ class CompanyGenerator:
         graph_result = graph_gen.generate()
         written = graph_gen.write_artifacts(graph_result, self._output_dir)
         _run("graph", graph_result, written)
+
+        # 10. Company docs (deterministic top-level documents)
+        docs_gen = CompanyDocsGenerator(
+            registry,
+            manifest=manifest,
+            config_dir=Path("config"),
+            graph=org_result.graph,
+        )
+        docs_result = docs_gen.generate()
+        written = docs_gen.write_artifacts(docs_result, self._output_dir)
+        _run("company_docs", docs_result, written)
 
         return result
 
